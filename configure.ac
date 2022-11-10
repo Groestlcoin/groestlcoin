@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 define(_CLIENT_VERSION_MAJOR, 24)
 define(_CLIENT_VERSION_MINOR, 0)
 define(_CLIENT_VERSION_BUILD, 0)
-define(_CLIENT_VERSION_RC, 1)
+define(_CLIENT_VERSION_RC, 4)
 define(_CLIENT_VERSION_IS_RELEASE, true)
 define(_COPYRIGHT_YEAR, 2022)
 define(_COPYRIGHT_HOLDERS,[The %s developers])
@@ -761,10 +761,6 @@ case $host in
            dnl This must precede the call to BITCOIN_FIND_BDB53 below.
            BDB_CFLAGS="-I$bdb_prefix/include"
            BDB_LIBS="-L$bdb_prefix/lib -ldb_cxx-5.3"
-         fi
-
-         if test "$use_sqlite" != "no" && $BREW list --versions sqlite3 >/dev/null; then
-           export PKG_CONFIG_PATH="$($BREW --prefix sqlite3 2>/dev/null)/lib/pkgconfig:$PKG_CONFIG_PATH"
          fi
 
          if $BREW list --versions qt@5 >/dev/null; then
