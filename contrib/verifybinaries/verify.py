@@ -21,9 +21,9 @@ from textwrap import indent
 
 WORKINGDIR = "/tmp/groestlcoin_verify_binaries"
 HASHFILE = "hashes.tmp"
-HOST1 = "https://github.com"
-HOST2 = "https://github.com"
-VERSIONPREFIX = "groestlcoin-core-"
+HOST1 = "https://github.com/Groestlcoin/groestlcoin/"
+HOST2 = "https://github.com/Groestlcoin/groestlcoin/"
+VERSIONPREFIX = "v"
 SIGNATUREFILENAME = "SHA256SUMS.asc"
 
 
@@ -87,7 +87,7 @@ def main(args):
 
     # determine remote dir dependent on provided version string
     version_base, version_rc, os_filter = parse_version_string(args[0])
-    remote_dir = f"/bin/{VERSIONPREFIX}{version_base}/"
+    remote_dir = f"/releases/download/{VERSIONPREFIX}{version_base}/"
     if version_rc:
         remote_dir += f"test.{version_rc}/"
     remote_sigfile = remote_dir + SIGNATUREFILENAME
@@ -103,7 +103,7 @@ def main(args):
         print("Error: couldn't fetch signature file. "
               "Have you specified the version number in the following format?")
         print(f"[{VERSIONPREFIX}]<version>[-rc[0-9]][-platform] "
-              f"(example: {VERSIONPREFIX}0.21.0-rc3-osx)")
+              f"(example: {VERSIONPREFIX}2.21.1-rc3-osx)")
         print("wget output:")
         print(indent(output, '\t'))
         return 4
@@ -112,8 +112,8 @@ def main(args):
     sigfile2 = SIGNATUREFILENAME + ".2"
     success, output = download_with_wget(HOST2 + remote_sigfile, sigfile2)
     if not success:
-        print("bitcoin.org failed to provide signature file, "
-              "but bitcoincore.org did?")
+        print("github.com failed to provide signature file, "
+              "but github.com did?")
         print("wget output:")
         print(indent(output, '\t'))
         remove_files([sigfile1])
@@ -121,7 +121,7 @@ def main(args):
 
     # ensure that both signature files are equal
     if not files_are_equal(sigfile1, sigfile2):
-        print("bitcoin.org and bitcoincore.org signature files were not equal?")
+        print("github.com and github.com signature files were not equal?")
         print(f"See files {WORKINGDIR}/{sigfile1} and {WORKINGDIR}/{sigfile2}")
         return 6
 
@@ -131,7 +131,7 @@ def main(args):
         if retval == 1:
             print("Bad signature.")
         elif retval == 2:
-            print("gpg error. Do you have the Bitcoin Core binary release "
+            print("gpg error. Do you have the Groestlcoin Core binary release "
                   "signing key installed?")
         print("gpg output:")
         print(indent(output, '\t'))

@@ -100,7 +100,7 @@ def main(bitcoind_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("USAGE: ", sys.argv[0], "path/to/bitcoind")
+        print("USAGE: ", sys.argv[0], "path/to/groestlcoind")
         exit(1)
 
     path = sys.argv[1]

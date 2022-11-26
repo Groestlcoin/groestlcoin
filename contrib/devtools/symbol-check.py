@@ -42,7 +42,7 @@ MAX_VERSIONS = {
     lief.ELF.ARCH.RISCV:  (2,27),
 },
 'LIBATOMIC': (1,0),
-'V':         (0,5,0),  # xkb (bitcoin-qt only)
+'V':         (0,5,0),  # xkb (groestlcoin-qt only)
 }
 
 # Ignore symbols that are exported as part of every executable
@@ -110,10 +110,10 @@ ELF_ALLOWED_LIBRARIES = {
 }
 
 MACHO_ALLOWED_LIBRARIES = {
-# bitcoind and bitcoin-qt
+# groestlcoind and groestlcoin-qt
 'libc++.1.dylib', # C++ Standard Library
 'libSystem.B.dylib', # libc, libm, libpthread, libinfo
-# bitcoin-qt only
+# groestlcoin-qt only
 'AppKit', # user interface
 'ApplicationServices', # common application tasks.
 'Carbon', # deprecated c back-compat API
@@ -141,7 +141,7 @@ PE_ALLOWED_LIBRARIES = {
 'SHELL32.dll', # shell API
 'USER32.dll', # user interface
 'WS2_32.dll', # sockets
-# bitcoin-qt only
+# groestlcoin-qt only
 'dwmapi.dll', # desktop window manager
 'GDI32.dll', # graphics device interface
 'IMM32.dll', # input method editor
