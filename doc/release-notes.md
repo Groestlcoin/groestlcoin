@@ -1,7 +1,10 @@
-24.0 Release Notes
-==================
+24.0.1 Release Notes
+====================
 
-Groestlcoin Core version 24.0 is now available from:
+Due to last-minute issues, 24.0, although tagged, was never fully
+announced or released.
+
+Groestlcoin Core version 24.0.1 is now available from:
 
   <https://www.groestlcoin.org/groestlcoin-core-wallet/>
 
