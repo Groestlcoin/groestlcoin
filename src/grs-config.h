@@ -9,13 +9,13 @@
 #define CLIENT_VERSION_MAJOR 24
 #define CLIENT_VERSION_MINOR 0
 #define CLIENT_VERSION_REVISION 0
-#define CLIENT_VERSION_BUILD 0
+#define CLIENT_VERSION_BUILD 1
 
 #define CLIENT_VERSION_IS_RELEASE true
 
 #define COPYRIGHT_YEAR 2021
 
-#define BUILD_DESC "v24.0.0"
+#define BUILD_DESC "v24.0.1"
 
 #define COPYRIGHT_HOLDERS "The %s developers"
 #define COPYRIGHT_HOLDERS_FINAL "The Groestlcoin Core developers"
