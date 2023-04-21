@@ -38,16 +38,23 @@ PATTERN_AGENT = re.compile(
     r"2.21.(0|1|2|99)|"
     r"22.(0|99)|"
     r"23.(0|99)|"
-    r"24.99"
+    r"24.(0|1|99)|"
+    r"25.99"
     r")")
 
 def parseline(line: str) -> Union[dict, None]:
     """ Parses a line from `seeds_main.txt` into a dictionary of details for that line.
     or `None`, if the line could not be parsed.
     """
+    if line.startswith('#'):
+        # Ignore line that starts with comment
+        return None
     sline = line.split()
     if len(sline) < 11:
         # line too short to be valid, skip it.
+        return None
+    # Skip bad results.
+    if int(sline[1]) == 0:
         return None
     m = PATTERN_IPV4.match(sline[0])
     sortkey = None
@@ -82,9 +89,6 @@ def parseline(line: str) -> Union[dict, None]:
         sortkey = ip
         ipstr = m.group(1)
         port = int(m.group(6))
-    # Skip bad results.
-    if sline[1] == 0:
-        return None
     # Extract uptime %.
     uptime30 = float(sline[7][:-1])
     # Extract Unix timestamp of last success.

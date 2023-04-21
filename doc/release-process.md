@@ -26,7 +26,7 @@ Release Process
   - set `CLIENT_VERSION_BUILD` to `0`
   - set `CLIENT_VERSION_IS_RELEASE` to `true`
 * Update hardcoded [seeds](/contrib/seeds/README.md), see [this pull request](https://github.com/bitcoin/bitcoin/pull/7415) for an example.
-* Update the following variables in [`src/groestlcoin.cpp`](/src/groestlcoin.cpp) for mainnet, testnet, and signet:
+* Update the following variables in [`src/kernel/chainparams.cpp`](/src/kernel/chainparams.cpp) for mainnet, testnet, and signet:
   - `m_assumed_blockchain_size` and `m_assumed_chain_state_size` with the current size plus some overhead (see
     [this](#how-to-calculate-assumed-blockchain-and-chain-state-size) for information on how to calculate them).
   - The following updates should be reviewed with `reindex-chainstate` and `assumevalid=0` to catch any defect
@@ -74,7 +74,7 @@ Checkout the Groestlcoin Core version you'd like to build:
 ```sh
 pushd ./groestlcoin
 SIGNER='(your builder key, ie jackielove4u, hashengineering, etc)'
-VERSION='(new version without v-prefix, e.g. 2.20.1)'
+VERSION='(new version without v-prefix, e.g. 24.0)'
 git fetch origin "v${VERSION}"
 git checkout "v${VERSION}"
 popd
