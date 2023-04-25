@@ -2,20 +2,18 @@
 
 #define UCFG_DEFINE_NDEBUG 0
 
-#define UCFG_GRS_FAST 1	//!!!T
-
 #define PACKAGE_NAME "Groestlcoin Core"
 
-#define CLIENT_VERSION_MAJOR 24
+#define CLIENT_VERSION_MAJOR 25
 #define CLIENT_VERSION_MINOR 0
 #define CLIENT_VERSION_REVISION 0
 #define CLIENT_VERSION_BUILD 0
 
 #define CLIENT_VERSION_IS_RELEASE true
 
-#define COPYRIGHT_YEAR 2021
+#define COPYRIGHT_YEAR 2023
 
-#define BUILD_DESC "v24.0.0"
+#define BUILD_DESC "v25.0.0"
 
 #define COPYRIGHT_HOLDERS "The %s developers"
 #define COPYRIGHT_HOLDERS_FINAL "The Groestlcoin Core developers"
