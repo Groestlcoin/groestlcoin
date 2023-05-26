@@ -1,40 +1,36 @@
 25.0 Release Notes
 ==================
 
-Bitcoin Core version 25.0 is now available from:
+Groestlcoin Core version 25.0 is now available from:
 
-  <https://bitcoincore.org/bin/bitcoin-core-25.0/>
+  <https://www.groestlcoin.org/groestlcoin-core-wallet/>
 
 This release includes new features, various bug fixes and performance
 improvements, as well as updated translations.
 
 Please report bugs using the issue tracker at GitHub:
 
-  <https://github.com/bitcoin/bitcoin/issues>
-
-To receive security and update notifications, please subscribe to:
-
-  <https://bitcoincore.org/en/list/announcements/join/>
+  <https://github.com/groestlcoin/groestlcoin/issues>
 
 How to Upgrade
 ==============
 
 If you are running an older version, shut it down. Wait until it has completely
 shut down (which might take a few minutes in some cases), then run the
-installer (on Windows) or just copy over `/Applications/Bitcoin-Qt` (on macOS)
-or `bitcoind`/`bitcoin-qt` (on Linux).
+installer (on Windows) or just copy over `/Applications/Groestlcoin-Qt` (on macOS)
+or `groestlcoind`/`groestlcoin-qt` (on Linux).
 
-Upgrading directly from a version of Bitcoin Core that has reached its EOL is
+Upgrading directly from a version of Groestlcoin Core that has reached its EOL is
 possible, but it might take some time if the data directory needs to be migrated. Old
-wallet versions of Bitcoin Core are generally supported.
+wallet versions of Groestlcoin Core are generally supported.
 
 Compatibility
 ==============
 
-Bitcoin Core is supported and extensively tested on operating systems
-using the Linux kernel, macOS 10.15+, and Windows 7 and newer.  Bitcoin
+Groestlcoin Core is supported and extensively tested on operating systems
+using the Linux kernel, macOS 10.15+, and Windows 7 and newer. Groestlcoin
 Core should also work on most other Unix-like systems but is not as
-frequently tested on them.  It is not recommended to use Bitcoin Core on
+frequently tested on them. It is not recommended to use Groestlcoin Core on
 unsupported systems.
 
 Notable changes
@@ -45,7 +41,7 @@ P2P and network changes
 
 - Transactions of non-witness size 65 and above are now allowed by mempool
   and relay policy. This is to better reflect the actual afforded protections
-  against CVE-2017-12842 and open up additional use-cases of smaller transaction sizes. (#26265)
+  against CVE-2017-12842 and open up additional use-cases of smaller transaction sizes.
 
 New RPCs
 --------
@@ -54,7 +50,7 @@ New RPCs
   scanning all blockfilters in the given range. It can be used in combination with
   the getblockheader and rescanblockchain RPCs to achieve fast wallet rescans. Note
   that this functionality can only be used if a compact block filter index
-  (-blockfilterindex=1) has been constructed by the node. (#23549)
+  (-blockfilterindex=1) has been constructed by the node.
 
 Updated RPCs
 ------------
@@ -63,23 +59,23 @@ Updated RPCs
   parameter](JSON-RPC-interface.md#parameter-passing) called `args` that can
   contain positional parameter values. This is a convenience to allow some
   parameter values to be passed by name without having to name every value. The
-  python test framework and `bitcoin-cli` tool both take advantage of this, so
+  python test framework and `groestlcoin-cli` tool both take advantage of this, so
   for example:
 
 ```sh
-bitcoin-cli -named createwallet wallet_name=mywallet load_on_startup=1
+groestlcoin-cli -named createwallet wallet_name=mywallet load_on_startup=1
 ```
 
 Can now be shortened to:
 
 ```sh
-bitcoin-cli -named createwallet mywallet load_on_startup=1
+groestlcoin-cli -named createwallet mywallet load_on_startup=1
 ```
 
 - The `verifychain` RPC will now return `false` if the checks didn't fail,
   but couldn't be completed at the desired depth and level. This could be due
   to missing data while pruning, due to an insufficient dbcache or due to
-  the node being shutdown before the call could finish. (#25574)
+  the node being shutdown before the call could finish.
 
 - `sendrawtransaction` has a new, optional argument, `maxburnamount` with a default value of `0`.
   Any transaction containing an unspendable output with a value greater than `maxburnamount` will
@@ -91,13 +87,13 @@ bitcoin-cli -named createwallet mywallet load_on_startup=1
   "effective-feerate" is the feerate including fees and sizes of transactions validated together if
   package validation was used, and also includes any modified fees from prioritisetransaction. The
   "effective-includes" result lists the wtxids of transactions whose modified fees and sizes were used
-  in the effective-feerate (#26646).
+  in the effective-feerate.
 
 - `decodescript` may now infer a Miniscript descriptor under P2WSH context if it is not lacking
-  information. (#27037)
+  information.
 
 - `finalizepsbt` is now able to finalize a transaction with inputs spending Miniscript-compatible
-  P2WSH scripts. (#24149)
+  P2WSH scripts.
 
 Changes to wallet related RPCs can be found in the Wallet section below.
 
@@ -107,17 +103,17 @@ Build System
 - The `--enable-upnp-default` and `--enable-natpmp-default` options
   have been removed. If you want to use port mapping, you can
   configure it using a .conf file, or by passing the relevant
-  options at runtime. (#26896)
+  options at runtime.
 
 Updated settings
 ----------------
 
 - If the `-checkblocks` or `-checklevel` options are explicitly provided by the
 user, but the verification checks cannot be completed due to an insufficient
-dbcache, Bitcoin Core will now return an error at startup. (#25574)
+dbcache, Groestlcoin Core will now return an error at startup.
 
 - Ports specified in `-port` and `-rpcport` options are now validated at startup.
-  Values that previously worked and were considered valid can now result in errors. (#22087)
+  Values that previously worked and were considered valid can now result in errors.
 
 - Setting `-blocksonly` will now reduce the maximum mempool memory
   to 5MB (users may still use `-maxmempool` to override). Previously,
@@ -137,7 +133,7 @@ New settings
 ------------
 
 - The `shutdownnotify` option is used to specify a command to execute synchronously
-before Bitcoin Core has begun its shutdown sequence. (#23395)
+before Groestlcoin Core has begun its shutdown sequence.
 
 
 Wallet
@@ -146,59 +142,59 @@ Wallet
 - The `minconf` option, which allows a user to specify the minimum number
 of confirmations a UTXO being spent has, and the `maxconf` option,
 which allows specifying the maximum number of confirmations, have been
-added to the following RPCs in #25375:
+added to the following RPCs:
   - `fundrawtransaction`
   - `send`
   - `walletcreatefundedpsbt`
   - `sendall`
 
 - Added a new `next_index` field in the response in `listdescriptors` to
-  have the same format as `importdescriptors` (#26194)
+  have the same format as `importdescriptors`.
 
 - RPC `listunspent` now has a new argument `include_immature_coinbase`
   to include coinbase UTXOs that don't meet the minimum spendability
-  depth requirement (which before were silently skipped). (#25730)
+  depth requirement (which before were silently skipped).
 
 - Rescans for descriptor wallets are now significantly faster if compact
   block filters (BIP158) are available. Since those are not constructed
   by default, the configuration option "-blockfilterindex=1" has to be
   provided to take advantage of the optimization. This improves the
   performance of the RPC calls `rescanblockchain`, `importdescriptors`
-  and `restorewallet`. (#25957)
+  and `restorewallet`.
 
-- RPC `unloadwallet` now fails if a rescan is in progress. (#26618)
+- RPC `unloadwallet` now fails if a rescan is in progress.
 
 - Wallet passphrases may now contain null characters.
   Prior to this change, only characters up to the first
-  null character were recognized and accepted. (#27068)
+  null character were recognized and accepted.
 
 - Address Purposes strings are now restricted to the currently known values of "send",
   "receive", and "refund". Wallets that have unrecognized purpose strings will have
   loading warnings, and the `listlabels` RPC will raise an error if an unrecognized purpose
-  is requested. (#27217)
+  is requested.
 
 - In the `createwallet`, `loadwallet`, `unloadwallet`, and `restorewallet` RPCs, the
   "warning" string field is deprecated in favor of a "warnings" field that
   returns a JSON array of strings to better handle multiple warning messages and
   for consistency with other wallet RPCs. The "warning" field will be fully
   removed from these RPCs in v26. It can be temporarily re-enabled during the
-  deprecation period by launching bitcoind with the configuration option
-  `-deprecatedrpc=walletwarningfield`. (#27279)
+  deprecation period by launching groestlcoind with the configuration option
+  `-deprecatedrpc=walletwarningfield`.
 
-- Descriptor wallets can now spend coins sent to P2WSH Miniscript descriptors. (#24149)
+- Descriptor wallets can now spend coins sent to P2WSH Miniscript descriptors.
 
 GUI changes
 -----------
 
-- The "Mask values" is a persistent option now. (gui#701)
+- The "Mask values" is a persistent option now.
 - The "Mask values" option affects the "Transaction" view now, in addition to the
-  "Overview" one. (gui#708)
+  "Overview" one.
 
 REST
 ----
 
 - A new `/rest/deploymentinfo` endpoint has been added for fetching various
-  state info regarding deployments of consensus changes. (#25412)
+  state info regarding deployments of consensus changes.
 
 Binary verification
 ----
@@ -208,8 +204,7 @@ Binary verification
   In this release and moving forward it will verify that the binaries are
   signed by a _threshold of trusted keys_. For more details and
   examples, see:
-  https://github.com/bitcoin/bitcoin/blob/master/contrib/verify-binaries/README.md
-  (#27358)
+  https://github.com/Groestlcoin/groestlcoin/blob/master/contrib/verify-binaries/README.md
 
 Low-level changes
 =================
@@ -219,122 +214,19 @@ RPC
 
 - The JSON-RPC server now rejects requests where a parameter is specified multiple
   times with the same name, instead of silently overwriting earlier parameter values
-  with later ones. (#26628)
+  with later ones.
 - RPC `listsinceblock` now accepts an optional `label` argument
-  to fetch incoming transactions having the specified label. (#25934)
+  to fetch incoming transactions having the specified label.
 - Previously `setban`, `addpeeraddress`, `walletcreatefundedpsbt`, methods
   allowed non-boolean and non-null values to be passed as boolean parameters.
   Any string, number, array, or object value that was passed would be treated
   as false. After this change, passing any value except `true`, `false`, or
-  `null` now triggers a JSON value is not of expected type error. (#26213)
+  `null` now triggers a JSON value is not of expected type error.
 
 Credits
 =======
 
-Thanks to everyone who directly contributed to this release:
-
-- 0xb10c
-- 721217.xyz
-- @RandyMcMillan
-- amadeuszpawlik
-- Amiti Uttarwar
-- Andrew Chow
-- Andrew Toth
-- Anthony Towns
-- Antoine Poinsot
-- Aurèle Oulès
-- Ben Woosley
-- Bitcoin Hodler
-- brunoerg
-- Bushstar
-- Carl Dong
-- Chris Geihsler
-- Cory Fields
-- David Gumberg
-- dergoegge
-- Dhruv Mehta
-- Dimitris Tsapakidis
-- dougEfish
-- Douglas Chimento
-- ekzyis
-- Elichai Turkel
-- Ethan Heilman
-- Fabian Jahr
-- FractalEncrypt
-- furszy
-- Gleb Naumenko
-- glozow
-- Greg Sanders
-- Hennadii Stepanov
-- hernanmarino
-- ishaanam
-- ismaelsadeeq
-- James O'Beirne
-- jdjkelly@gmail.com
-- Jeff Ruane
-- Jeffrey Czyz
-- Jeremy Rubin
-- Jesse Barton
-- João Barbosa
-- JoaoAJMatos
-- John Moffett
-- Jon Atack
-- Jonas Schnelli
-- jonatack
-- Joshua Kelly
-- josibake
-- Juan Pablo Civile
-- kdmukai
-- klementtan
-- Kolby ML
-- kouloumos
-- Kristaps Kaupe
-- laanwj
-- Larry Ruane
-- Leonardo Araujo
-- Leonardo Lazzaro
-- Luke Dashjr
-- MacroFake
-- MarcoFalke
-- Martin Leitner-Ankerl
-- Martin Zumsande
-- Matt Whitlock
-- Matthew Zipkin
-- Michael Ford
-- Miles Liu
-- mruddy
-- Murray Nesbitt
-- muxator
-- omahs
-- pablomartin4btc
-- Pasta
-- Pieter Wuille
-- Pttn
-- Randall Naar
-- Riahiamirreza
-- roconnor-blockstream
-- Russell O'Connor
-- Ryan Ofsky
-- S3RK
-- Sebastian Falbesoner
-- Seibart Nedor
-- sinetek
-- Sjors Provoost
-- Skuli Dulfari
-- SomberNight
-- Stacie Waleyko
-- stickies-v
-- stratospher
-- Suhas Daftuar
-- Suriyaa Sundararuban
-- TheCharlatan
-- Vasil Dimov
-- Vasil Stoyanov
-- virtu
-- w0xlt
-- willcl-ark
-- yancy
-- Yusuf Sahin HAMZA
+Thanks to everyone who directly contributed to this release.
 
 As well as to everyone that helped with translations on
 [Transifex](https://www.transifex.com/bitcoin/bitcoin/).
