@@ -77,13 +77,11 @@ class CGroestlHashWriter
 private:
 	GroestlHasher ctx;
 
-	const int nType;
 	const int nVersion;
 public:
 
-	CGroestlHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
+	CGroestlHashWriter(int nVersionIn) : nVersion(nVersionIn) {}
 
-	int GetType() const { return nType; }
 	int GetVersion() const { return nVersion; }
 
 	void write(Span<const std::byte> src)
