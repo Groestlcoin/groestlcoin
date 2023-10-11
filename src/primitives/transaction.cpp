@@ -68,12 +68,12 @@ CMutableTransaction::CMutableTransaction(const CTransaction& tx) : vin(tx.vin), 
 
 uint256 CMutableTransaction::GetHash() const
 {
-    return (XCoin::CGroestlHashWriter{SERIALIZE_TRANSACTION_NO_WITNESS} << *this).GetHash();
+    return (CHashWriter{SERIALIZE_TRANSACTION_NO_WITNESS} << *this).GetHash();
 }
 
 uint256 CTransaction::ComputeHash() const
 {
-    return (XCoin::CGroestlHashWriter{SERIALIZE_TRANSACTION_NO_WITNESS} << *this).GetHash();
+    return (CHashWriter{SERIALIZE_TRANSACTION_NO_WITNESS} << *this).GetHash();
 }
 
 uint256 CTransaction::ComputeWitnessHash() const
