@@ -7,7 +7,6 @@
 
 #include <consensus/amount.h>
 #include <hash.h>
-#include <groestlcoin.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <tinyformat.h>
