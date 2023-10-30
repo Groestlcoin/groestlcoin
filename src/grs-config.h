@@ -3,7 +3,7 @@
 #define UCFG_DEFINE_NDEBUG 0
 
 //  Check if this can be removed
-#define BUILD_DESC "v25.0.0"
+#define BUILD_DESC "v26.0.0"
 
 #if defined(_MSC_VER) && !defined(RC_COMPILER)
 #	include <vc-inc.h>
@@ -34,3 +34,13 @@
 #define HAVE_WORKING_BOOST_SLEEP_FOR 1
 
 #define BOOST_ASIO_ERROR_CATEGORY_NOEXCEPT noexcept
+
+#define QT_STATIC
+#define MINIUPNP_STATICLIB
+
+#define ENABLE_WALLET
+#define USE_QRCODE
+#define USE_UPNP 1
+
+#define ENABLE_ZMQ 1
+#define ZMQ_STATIC

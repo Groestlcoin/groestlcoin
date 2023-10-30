@@ -1,2 +1,0 @@
-#include <qt\stdafx.h>
-
