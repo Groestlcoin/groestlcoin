@@ -34,13 +34,3 @@
 #define HAVE_WORKING_BOOST_SLEEP_FOR 1
 
 #define BOOST_ASIO_ERROR_CATEGORY_NOEXCEPT noexcept
-
-#define QT_STATIC
-#define MINIUPNP_STATICLIB
-
-#define ENABLE_WALLET
-#define USE_QRCODE
-#define USE_UPNP 1
-
-#define ENABLE_ZMQ 1
-#define ZMQ_STATIC

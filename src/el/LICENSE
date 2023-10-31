@@ -1,7 +1,0 @@
-License: Public Domain
-
-Files
-    el/bignum/x86x64/bignum-x86x64.asm 
-    el/bignum/x86x64/montgomery_mul_x86x64.asm 
-
-are placed in the Public Domain

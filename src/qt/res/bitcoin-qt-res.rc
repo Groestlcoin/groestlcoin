@@ -1,7 +1,6 @@
 IDI_ICON1 ICON DISCARDABLE "icons/groestlcoin.ico"
 IDI_ICON2 ICON DISCARDABLE "icons/groestlcoin_testnet.ico"
 
-#include "../../grs-config.h"
 #include <windows.h>             // needed for VERSIONINFO
 #include "../../clientversion.h" // holds the needed client version information
 #define PACKAGE_NAME "Groestlcoin Core"
