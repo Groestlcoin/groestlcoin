@@ -160,7 +160,6 @@ BITCOIN_CORE_H = \
   external_signer.h \
   flatfile.h \
   groestlcoin.h \
-  grs-config.h \
   headerssync.h \
   httprpc.h \
   httpserver.h \
