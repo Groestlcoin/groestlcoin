@@ -117,8 +117,8 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nTimeout = 1640908799; // December 31, 2021
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].min_activation_height = 0; // No activation delay
 
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000001765b5c25586cac419d"); // groestlcoin-cli getblockheader 000000000000032ef3bc545f0cba2e40196e416512722793187fb17ffdc2375d | jq '{chainwork}'
-        consensus.defaultAssumeValid = uint256S("0x000000000000032ef3bc545f0cba2e40196e416512722793187fb17ffdc2375d"); // groestlcoin-cli getblockhash 4794500
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000001997539893ec6a63327"); // groestlcoin-cli getblockheader 00000000000001ea7e553e08cccf6bd309a91268a4e7550ced3f30e569fd449a | jq '{chainwork}'
+        consensus.defaultAssumeValid = uint256S("0x00000000000001ea7e553e08cccf6bd309a91268a4e7550ced3f30e569fd449a"); // groestlcoin-cli getblockhash 5052200
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -177,10 +177,10 @@ public:
         };
 
         chainTxData = ChainTxData{
-            // Data from RPC: groestlcoin-cli getchaintxstats 4096 000000000000032ef3bc545f0cba2e40196e416512722793187fb17ffdc2375d | jq '{time,txcount,txrate}'
-            .nTime    = 1697115203,
-            .nTxCount = 6152686,
-            .dTxRate  = 0.02089769216790842,
+            // Data from RPC: groestlcoin-cli getchaintxstats 4096 00000000000001ea7e553e08cccf6bd309a91268a4e7550ced3f30e569fd449a | jq '{time,txcount,txrate}'
+            .nTime    = 1713361743,
+            .nTxCount = 6459191,
+            .dTxRate  = 0.0187155736023318,
         };
     }
 };
@@ -222,8 +222,8 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nTimeout = 1640908799; // December 31, 2021
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].min_activation_height = 0; // No activation delay
 
-        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000004ebb73782521"); // groestlcoin-cli -testnet getblockheader 000000b41ba6471cb21f9d20b0769f1a5f135d494eb4e66326ed2a910c2520eb | jq '{chainwork}'
-        consensus.defaultAssumeValid = uint256S("0x000000b41ba6471cb21f9d20b0769f1a5f135d494eb4e66326ed2a910c2520eb"); // groestlcoin-cli -testnet getblockhash 3412600
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000530bab06de60"); // groestlcoin-cli -testnet getblockheader 0000008c448a9693bdaca695b731e1d282851fa35ee3a0f3888b9d24c250e709 | jq '{chainwork}'
+        consensus.defaultAssumeValid = uint256S("0x0000008c448a9693bdaca695b731e1d282851fa35ee3a0f3888b9d24c250e709"); // groestlcoin-cli -testnet getblockhash 3658400
 
         pchMessageStart[0] = 0x0b;
         pchMessageStart[1] = 0x11;
@@ -269,10 +269,10 @@ public:
         };
 
         chainTxData = ChainTxData{
-            // Data from RPC: groestlcoin-cli -testnet getchaintxstats 4096 000000b41ba6471cb21f9d20b0769f1a5f135d494eb4e66326ed2a910c2520eb | jq '{time,txcount,txrate}'
-            .nTime    = 1697116689,
-            .nTxCount = 3432677,
-            .dTxRate  = 0.01640415763295498,
+            // Data from RPC: groestlcoin-cli -testnet getchaintxstats 4096 0000008c448a9693bdaca695b731e1d282851fa35ee3a0f3888b9d24c250e709 | jq '{time,txcount,txrate}'
+            .nTime    = 1713364529,
+            .nTxCount = 3678898,
+            .dTxRate  = 0.01552035959409455,
         };
     }
 };
@@ -295,15 +295,15 @@ public:
             vSeeds.emplace_back("2604:a880:1:20::96:6001");
             vSeeds.emplace_back("ubmgcth2ngfb7qapyrkpnn3i6p2dmu76zvd3hfs2mw3u4t54v2qa66id.onion:31331");
 
-            consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000068194f1c753"); // groestlcoin-cli -signet getblockheader 00000230edf473b8b034e51258567c58505b7d3130c5013937127f406b66a984 | jq '{chainwork}'
-            consensus.defaultAssumeValid = uint256S("0x00000230edf473b8b034e51258567c58505b7d3130c5013937127f406b66a984"); // groestlcoin-cli -signet getblockhash 1413000
+            consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000007b17f96fdb1"); // groestlcoin-cli -signet getblockheader 000001744190351be0899328f4f74e479d6d9e33f182389070697a308d3e1722 | jq '{chainwork}'
+            consensus.defaultAssumeValid = uint256S("0x000001744190351be0899328f4f74e479d6d9e33f182389070697a308d3e1722"); // groestlcoin-cli -signet getblockhash 1670000
             m_assumed_blockchain_size = 2; // du -cha --max-depth=1 .groestlcoin/signet
             m_assumed_chain_state_size = 1; // du -cha --max-depth=1 .groestlcoin/signet/chainstate/
             chainTxData = ChainTxData{
-                // Data from RPC: groestlcoin-cli -signet getchaintxstats 4096 00000230edf473b8b034e51258567c58505b7d3130c5013937127f406b66a984 | jq '{time,txcount,txrate}'
-                .nTime    = 1697110206,
-                .nTxCount = 1413015,
-                .dTxRate  = 0.01597211119646555,
+                // Data from RPC: groestlcoin-cli -signet getchaintxstats 4096 000001744190351be0899328f4f74e479d6d9e33f182389070697a308d3e1722 | jq '{time,txcount,txrate}'
+                .nTime    = 1713357154,
+                .nTxCount = 1670015,
+                .dTxRate  = 0.0159724848990606,
             };
         } else {
             bin = *options.challenge;
