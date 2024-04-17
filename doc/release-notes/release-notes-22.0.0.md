@@ -1,6 +1,3 @@
-22.0 Release Notes
-==================
-
 Groestlcoin Core version 22.0 is now available from:
 
   <https://www.groestlcoin.org/groestlcoin-core-wallet/>

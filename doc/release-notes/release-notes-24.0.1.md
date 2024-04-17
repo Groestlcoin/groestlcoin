@@ -1,6 +1,3 @@
-24.0.1 Release Notes
-====================
-
 Due to last-minute issues, 24.0, although tagged, was never fully
 announced or released.
 
