@@ -69,7 +69,7 @@ jobs:
           - name: macos-64-bit
             host: x86_64-apple-darwin
             os: ubuntu-24.04
-            packages: curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso
+            packages: curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso clang lld llvm
             check-security: false
             check-symbols: false
             dep-opts: ""

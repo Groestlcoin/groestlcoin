@@ -132,7 +132,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:22.04"
+      CI_IMAGE_NAME_TAG: "docker.io/debian:bullseye"
       FILE_ENV: "./ci/test/00_setup_env_native_nowallet_libgroestlcoinkernel.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -142,7 +142,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:22.04"
+      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
       FILE_ENV: "./ci/test/00_setup_env_mac_cross.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
