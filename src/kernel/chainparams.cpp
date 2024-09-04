@@ -308,7 +308,7 @@ public:
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
         consensus.MinBIP9WarningHeight = 0;
-        consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
@@ -327,7 +327,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].min_activation_height = 0; // No activation delay
 
-        consensus.nMinimumChainWork = uint256{"000000000000000000000000000000000000000000000056faca98a0cd9bdf5f"};
+        consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
 
         pchMessageStart[0] = 0x1c;
@@ -349,14 +349,14 @@ public:
                 1,
                 0);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x000000ffbb50fc9898cdd36ec163e6ba23230164c0052a28876255b7dcf2cd36"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"));
+        assert(consensus.hashGenesisBlock == uint256{"000000ffbb50fc9898cdd36ec163e6ba23230164c0052a28876255b7dcf2cd36"});
+        assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
         // nodes with support for servicebits filtering should be at the top
         vSeeds.emplace_back("testnet4-seed1.groestlcoin.org.");
-        vSeeds.emplace_back("testnet4-seed1.groestlcoin.org.");
+        vSeeds.emplace_back("testnet4-seed2.groestlcoin.org.");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
