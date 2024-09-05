@@ -343,14 +343,14 @@ public:
         const CScript testnet4_genesis_script = CScript() << "000000000000000000000000000000000000000000000000000000000000000000"_hex_v_u8 << OP_CHECKSIG;
         genesis = CreateGenesisBlock(testnet4_genesis_msg,
                 testnet4_genesis_script,
-                1440000002,
-                6556309,
+                1725524377,
+                13221372,
                 0x1e00ffff,
                 3,
                 0);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"000000ffbb50fc9898cdd36ec163e6ba23230164c0052a28876255b7dcf2cd36"});
-        assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
+        assert(consensus.hashGenesisBlock == uint256{"00000083a5f80d35100e8469ee2b2456851db83953fce02814376b748edcb0e4"});
+        assert(genesis.hashMerkleRoot == uint256{"10e6402df6eea7feb59617a27fafd650162c348c007d7dc8f22c910854e778f"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
