@@ -33,8 +33,6 @@
 #include <cstring>
 #include <type_traits>
 
-using namespace util::hex_literals;
-
 #include <assert.h>
 #include <memory>
 
