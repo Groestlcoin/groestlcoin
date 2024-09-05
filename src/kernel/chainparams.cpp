@@ -340,17 +340,17 @@ public:
         m_assumed_chain_state_size = 0;
 
         const char* testnet4_genesis_msg = "Pressure must be put on Vladimir Putin over Crimea";
-        const CScript testnet4_genesis_script = CScript() << "000000000000000000000000000000000000000000000000000000000000000000"_hex_v_u8 << OP_CHECKSIG;
+        const CScript testnet4_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex_v_u8 << OP_CHECKSIG;
         genesis = CreateGenesisBlock(testnet4_genesis_msg,
                 testnet4_genesis_script,
-                1725524377,
-                13221372,
+                1725525340,
+                6485621,
                 0x1e00ffff,
                 3,
                 0);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"00000083a5f80d35100e8469ee2b2456851db83953fce02814376b748edcb0e4"});
-        assert(genesis.hashMerkleRoot == uint256{"10e6402df6eea7feb59617a27fafd650162c348c007d7dc8f22c910854e778f"});
+        assert(consensus.hashGenesisBlock == uint256{"000000519399f41322d7a8c24bfdc409aa13a80160b43a57668c2ad62802fa5c"});
+        assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
