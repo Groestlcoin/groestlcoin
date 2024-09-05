@@ -33,6 +33,8 @@
 #include <cstring>
 #include <type_traits>
 
+using namespace util::hex_literals;
+
 #include <assert.h>
 #include <memory>
 
@@ -308,7 +310,7 @@ public:
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
         consensus.MinBIP9WarningHeight = 0;
-        consensus.powLimit = uint256{"000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
+        consensus.powLimit = uint256S("000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
@@ -340,7 +342,7 @@ public:
         m_assumed_chain_state_size = 0;
 
         const char* testnet4_genesis_msg = "Pressure must be put on Vladimir Putin over Crimea";
-        const CScript testnet4_genesis_script = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex_v_u8 << OP_CHECKSIG;
+        const CScript testnet4_genesis_script = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
         genesis = CreateGenesisBlock(testnet4_genesis_msg,
                 testnet4_genesis_script,
                 1725525340,
@@ -349,8 +351,8 @@ public:
                 3,
                 0);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"000000519399f41322d7a8c24bfdc409aa13a80160b43a57668c2ad62802fa5c"});
-        assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
+        assert(consensus.hashGenesisBlock == uint256S("000000519399f41322d7a8c24bfdc409aa13a80160b43a57668c2ad62802fa5c"));
+        assert(genesis.hashMerkleRoot == uint256S("3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
