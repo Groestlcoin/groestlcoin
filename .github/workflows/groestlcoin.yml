@@ -45,7 +45,7 @@ jobs:
             goal: install
           - name: linux-64-bit
             host: x86_64-pc-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-22.04
             packages: ""
             check-security: false
             check-symbols: false
