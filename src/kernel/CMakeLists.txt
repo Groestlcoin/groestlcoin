@@ -29,7 +29,7 @@ add_library(groestlcoinkernel
   ../deploymentstatus.cpp
   ../flatfile.cpp
   ../groestlcoin-hash.cpp
-  ../groestlcoin.cp
+  ../groestlcoin.cpp
   ../hash.cpp
   ../logging.cpp
   ../node/blockstorage.cpp
