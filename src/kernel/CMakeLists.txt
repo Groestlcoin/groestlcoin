@@ -28,6 +28,8 @@ add_library(groestlcoinkernel
   ../deploymentinfo.cpp
   ../deploymentstatus.cpp
   ../flatfile.cpp
+  ../groestlcoin-hash.cpp
+  ../groestlcoin.cp
   ../hash.cpp
   ../logging.cpp
   ../node/blockstorage.cpp
@@ -51,6 +53,7 @@ add_library(groestlcoinkernel
   ../script/sigcache.cpp
   ../script/solver.cpp
   ../signet.cpp
+  ../sphlib/groestl.cpp
   ../streams.cpp
   ../support/lockedpool.cpp
   ../sync.cpp
