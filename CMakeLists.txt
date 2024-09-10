@@ -458,10 +458,10 @@ else()
   )
 endif()
 
-configure_file(cmake/script/Coverage.cmake Coverage.cmake COPYONLY)
-configure_file(cmake/script/CoverageFuzz.cmake CoverageFuzz.cmake COPYONLY)
-configure_file(cmake/script/CoverageInclude.cmake.in CoverageInclude.cmake @ONLY)
-configure_file(contrib/filter-lcov.py filter-lcov.py COPYONLY)
+configure_file(cmake/script/Coverage.cmake Coverage.cmake USE_SOURCE_PERMISSIONS COPYONLY)
+configure_file(cmake/script/CoverageFuzz.cmake CoverageFuzz.cmake USE_SOURCE_PERMISSIONS COPYONLY)
+configure_file(cmake/script/CoverageInclude.cmake.in CoverageInclude.cmake USE_SOURCE_PERMISSIONS @ONLY)
+configure_file(contrib/filter-lcov.py filter-lcov.py USE_SOURCE_PERMISSIONS COPYONLY)
 
 # Don't allow extended (non-ASCII) symbols in identifiers. This is easier for code review.
 try_append_cxx_flags("-fno-extended-identifiers" TARGET core_interface SKIP_LINK)
@@ -480,18 +480,21 @@ if(ENABLE_HARDENING)
     try_append_linker_flag("/HIGHENTROPYVA" TARGET hardening_interface)
     try_append_linker_flag("/NXCOMPAT" TARGET hardening_interface)
   else()
+
+    # _FORTIFY_SOURCE requires that there is some level of optimization,
+    # otherwise it does nothing and just creates a compiler warning.
     try_append_cxx_flags("-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
       RESULT_VAR cxx_supports_fortify_source
+      SOURCE "int main() {
+              # if !defined __OPTIMIZE__ || __OPTIMIZE__ <= 0
+                #error
+              #endif
+              }"
     )
     if(cxx_supports_fortify_source)
-      # When the build configuration is Debug, all optimizations are disabled.
-      # However, _FORTIFY_SOURCE requires that there is some level of optimization,
-      # otherwise it does nothing and just creates a compiler warning.
-      # Since _FORTIFY_SOURCE is a no-op without optimizations, do not enable it
-      # when the build configuration is Debug.
       target_compile_options(hardening_interface INTERFACE
-        $<$<NOT:$<CONFIG:Debug>>:-U_FORTIFY_SOURCE>
-        $<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=3>
+        -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=3
       )
     endif()
     unset(cxx_supports_fortify_source)
