@@ -354,8 +354,14 @@ Development tips and tricks
 
 ### Compiling for debugging
 
-Run configure with `--enable-debug` to add additional compiler flags that
-produce better debugging builds.
+When using the default build configuration by running `cmake -B build`, the
+`-DCMAKE_BUILD_TYPE` is set to `RelWithDebInfo`. This option adds debug symbols
+but also performs some compiler optimizations that may make debugging trickier
+as the code may not correspond directly to the source.
+
+If you need to build exclusively for debugging, set the `-DCMAKE_BUILD_TYPE`
+to `Debug` (i.e. `-DCMAKE_BUILD_TYPE=Debug`). You can always check the cmake
+build options of an existing build with `ccmake build`.
 
 ### Show sources in debugging
 
@@ -555,7 +561,7 @@ See the functional test documentation for how to invoke perf within tests.
 Groestlcoin Core can be compiled with various "sanitizers" enabled, which add
 instrumentation for issues regarding things like memory safety, thread race
 conditions, or undefined behavior. This is controlled with the
-`--with-sanitizers` configure flag, which should be a comma separated list of
+`-DSANITIZERS` cmake build flag, which should be a comma separated list of
 sanitizers to enable. The sanitizer list should correspond to supported
 `-fsanitize=` options in your compiler. These sanitizers have runtime overhead,
 so they are most useful when testing changes or producing debugging builds.
@@ -564,10 +570,10 @@ Some examples:
 
 ```bash
 # Enable both the address sanitizer and the undefined behavior sanitizer
-./configure --with-sanitizers=address,undefined
+cmake -B build -DSANITIZERS=address,undefined
 
 # Enable the thread sanitizer
-./configure --with-sanitizers=thread
+cmake -B build -DSANITIZERS=thread
 ```
 
 If you are compiling with GCC you will typically need to install corresponding
@@ -589,7 +595,7 @@ See the CI config for more examples, and upstream documentation for more informa
 about any additional options.
 
 Not all sanitizer options can be enabled at the same time, e.g. trying to build
-with `--with-sanitizers=address,thread` will fail in the configure script as
+with `-DSANITIZERS=address,thread` will fail in the configure script as
 these sanitizers are mutually incompatible. Refer to your compiler manual to
 learn more about these options and which sanitizers are supported by your
 compiler.
@@ -603,7 +609,6 @@ Additional resources:
  * [UndefinedBehaviorSanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)
  * [GCC Instrumentation Options](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html)
  * [Google Sanitizers Wiki](https://github.com/google/sanitizers/wiki)
- * [Issue #12691: Enable -fsanitize flags in Travis](https://github.com/bitcoin/bitcoin/issues/12691)
 
 Locking/mutex usage notes
 -------------------------
