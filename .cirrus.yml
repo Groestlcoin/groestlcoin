@@ -50,16 +50,6 @@ global_task_template: &GLOBAL_TASK_TEMPLATE
   << : *MAIN_TEMPLATE
 
 task:
-  name: 'ARM, no unit tests, no functional tests'
-  << : *GLOBAL_TASK_TEMPLATE
-  container:
-    docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/arm64v8/debian:bookworm"
-      FILE_ENV: "./ci/test/00_setup_env_arm.sh"
-  env:
-    << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
-
-task:
   name: 'Win64, no unit tests, no gui tests, no functional tests'
   << : *GLOBAL_TASK_TEMPLATE
   container:

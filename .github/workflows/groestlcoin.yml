@@ -1,4 +1,4 @@
-name: CI
+name: Build
 
 on:
   push:
@@ -26,7 +26,8 @@ jobs:
           - linux-32-bit
           - linux-64-bit
           - windows-64-bit
-          - macos-64-bit
+          - macos-intel-64-bit
+          - macos-arm-64-bit
           - linux-arm-32-bit
           - linux-arm-64-bit
           - linux-power-64-bit
@@ -66,8 +67,18 @@ jobs:
             dep-opts: ""
             config-opts: "LDFLAGS=-static-libgcc"
             goal: build
-          - name: macos-64-bit
+          - name: macos-intel-64-bit
             host: x86_64-apple-darwin
+            os: ubuntu-24.04
+            packages: clang lld llvm g++ zip curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso
+            check-security: false
+            check-symbols: false
+            dep-opts: ""
+            config-opts: ""
+            goal: deploy
+            sdk: 15.0-15A240d
+          - name: macos-arm-64-bit
+            host: arm64-apple-darwin
             os: ubuntu-24.04
             packages: clang lld llvm g++ zip curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso
             check-security: false
