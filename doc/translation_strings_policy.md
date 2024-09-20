@@ -1,4 +1,3 @@
-Translation Strings Policy
-===========================
+# Translation Strings Policy
 
 Currently not available
