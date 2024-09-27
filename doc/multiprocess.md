@@ -17,7 +17,9 @@ The multiprocess feature requires [Cap'n Proto](https://capnproto.org/) and [lib
 ```
 cd <GROESTLCOIN_SOURCE_DIRECTORY>
 make -C depends NO_QT=1 MULTIPROCESS=1
-cmake -B build --toolchain=depends/x86_64-pc-linux-gnu/toolchain.cmake
+# Set host platform to output of gcc -dumpmachine or clang -dumpmachine or check the depends/ directory for the generated subdirectory name
+HOST_PLATFORM="x86_64-pc-linux-gnu"
+cmake -B build --toolchain=depends/$HOST_PLATFORM/toolchain.cmake
 cmake --build build
 build/src/groestlcoin-node -regtest -printtoconsole -debug=ipc
 GROESTLCOIND=$(pwd)/build/src/groestlcoin-node build/test/functional/test_runner.py

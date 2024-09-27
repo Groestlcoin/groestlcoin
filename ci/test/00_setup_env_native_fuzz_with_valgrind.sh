@@ -17,3 +17,4 @@ export GROESTLCOIN_CONFIG="\
  -DCMAKE_C_COMPILER=clang-16 \
  -DCMAKE_CXX_COMPILER=clang++-16 \
 "
+export LLVM_SYMBOLIZER_PATH="/usr/bin/llvm-symbolizer-16"
