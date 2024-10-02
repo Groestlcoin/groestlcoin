@@ -2,7 +2,7 @@ env:  # Global defaults
   CIRRUS_CLONE_DEPTH: 1
   CIRRUS_LOG_TIMESTAMP: true
   PACKAGE_MANAGER_INSTALL: "apt-get update && apt-get install -y"
-  MAKEJOBS: "-j4"
+  MAKEJOBS: "-j10"
   TEST_RUNNER_PORT_MIN: "14000"  # Must be larger than 12321, which is used for the http cache. See https://cirrus-ci.org/guide/writing-tasks/#http-cache
   CI_FAILFAST_TEST_LEAVE_DANGLING: "1"  # Cirrus CI does not care about dangling processes and setting this variable avoids killing the CI script itself on error
 
@@ -17,8 +17,8 @@ persistent_worker_template: &PERSISTENT_WORKER_TEMPLATE
 
 base_template: &BASE_TEMPLATE
   merge_base_script:
-    # Unconditionally install git (used in fingerprint_script).
-    - git --version || bash -c "$PACKAGE_MANAGER_INSTALL git"
+    # Require git (used in fingerprint_script).
+    - git --version || ( apt-get update && apt-get install -y git )
     - if [ "$CIRRUS_PR" = "" ]; then exit 0; fi
     - git fetch --depth=1 $CIRRUS_REPO_CLONE_URL "pull/${CIRRUS_PR}/merge"
     - git checkout FETCH_HEAD  # Use merged changes to detect silent merge conflicts
