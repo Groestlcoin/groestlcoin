@@ -13,12 +13,11 @@ export LSAN_OPTIONS="suppressions=${BASE_ROOT_DIR}/test/sanitizer_suppressions/l
 export TSAN_OPTIONS="suppressions=${BASE_ROOT_DIR}/test/sanitizer_suppressions/tsan:halt_on_error=1"
 export UBSAN_OPTIONS="suppressions=${BASE_ROOT_DIR}/test/sanitizer_suppressions/ubsan:print_stacktrace=1:halt_on_error=1:report_error_type=1"
 
+echo "Number of available processing units: $(nproc)"
 if [ "$CI_OS_NAME" == "macos" ]; then
   top -l 1 -s 0 | awk ' /PhysMem/ {print}'
-  echo "Number of CPUs: $(sysctl -n hw.logicalcpu)"
 else
   free -m -h
-  echo "Number of CPUs (nproc): $(nproc)"
   echo "System info: $(uname --kernel-name --kernel-release)"
   lscpu
 fi
@@ -131,7 +130,7 @@ if [ "$RUN_CHECK_DEPS" = "true" ]; then
 fi
 
 if [ "$RUN_UNIT_TESTS" = "true" ]; then
-  DIR_UNIT_TEST_DATA="${DIR_UNIT_TEST_DATA}" LD_LIBRARY_PATH="${DEPENDS_DIR}/${HOST}/lib" CTEST_OUTPUT_ON_FAILURE=ON ctest "${MAKEJOBS}" --timeout $((TEST_RUNNER_TIMEOUT_FACTOR * 30 ))
+  DIR_UNIT_TEST_DATA="${DIR_UNIT_TEST_DATA}" LD_LIBRARY_PATH="${DEPENDS_DIR}/${HOST}/lib" CTEST_OUTPUT_ON_FAILURE=ON ctest "${MAKEJOBS}" --timeout $(( TEST_RUNNER_TIMEOUT_FACTOR * 60 ))
 fi
 
 if [ "$RUN_UNIT_TESTS_SEQUENTIAL" = "true" ]; then

@@ -8,6 +8,7 @@
 #include <chain.h>
 #include <chainparams.h>
 #include <common/args.h>
+#include <consensus/merkle.h>
 #include <consensus/validation.h>
 #include <deploymentstatus.h>
 #include <external_signer.h>
@@ -60,7 +61,7 @@
 #include <validation.h>
 #include <validationinterface.h>
 
-#include <config/bitcoin-config.h> // IWYU pragma: keep
+#include <bitcoin-build-config.h> // IWYU pragma: keep
 
 #include <any>
 #include <memory>
@@ -134,13 +135,15 @@ public:
     }
     void startShutdown() override
     {
-        if (!(*Assert(Assert(m_context)->shutdown))()) {
+        NodeContext& ctx{*Assert(m_context)};
+        if (!(Assert(ctx.shutdown_request))()) {
             LogError("Failed to send shutdown signal\n");
         }
+
         // Stop RPC for clean shutdown if any of waitfor* commands is executed.
         if (args().GetBoolArg("-server", false)) {
             InterruptRPC();
-            StopRPC(m_context);
+            StopRPC();
         }
     }
     bool shutdownRequested() override { return ShutdownRequested(*Assert(m_context)); };
@@ -870,7 +873,7 @@ public:
 class BlockTemplateImpl : public BlockTemplate
 {
 public:
-    explicit BlockTemplateImpl(std::unique_ptr<CBlockTemplate> block_template) : m_block_template(std::move(block_template))
+    explicit BlockTemplateImpl(std::unique_ptr<CBlockTemplate> block_template, NodeContext& node) : m_block_template(std::move(block_template)), m_node(node)
     {
         assert(m_block_template);
     }
@@ -910,7 +913,37 @@ public:
         return GetWitnessCommitmentIndex(m_block_template->block);
     }
 
+    std::vector<uint256> getCoinbaseMerklePath() override
+    {
+        return BlockMerkleBranch(m_block_template->block);
+    }
+
+    bool submitSolution(uint32_t version, uint32_t timestamp, uint32_t nonce, CMutableTransaction coinbase) override
+    {
+        CBlock block{m_block_template->block};
+
+        auto cb = MakeTransactionRef(std::move(coinbase));
+
+        if (block.vtx.size() == 0) {
+            block.vtx.push_back(cb);
+        } else {
+            block.vtx[0] = cb;
+        }
+
+        block.nVersion = version;
+        block.nTime = timestamp;
+        block.nNonce = nonce;
+
+        block.hashMerkleRoot = BlockMerkleRoot(block);
+
+        auto block_ptr = std::make_shared<const CBlock>(block);
+        return chainman().ProcessNewBlock(block_ptr, /*force_processing=*/true, /*min_pow_checked=*/true, /*new_block=*/nullptr);
+    }
+
     const std::unique_ptr<CBlockTemplate> m_block_template;
+
+    ChainstateManager& chainman() { return *Assert(m_node.chainman); }
+    NodeContext& m_node;
 };
 
 class MinerImpl : public Mining
@@ -938,19 +971,12 @@ public:
 
     BlockRef waitTipChanged(uint256 current_tip, MillisecondsDouble timeout) override
     {
-        // Interrupt check interval
-        const MillisecondsDouble tick{1000};
-        auto now{std::chrono::steady_clock::now()};
-        auto deadline = now + timeout;
-        // std::chrono does not check against overflow
-        if (deadline < now) deadline = std::chrono::steady_clock::time_point::max();
+        if (timeout > std::chrono::years{100}) timeout = std::chrono::years{100}; // Upper bound to avoid UB in std::chrono
         {
             WAIT_LOCK(notifications().m_tip_block_mutex, lock);
-            while ((notifications().m_tip_block == uint256() || notifications().m_tip_block == current_tip) && !chainman().m_interrupt) {
-                now = std::chrono::steady_clock::now();
-                if (now >= deadline) break;
-                notifications().m_tip_block_cv.wait_until(lock, std::min(deadline, now + tick));
-            }
+            notifications().m_tip_block_cv.wait_for(lock, timeout, [&]() EXCLUSIVE_LOCKS_REQUIRED(notifications().m_tip_block_mutex) {
+                return (notifications().m_tip_block != current_tip && notifications().m_tip_block != uint256::ZERO) || chainman().m_interrupt;
+            });
         }
         // Must release m_tip_block_mutex before locking cs_main, to avoid deadlocks.
         LOCK(::cs_main);
@@ -984,7 +1010,7 @@ public:
     {
         BlockAssembler::Options assemble_options{options};
         ApplyArgsManOptions(*Assert(m_node.args), assemble_options);
-        return std::make_unique<BlockTemplateImpl>(BlockAssembler{chainman().ActiveChainstate(), context()->mempool.get(), assemble_options}.CreateNewBlock(script_pub_key));
+        return std::make_unique<BlockTemplateImpl>(BlockAssembler{chainman().ActiveChainstate(), context()->mempool.get(), assemble_options}.CreateNewBlock(script_pub_key), m_node);
     }
 
     NodeContext* context() override { return &m_node; }

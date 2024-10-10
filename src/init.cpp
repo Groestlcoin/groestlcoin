@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <config/bitcoin-config.h> // IWYU pragma: keep
+#include <bitcoin-build-config.h> // IWYU pragma: keep
 
 #include <init.h>
 
@@ -207,7 +207,14 @@ void InitContext(NodeContext& node)
     g_shutdown.emplace();
 
     node.args = &gArgs;
-    node.shutdown = &*g_shutdown;
+    node.shutdown_signal = &*g_shutdown;
+    node.shutdown_request = [&node] {
+        assert(node.shutdown_signal);
+        if (!(*node.shutdown_signal)()) return false;
+        // Wake any threads that may be waiting for the tip to change.
+        if (node.notifications) WITH_LOCK(node.notifications->m_tip_block_mutex, node.notifications->m_tip_block_cv.notify_all());
+        return true;
+    };
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -235,7 +242,7 @@ void InitContext(NodeContext& node)
 
 bool ShutdownRequested(node::NodeContext& node)
 {
-    return bool{*Assert(node.shutdown)};
+    return bool{*Assert(node.shutdown_signal)};
 }
 
 #if HAVE_SYSTEM
@@ -286,7 +293,7 @@ void Shutdown(NodeContext& node)
 
     StopHTTPRPC();
     StopREST();
-    StopRPC(&node);
+    StopRPC();
     StopHTTPServer();
     for (const auto& client : node.chain_clients) {
         client->flush();
@@ -678,21 +685,6 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
     argsman.AddHiddenArgs(hidden_args);
 }
 
-static bool fHaveGenesis = false;
-static GlobalMutex g_genesis_wait_mutex;
-static std::condition_variable g_genesis_wait_cv;
-
-static void BlockNotifyGenesisWait(const CBlockIndex* pBlockIndex)
-{
-    if (pBlockIndex != nullptr) {
-        {
-            LOCK(g_genesis_wait_mutex);
-            fHaveGenesis = true;
-        }
-        g_genesis_wait_cv.notify_all();
-    }
-}
-
 #if HAVE_SYSTEM
 static void StartupNotify(const ArgsManager& args)
 {
@@ -707,7 +699,7 @@ static void StartupNotify(const ArgsManager& args)
 static bool AppInitServers(NodeContext& node)
 {
     const ArgsManager& args = *Assert(node.args);
-    if (!InitHTTPServer(*Assert(node.shutdown))) {
+    if (!InitHTTPServer(*Assert(node.shutdown_signal))) {
         return false;
     }
     StartRPC();
@@ -822,7 +814,7 @@ namespace { // Variables internal to initialization process only
 
 int nMaxConnections;
 int available_fds;
-ServiceFlags nLocalServices = ServiceFlags(NODE_NETWORK_LIMITED | NODE_WITNESS);
+ServiceFlags g_local_services = ServiceFlags(NODE_NETWORK_LIMITED | NODE_WITNESS);
 int64_t peer_connect_timeout;
 std::set<BlockFilterType> g_enabled_filter_types;
 
@@ -937,7 +929,7 @@ bool AppInitParameterInteraction(const ArgsManager& args)
 
     // Signal NODE_P2P_V2 if BIP324 v2 transport is enabled.
     if (args.GetBoolArg("-v2transport", DEFAULT_V2_TRANSPORT)) {
-        nLocalServices = ServiceFlags(nLocalServices | NODE_P2P_V2);
+        g_local_services = ServiceFlags(g_local_services | NODE_P2P_V2);
     }
 
     // Signal NODE_COMPACT_FILTERS if peerblockfilters and basic filters index are both enabled.
@@ -946,7 +938,7 @@ bool AppInitParameterInteraction(const ArgsManager& args)
             return InitError(_("Cannot set -peerblockfilters without -blockfilterindex."));
         }
 
-        nLocalServices = ServiceFlags(nLocalServices | NODE_COMPACT_FILTERS);
+        g_local_services = ServiceFlags(g_local_services | NODE_COMPACT_FILTERS);
     }
 
     if (args.GetIntArg("-prune", 0)) {
@@ -1031,7 +1023,7 @@ bool AppInitParameterInteraction(const ArgsManager& args)
     SetMockTime(args.GetIntArg("-mocktime", 0)); // SetMockTime(0) is a no-op
 
     if (args.GetBoolArg("-peerbloomfilters", DEFAULT_PEERBLOOMFILTERS))
-        nLocalServices = ServiceFlags(nLocalServices | NODE_BLOOM);
+        g_local_services = ServiceFlags(g_local_services | NODE_BLOOM);
 
     if (args.IsArgSet("-test")) {
         if (chainparams.GetChainType() != ChainType::REGTEST) {
@@ -1216,7 +1208,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
     };
     Assert(ApplyArgsManOptions(args, blockman_opts)); // no error can happen, already checked in AppInitParameterInteraction
     try {
-        node.chainman = std::make_unique<ChainstateManager>(*Assert(node.shutdown), chainman_opts, blockman_opts);
+        node.chainman = std::make_unique<ChainstateManager>(*Assert(node.shutdown_signal), chainman_opts, blockman_opts);
     } catch (std::exception& e) {
         return {ChainstateLoadStatus::FAILURE_FATAL, strprintf(Untranslated("Failed to initialize ChainstateManager: %s"), e.what())};
     }
@@ -1327,7 +1319,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         constexpr uint64_t min_disk_space = 50 << 20; // 50 MB
         if (!CheckDiskSpace(args.GetBlocksDirPath(), min_disk_space)) {
             LogError("Shutting down due to lack of disk space!\n");
-            if (!(*Assert(node.shutdown))()) {
+            if (!(Assert(node.shutdown_request))()) {
                 LogError("Failed to send shutdown signal after disk space check\n");
             }
         }
@@ -1608,8 +1600,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     // ********************************************************* Step 7: load block chain
 
-    node.notifications = std::make_unique<KernelNotifications>(*Assert(node.shutdown), node.exit_status, *Assert(node.warnings));
-    ReadNotificationArgs(args, *node.notifications);
+    node.notifications = std::make_unique<KernelNotifications>(Assert(node.shutdown_request), node.exit_status, *Assert(node.warnings));
+    auto& kernel_notifications{*node.notifications};
+    ReadNotificationArgs(args, kernel_notifications);
 
     // cache size calculations
     CacheSizes cache_sizes = CalculateCacheSizes(args, g_enabled_filter_types.size());
@@ -1649,7 +1642,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             return false;
         }
         do_reindex = true;
-        if (!Assert(node.shutdown)->reset()) {
+        if (!Assert(node.shutdown_signal)->reset()) {
             LogError("Internal error: failed to reset shutdown signal.\n");
         }
         std::tie(status, error) = InitAndLoadChainstate(
@@ -1723,7 +1716,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         // Prior to setting NODE_NETWORK, check if we can provide historical blocks.
         if (!WITH_LOCK(chainman.GetMutex(), return chainman.BackgroundSyncInProgress())) {
             LogPrintf("Setting NODE_NETWORK on non-prune mode\n");
-            nLocalServices = ServiceFlags(nLocalServices | NODE_NETWORK);
+            g_local_services = ServiceFlags(g_local_services | NODE_NETWORK);
         } else {
             LogPrintf("Running node in NODE_NETWORK_LIMITED mode until snapshot background sync completes\n");
         }
@@ -1761,15 +1754,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }
 
-    // Either install a handler to notify us when genesis activates, or set fHaveGenesis directly.
-    // No locking, as this happens before any background thread is started.
-    boost::signals2::connection block_notify_genesis_wait_connection;
-    if (WITH_LOCK(chainman.GetMutex(), return chainman.ActiveChain().Tip() == nullptr)) {
-        block_notify_genesis_wait_connection = uiInterface.NotifyBlockTip_connect(std::bind(BlockNotifyGenesisWait, std::placeholders::_2));
-    } else {
-        fHaveGenesis = true;
-    }
-
 #if HAVE_SYSTEM
     const std::string block_notify = args.GetArg("-blocknotify", "");
     if (!block_notify.empty()) {
@@ -1794,7 +1778,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         ImportBlocks(chainman, vImportFiles);
         if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
             LogPrintf("Stopping after block import\n");
-            if (!(*Assert(node.shutdown))()) {
+            if (!(Assert(node.shutdown_request))()) {
                 LogError("Failed to send shutdown signal after finishing block import\n");
             }
             return;
@@ -1814,15 +1798,11 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     });
 
     // Wait for genesis block to be processed
-    {
-        WAIT_LOCK(g_genesis_wait_mutex, lock);
-        // We previously could hang here if shutdown was requested prior to
-        // ImportBlocks getting started, so instead we just wait on a timer to
-        // check ShutdownRequested() regularly.
-        while (!fHaveGenesis && !ShutdownRequested(node)) {
-            g_genesis_wait_cv.wait_for(lock, std::chrono::milliseconds(500));
-        }
-        block_notify_genesis_wait_connection.disconnect();
+    if (WITH_LOCK(chainman.GetMutex(), return chainman.ActiveTip() == nullptr)) {
+        WAIT_LOCK(kernel_notifications.m_tip_block_mutex, lock);
+        kernel_notifications.m_tip_block_cv.wait(lock, [&]() EXCLUSIVE_LOCKS_REQUIRED(kernel_notifications.m_tip_block_mutex) {
+            return !kernel_notifications.m_tip_block.IsNull() || ShutdownRequested(node);
+        });
     }
 
     if (ShutdownRequested(node)) {
@@ -1831,17 +1811,17 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     // ********************************************************* Step 12: start node
 
-    //// debug print
     int64_t best_block_time{};
     {
-        LOCK(cs_main);
+        LOCK(chainman.GetMutex());
+        const auto& tip{*Assert(chainman.ActiveTip())};
         LogPrintf("block tree size = %u\n", chainman.BlockIndex().size());
-        chain_active_height = chainman.ActiveChain().Height();
-        best_block_time = chainman.ActiveChain().Tip() ? chainman.ActiveChain().Tip()->GetBlockTime() : chainman.GetParams().GenesisBlock().GetBlockTime();
+        chain_active_height = tip.nHeight;
+        best_block_time = tip.GetBlockTime();
         if (tip_info) {
             tip_info->block_height = chain_active_height;
             tip_info->block_time = best_block_time;
-            tip_info->verification_progress = GuessVerificationProgress(chainman.GetParams().TxData(), chainman.ActiveChain().Tip());
+            tip_info->verification_progress = GuessVerificationProgress(chainman.GetParams().TxData(), &tip);
         }
         if (tip_info && chainman.m_best_header) {
             tip_info->header_height = chainman.m_best_header->nHeight;
@@ -1855,7 +1835,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     StartMapPort(args.GetBoolArg("-upnp", DEFAULT_UPNP), args.GetBoolArg("-natpmp", DEFAULT_NATPMP));
 
     CConnman::Options connOptions;
-    connOptions.nLocalServices = nLocalServices;
+    connOptions.m_local_services = g_local_services;
     connOptions.m_max_automatic_connections = nMaxConnections;
     connOptions.uiInterface = &uiInterface;
     connOptions.m_banman = node.banman.get();

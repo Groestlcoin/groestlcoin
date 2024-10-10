@@ -3,7 +3,7 @@ Groestlcoin Core
 
 Setup
 ---------------------
-Groestlcoin Core is the original Groestlcoin client and it builds the backbone of the network. It downloads and, by default, stores the entire history of Groestlcoin transactions (which is currently more than 2 GB); depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours.
+Groestlcoin Core is the original Groestlcoin client and it builds the backbone of the network. It downloads and, by default, stores the entire history of Groestlcoin transactions, which requires 3 gigabytes or more of disk space. Depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours to several days or more.
 
 To download Groestlcoin Core, visit [groestlcoin.org](https://groestlcoin.org/downloads/).
 
