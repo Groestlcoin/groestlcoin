@@ -87,6 +87,7 @@ target_link_libraries(groestlcoinkernel
     bitcoin_crypto
     leveldb
     secp256k1
+    $<TARGET_NAME_IF_EXISTS:USDT::headers>
   PUBLIC
     Boost::headers
 )

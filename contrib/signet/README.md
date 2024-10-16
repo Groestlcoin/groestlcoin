@@ -24,9 +24,8 @@ miner
 You will first need to pick a difficulty target. Since signet chains are primarily protected by a signature rather than proof of work, there is no need to spend as much energy as possible mining, however you may wish to choose to spend more time than the absolute minimum. The calibrate subcommand can be used to pick a target appropriate for your hardware, eg:
 
     pip3 install groestlcoin_hash
-    cd src/
-    MINER="../contrib/signet/miner"
-    GRIND="./groestlcoin-util grind"
+    MINER="./contrib/signet/miner"
+    GRIND="./build/src/groestlcoin-util grind"
     $MINER calibrate --grind-cmd="$GRIND"
     nbits=1e0377ae for 60s average mining time
 
@@ -34,7 +33,7 @@ It defaults to estimating an nbits value resulting in 60s average time to find a
 
 To mine the first block in your custom chain, you can run:
 
-    CLI="./groestlcoin-cli -conf=mysignet.conf"
+    CLI="./build/src/groestlcoin-cli -conf=mysignet.conf"
     ADDR=$($CLI -signet getnewaddress)
     NBITS=1e0377ae
     $MINER --cli="$CLI" generate --grind-cmd="$GRIND" --address="$ADDR" --nbits=$NBITS

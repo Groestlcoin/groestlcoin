@@ -39,7 +39,7 @@ Compatibility
 ==============
 
 Groestlcoin Core is supported and extensively tested on operating systems
-using the Linux Kernel 3.17+, macOS 11.0+, and Windows 7 and newer. Groestlcoin
+using the Linux Kernel 3.17+, macOS 13.0+, and Windows 7 and newer. Groestlcoin
 Core should also work on most other Unix-like systems but is not as
 frequently tested on them. It is not recommended to use Groestlcoin Core on
 unsupported systems.
