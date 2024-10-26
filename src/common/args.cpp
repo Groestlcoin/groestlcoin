@@ -184,7 +184,7 @@ bool ArgsManager::ParseParameters(int argc, const char* const argv[], std::strin
     for (int i = 1; i < argc; i++) {
         std::string key(argv[i]);
 
-#ifdef MAC_OSX
+#ifdef __APPLE__
         // At the first time when a user gets the "App downloaded from the
         // internet" warning, and clicks the Open button, macOS passes
         // a unique process serial number (PSN) as -psn_... command-line
@@ -688,8 +688,8 @@ bool HelpRequested(const ArgsManager& args)
 
 void SetupHelpOptions(ArgsManager& args)
 {
-    args.AddArg("-?", "Print this help message and exit", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-    args.AddHiddenArgs({"-h", "-help"});
+    args.AddArg("-help", "Print this help message and exit (also -h or -?)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    args.AddHiddenArgs({"-h", "-?"});
 }
 
 static const int screenWidth = 79;
@@ -741,7 +741,7 @@ fs::path GetDefaultDataDir()
         pathRet = fs::path("/");
     else
         pathRet = fs::path(pszHome);
-#ifdef MAC_OSX
+#ifdef __APPLE__
     // macOS
     return pathRet / "Library/Application Support/Groestlcoin";
 #else
