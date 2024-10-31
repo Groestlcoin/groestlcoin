@@ -226,7 +226,7 @@ add_executable(groestlcoin-qt
   ../init/groestlcoin-qt.cpp
 )
 
-add_windows_resources(groestlcoin-qt res/bitcoin-qt-res.rc)
+add_windows_resources(groestlcoin-qt res/groestlcoin-qt-res.rc)
 
 target_link_libraries(groestlcoin-qt
   core_interface

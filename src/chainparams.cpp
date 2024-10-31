@@ -46,7 +46,7 @@ void ReadSigNetArgs(const ArgsManager& args, CChainParams::SigNetOptions& option
 void ReadRegTestArgs(const ArgsManager& args, CChainParams::RegTestOptions& options)
 {
     if (auto value = args.GetBoolArg("-fastprune")) options.fastprune = *value;
-    if (HasTestOption(args, "bip94")) options.enforce_bip94 = true;
+    if (HasTestOption(args, "bip94")) options.enforce_bip94 = false; // GRS
 
     for (const std::string& arg : args.GetArgs("-testactivationheight")) {
         const auto found{arg.find('@')};
