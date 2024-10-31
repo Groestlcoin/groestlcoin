@@ -254,6 +254,7 @@ add_library(bitcoin_node STATIC EXCLUDE_FROM_ALL
   node/psbt.cpp
   node/timeoffsets.cpp
   node/transaction.cpp
+  node/txdownloadman_impl.cpp
   node/txreconciliation.cpp
   node/utxo_snapshot.cpp
   node/warnings.cpp
@@ -303,7 +304,6 @@ target_link_libraries(bitcoin_node
     Boost::headers
     $<TARGET_NAME_IF_EXISTS:libevent::libevent>
     $<TARGET_NAME_IF_EXISTS:libevent::pthreads>
-    $<TARGET_NAME_IF_EXISTS:MiniUPnPc::MiniUPnPc>
     $<TARGET_NAME_IF_EXISTS:bitcoin_zmq>
     $<TARGET_NAME_IF_EXISTS:USDT::headers>
 )

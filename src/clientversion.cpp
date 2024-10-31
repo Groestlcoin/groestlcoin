@@ -20,7 +20,7 @@ using util::Join;
  * for both groestlcoind and groestlcoin-qt, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
-const std::string CLIENT_NAME("Groestlcoin");
+const std::string UA_NAME("Groestlcoin");
 
 
 #include <bitcoin-build-info.h>
@@ -36,7 +36,7 @@ const std::string CLIENT_NAME("Groestlcoin");
     #define BUILD_DESC BUILD_GIT_TAG
     #define BUILD_SUFFIX ""
 #else
-    #define BUILD_DESC "v" PACKAGE_VERSION
+    #define BUILD_DESC "v" CLIENT_VERSION_STRING
     #if CLIENT_VERSION_IS_RELEASE
         #define BUILD_SUFFIX ""
     #elif defined(BUILD_GIT_COMMIT)
@@ -92,7 +92,7 @@ std::string LicenseInfo()
     return CopyrightHolders(strprintf(_("Copyright (C) %i-%i").translated, 2009, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
            strprintf(_("Please contribute if you find %s useful. "
-                       "Visit %s for further information about the software.").translated, PACKAGE_NAME, "<" PACKAGE_URL ">") +
+                       "Visit %s for further information about the software.").translated, CLIENT_NAME, "<" CLIENT_URL ">") +
            "\n" +
            strprintf(_("The source code is available from %s.").translated, URL_SOURCE_CODE) +
            "\n" +

@@ -81,10 +81,13 @@ void RPCTypeCheckObj(const UniValue& o,
     }
 }
 
-int ParseVerbosity(const UniValue& arg, int default_verbosity)
+int ParseVerbosity(const UniValue& arg, int default_verbosity, bool allow_bool)
 {
     if (!arg.isNull()) {
         if (arg.isBool()) {
+            if (!allow_bool) {
+                throw JSONRPCError(RPC_TYPE_ERROR, "Verbosity was boolean but only integer allowed");
+            }
             return arg.get_bool(); // true = 1
         } else {
             return arg.getInt<int>();
@@ -696,8 +699,8 @@ UniValue RPCHelpMan::HandleRequest(const JSONRPCRequest& request) const
             throw std::runtime_error{
                 strprintf("Internal bug detected: RPC call \"%s\" returned incorrect type:\n%s\n%s %s\nPlease report this issue here: %s\n",
                           m_name, explain,
-                          PACKAGE_NAME, FormatFullVersion(),
-                          PACKAGE_BUGREPORT)};
+                          CLIENT_NAME, FormatFullVersion(),
+                          CLIENT_BUGREPORT)};
         }
     }
     return ret;

@@ -14,12 +14,14 @@
 #include <string>
 #include <string_view>
 
+bool g_fuzzing = false;
+
 std::string StrFormatInternalBug(std::string_view msg, std::string_view file, int line, std::string_view func)
 {
     return strprintf("Internal bug detected: %s\n%s:%d (%s)\n"
                      "%s %s\n"
                      "Please report this issue here: %s\n",
-                     msg, file, line, func, PACKAGE_NAME, FormatFullVersion(), PACKAGE_BUGREPORT);
+                     msg, file, line, func, CLIENT_NAME, FormatFullVersion(), CLIENT_BUGREPORT);
 }
 
 NonFatalCheckError::NonFatalCheckError(std::string_view msg, std::string_view file, int line, std::string_view func)
