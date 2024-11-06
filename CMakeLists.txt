@@ -135,8 +135,7 @@ cmake_dependent_option(ENABLE_EXTERNAL_SIGNER "Enable external signer support." 
 
 cmake_dependent_option(WITH_QRENCODE "Enable QR code support." ON "BUILD_GUI" OFF)
 if(WITH_QRENCODE)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(libqrencode REQUIRED IMPORTED_TARGET libqrencode)
+  find_package(QRencode MODULE REQUIRED)
   set(USE_QRCODE TRUE)
 endif()
 
@@ -225,6 +224,10 @@ if(BUILD_FOR_FUZZING)
   set(BUILD_GUI_TESTS OFF)
   set(BUILD_BENCH OFF)
   set(BUILD_FUZZ_BINARY ON)
+
+  target_compile_definitions(core_interface INTERFACE
+    FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+  )
 endif()
 
 include(ProcessConfigurations)
@@ -431,6 +434,10 @@ configure_file(contrib/filter-lcov.py filter-lcov.py USE_SOURCE_PERMISSIONS COPY
 
 # Don't allow extended (non-ASCII) symbols in identifiers. This is easier for code review.
 try_append_cxx_flags("-fno-extended-identifiers" TARGET core_interface SKIP_LINK)
+
+try_append_cxx_flags("-ffile-prefix-map=A=B" TARGET core_interface SKIP_LINK
+  IF_CHECK_PASSED "-ffile-prefix-map=${PROJECT_SOURCE_DIR}/src=."
+)
 
 # Currently all versions of gcc are subject to a class of bugs, see the
 # gccbug_90348 test case (only reproduces on GCC 11 and earlier) and

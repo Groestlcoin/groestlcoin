@@ -6,8 +6,8 @@ Release Process
 ### Before every release candidate
 
 * Update release candidate version in `CMakeLists.txt` (`CLIENT_VERSION_RC`).
-* Update manpages (after rebuilding the binaries), see [gen-manpages.py](https://github.com/groestlcoin/groestlcoin/blob/master/contrib/devtools/README.md#gen-manpagespy).
-* Update groestlcoin.conf and commit changes if they exist, see [gen-groestlcoin-conf.sh](hhttps://github.com/groestlcoin/groestlcoin/blob/master/contrib/devtools/README.md#gen-groestlcoin-confsh).
+* Update manpages (after rebuilding the binaries), see [gen-manpages.py](/contrib/devtools/README.md#gen-manpagespy).
+* Update groestlcoin.conf and commit changes if they exist, see [gen-groestlcoin-conf.sh](/contrib/devtools/README.md#gen-groestlcoin-confsh).
 
 ### Before every major and minor release
 
@@ -21,15 +21,15 @@ Release Process
 
 * On both the master branch and the new release branch:
   - update `CLIENT_VERSION_MAJOR` in [`CMakeLists.txt`](../CMakeLists.txt)
-* On the new release branch in [`CMakeLists.txt`](../CMakeLists.txt)(see [this commit](https://github.com/bitcoin/bitcoin/commit/742f7dd)):
+* On the new release branch in [`CMakeLists.txt`](../CMakeLists.txt):
   - set `CLIENT_VERSION_MINOR` to `0`
   - set `CLIENT_VERSION_BUILD` to `0`
   - set `CLIENT_VERSION_IS_RELEASE` to `true`
 
 #### Before branch-off
 
-* Update translations see [translation_process.md](https://github.com/groestlcoin/groestlcoin/blob/master/doc/translation_process.md#synchronising-translations).
-* Update hardcoded [seeds](/contrib/seeds/README.md).
+* Update translations see [translation_process.md](/doc/translation_process.md#synchronising-translations).
+* Update hardcoded [seeds](/contrib/seeds/README.md) .
 * Update the following variables in [`src/kernel/chainparams.cpp`](/src/kernel/chainparams.cpp) for mainnet, testnet, and signet:
   - `m_assumed_blockchain_size` and `m_assumed_chain_state_size` with the current size plus some overhead (see
     [this](#how-to-calculate-assumed-blockchain-and-chain-state-size) for information on how to calculate them).
