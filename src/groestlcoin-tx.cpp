@@ -113,8 +113,11 @@ static int AppInitRawTx(int argc, char* argv[])
             strUsage += FormatParagraph(LicenseInfo());
         } else {
             strUsage += "\n"
-                "Usage:  groestlcoin-tx [options] <hex-tx> [commands]  Update hex-encoded groestlcoin transaction\n"
-                "or:     groestlcoin-tx [options] -create [commands]   Create hex-encoded groestlcoin transaction\n"
+                "The groestlcoin-tx tool is used for creating and modifying groestlcoin transactions.\n\n"
+                "groestlcoin-tx can be used with \"<hex-tx> [commands]\" to update a hex-encoded groestlcoin transaction, or with \"-create [commands]\" to create a hex-encoded groestlcoin transaction.\n"
+                "\n"
+                "Usage: groestlcoin-tx [options] <hex-tx> [commands]\n"
+                "or:    groestlcoin-tx [options] -create [commands]\n"
                 "\n";
             strUsage += gArgs.GetHelpMessage();
         }

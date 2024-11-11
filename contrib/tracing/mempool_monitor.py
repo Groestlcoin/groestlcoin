@@ -114,16 +114,17 @@ int trace_replaced(struct pt_regs *ctx) {
 """
 
 
-def main(bitcoind_path):
-    bitcoind_with_usdts = USDT(path=str(bitcoind_path))
+def main(pid):
+    print(f"Hooking into groestlcoind with pid {pid}")
+    groestlcoind_with_usdts = USDT(pid=int(pid))
 
     # attaching the trace functions defined in the BPF program
     # to the tracepoints
-    bitcoind_with_usdts.enable_probe(probe="mempool:added", fn_name="trace_added")
-    bitcoind_with_usdts.enable_probe(probe="mempool:removed", fn_name="trace_removed")
-    bitcoind_with_usdts.enable_probe(probe="mempool:replaced", fn_name="trace_replaced")
-    bitcoind_with_usdts.enable_probe(probe="mempool:rejected", fn_name="trace_rejected")
-    bpf = BPF(text=PROGRAM, usdt_contexts=[bitcoind_with_usdts])
+    groestlcoind_with_usdts.enable_probe(probe="mempool:added", fn_name="trace_added")
+    groestlcoind_with_usdts.enable_probe(probe="mempool:removed", fn_name="trace_removed")
+    groestlcoind_with_usdts.enable_probe(probe="mempool:replaced", fn_name="trace_replaced")
+    groestlcoind_with_usdts.enable_probe(probe="mempool:rejected", fn_name="trace_rejected")
+    bpf = BPF(text=PROGRAM, usdt_contexts=[groestlcoind_with_usdts])
 
     events = []
 
@@ -365,8 +366,8 @@ class Dashboard:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("USAGE: ", sys.argv[0], "path/to/groestlcoind")
+        print("USAGE: ", sys.argv[0], "<pid of groestlcoind>")
         exit(1)
 
-    path = sys.argv[1]
-    main(path)
+    pid = sys.argv[1]
+    main(pid)

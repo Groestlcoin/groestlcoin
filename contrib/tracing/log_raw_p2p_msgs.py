@@ -132,8 +132,9 @@ def print_message(event, inbound):
           )
 
 
-def main(groestlcoind_path):
-    groestlcoind_with_usdts = USDT(path=str(groestlcoind_path))
+def main(pid):
+    print(f"Hooking into groestlcoind with pid {pid}")
+    groestlcoind_with_usdts = USDT(pid=int(pid))
 
     # attaching the trace functions defined in the BPF program to the tracepoints
     groestlcoind_with_usdts.enable_probe(
@@ -176,8 +177,8 @@ def main(groestlcoind_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("USAGE:", sys.argv[0], "path/to/groestlcoind")
+    if len(sys.argv) != 2:
+        print("USAGE:", sys.argv[0], "<pid of groestlcoind>")
         exit()
-    path = sys.argv[1]
-    main(path)
+    pid = sys.argv[1]
+    main(pid)

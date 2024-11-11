@@ -108,6 +108,11 @@ const std::vector<std::string> CHECKLEVEL_DOC {
  * */
 static constexpr int PRUNE_LOCK_BUFFER{10};
 
+TRACEPOINT_SEMAPHORE(validation, block_connected);
+TRACEPOINT_SEMAPHORE(utxocache, flush);
+TRACEPOINT_SEMAPHORE(mempool, replaced);
+TRACEPOINT_SEMAPHORE(mempool, rejected);
+
 const CBlockIndex* Chainstate::FindForkInGlobalIndex(const CBlockLocator& locator) const
 {
     AssertLockHeld(cs_main);
@@ -816,30 +821,10 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         const CTransaction* ptxConflicting = m_pool.GetConflictTx(txin.prevout);
         if (ptxConflicting) {
             if (!args.m_allow_replacement) {
-                // Transaction conflicts with a mempool tx, but we're not allowing replacements.
+                // Transaction conflicts with a mempool tx, but we're not allowing replacements in this context.
                 return state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "bip125-replacement-disallowed");
             }
-            if (!ws.m_conflicts.count(ptxConflicting->GetHash()))
-            {
-                // Transactions that don't explicitly signal replaceability are
-                // *not* replaceable with the current logic, even if one of their
-                // unconfirmed ancestors signals replaceability. This diverges
-                // from BIP125's inherited signaling description (see CVE-2021-31876).
-                // Applications relying on first-seen mempool behavior should
-                // check all unconfirmed ancestors; otherwise an opt-in ancestor
-                // might be replaced, causing removal of this descendant.
-                //
-                // All TRUC transactions are considered replaceable.
-                //
-                // Replaceability signaling of the original transactions may be
-                // ignored due to node setting.
-                const bool allow_rbf{m_pool.m_opts.full_rbf || SignalsOptInRBF(*ptxConflicting) || ptxConflicting->version == TRUC_VERSION};
-                if (!allow_rbf) {
-                    return state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "txn-mempool-conflict");
-                }
-
-                ws.m_conflicts.insert(ptxConflicting->GetHash());
-            }
+            ws.m_conflicts.insert(ptxConflicting->GetHash());
         }
     }
 
@@ -1304,7 +1289,7 @@ bool MemPoolAccept::Finalize(const ATMPArgs& args, Workspace& ws)
                 tx.GetWitnessHash().ToString(),
                 entry->GetFee(),
                 entry->GetTxSize());
-        TRACE7(mempool, replaced,
+        TRACEPOINT(mempool, replaced,
                 it->GetTx().GetHash().data(),
                 it->GetTxSize(),
                 it->GetFee(),
@@ -1866,7 +1851,7 @@ MempoolAcceptResult AcceptToMemoryPool(Chainstate& active_chainstate, const CTra
 
         for (const COutPoint& hashTx : coins_to_uncache)
             active_chainstate.CoinsTip().Uncache(hashTx);
-        TRACE2(mempool, rejected,
+        TRACEPOINT(mempool, rejected,
                 tx->GetHash().data(),
                 result.m_state.GetRejectReason().c_str()
         );
@@ -2746,7 +2731,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
              Ticks<SecondsDouble>(m_chainman.time_index),
              Ticks<MillisecondsDouble>(m_chainman.time_index) / m_chainman.num_blocks_total);
 
-    TRACE6(validation, block_connected,
+    TRACEPOINT(validation, block_connected,
         block_hash.data(),
         pindex->nHeight,
         block.vtx.size(),
@@ -2922,7 +2907,7 @@ bool Chainstate::FlushStateToDisk(
             }
             m_last_flush = nNow;
             full_flush_completed = true;
-            TRACE5(utxocache, flush,
+            TRACEPOINT(utxocache, flush,
                    int64_t{Ticks<std::chrono::microseconds>(SteadyClock::now() - nNow)},
                    (uint32_t)mode,
                    (uint64_t)coins_count,

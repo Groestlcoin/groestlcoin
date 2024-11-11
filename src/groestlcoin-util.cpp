@@ -58,7 +58,10 @@ static int AppInitUtil(ArgsManager& args, int argc, char* argv[])
             strUsage += FormatParagraph(LicenseInfo());
         } else {
             strUsage += "\n"
-                "Usage:  groestlcoin-util [options] [commands]  Do stuff\n";
+                "The groestlcoin-util tool provides groestlcoin related functionality that does not rely on the ability to access a running node. Available [commands] are listed below.\n"
+                "\n"
+                "Usage:  groestlcoin-util [options] [command]\n"
+                "or:     groestlcoin-util [options] grind <hex-block-header>\n";
             strUsage += "\n" + args.GetHelpMessage();
         }
 
