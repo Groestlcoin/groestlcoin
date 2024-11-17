@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2022 The Bitcoin Core developers
+// Copyright (c) 2019-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -6,20 +6,24 @@
 #define BITCOIN_SCRIPT_MINISCRIPT_H
 
 #include <algorithm>
-#include <functional>
-#include <numeric>
+#include <compare>
+#include <cstdint>
+#include <cstdlib>
+#include <iterator>
 #include <memory>
 #include <optional>
-#include <string>
+#include <set>
+#include <stdexcept>
+#include <tuple>
+#include <utility>
 #include <vector>
 
-#include <assert.h>
-#include <cstdlib>
-
+#include <consensus/consensus.h>
 #include <policy/policy.h>
-#include <primitives/transaction.h>
+#include <script/interpreter.h>
 #include <script/parsing.h>
 #include <script/script.h>
+#include <serialize.h>
 #include <span.h>
 #include <util/check.h>
 #include <util/strencodings.h>
@@ -61,7 +65,7 @@ namespace miniscript {
  *   - Is always "OP_SWAP [B]" or "OP_TOALTSTACK [B] OP_FROMALTSTACK".
  *   - For example sc:pk_k(key) = OP_SWAP <key> OP_CHECKSIG
  *
- * There a type properties that help reasoning about correctness:
+ * There are type properties that help reasoning about correctness:
  * - "z" Zero-arg:
  *   - Is known to always consume exactly 0 stack elements.
  *   - For example after(n) = <n> OP_CHECKLOCKTIMEVERIFY
@@ -84,7 +88,7 @@ namespace miniscript {
  * - "e" Expression:
  *   - This implies property 'd', but the dissatisfaction is nonmalleable.
  *   - This generally requires 'e' for all subexpressions which are invoked for that
- *     dissatifsaction, and property 'f' for the unexecuted subexpressions in that case.
+ *     dissatisfaction, and property 'f' for the unexecuted subexpressions in that case.
  *   - Conflicts with type 'V'.
  * - "f" Forced:
  *   - Dissatisfactions (if any) for this expression always involve at least one signature.
@@ -150,7 +154,8 @@ public:
 };
 
 //! Literal operator to construct Type objects.
-inline consteval Type operator"" _mst(const char* c, size_t l) {
+inline consteval Type operator""_mst(const char* c, size_t l)
+{
     Type typ{Type::Make(0)};
 
     for (const char *p = c; p < c + l; p++) {

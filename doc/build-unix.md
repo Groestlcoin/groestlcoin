@@ -181,7 +181,7 @@ Setup and Build Example: Arch Linux
 -----------------------------------
 This example lists the steps necessary to setup and build a command line only distribution of the latest changes on Arch Linux:
 
-    pacman --sync --needed cmake boost gcc git libevent make pkgconf python sqlite
+    pacman --sync --needed cmake boost gcc git libevent make python sqlite
     git clone https://github.com/groestlcoin/groestlcoin.git
     cd groestlcoin/
     cmake -B build

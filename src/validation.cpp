@@ -32,6 +32,7 @@
 #include <logging/timer.h>
 #include <node/blockstorage.h>
 #include <node/utxo_snapshot.h>
+#include <policy/ephemeral_policy.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
 #include <policy/settings.h>
@@ -912,6 +913,13 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
                                     fSpendsCoinbase, nSigOpsCost, lock_points.value()));
     ws.m_vsize = entry->GetTxSize();
 
+    // Enforces 0-fee for dust transactions, no incentive to be mined alone
+    if (m_pool.m_opts.require_standard) {
+        if (!CheckValidEphemeralTx(ptx, m_pool.m_opts.dust_relay_feerate, ws.m_base_fees, ws.m_modified_fees, state)) {
+            return false; // state filled in by CheckValidEphemeralTx
+        }
+    }
+
     if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST)
         return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "bad-txns-too-many-sigops",
                 strprintf("%d", nSigOpsCost));
@@ -1432,6 +1440,16 @@ MempoolAcceptResult MemPoolAccept::AcceptSingleTransaction(const CTransactionRef
         return MempoolAcceptResult::Failure(ws.m_state);
     }
 
+    if (m_pool.m_opts.require_standard) {
+        if (const auto ephemeral_violation{CheckEphemeralSpends(/*package=*/{ptx}, m_pool.m_opts.dust_relay_feerate, m_pool)}) {
+            const Txid& txid = ephemeral_violation.value();
+            Assume(txid == ptx->GetHash());
+            ws.m_state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "missing-ephemeral-spends",
+                          strprintf("tx %s did not spend parent's ephemeral dust", txid.ToString()));
+            return MempoolAcceptResult::Failure(ws.m_state);
+        }
+    }
+
     if (m_subpackage.m_rbf && !ReplacementChecks(ws)) {
         if (ws.m_state.GetResult() == TxValidationResult::TX_RECONSIDERABLE) {
             // Failed for incentives-based fee reasons. Provide the effective feerate and which tx was included.
@@ -1568,6 +1586,19 @@ PackageMempoolAcceptResult MemPoolAccept::AcceptMultipleTransactions(const std::
     // because it's unnecessary.
     if (txns.size() > 1 && !PackageMempoolChecks(txns, workspaces, m_subpackage.m_total_vsize, package_state)) {
         return PackageMempoolAcceptResult(package_state, std::move(results));
+    }
+
+    // Now that we've bounded the resulting possible ancestry count, check package for dust spends
+    if (m_pool.m_opts.require_standard) {
+        if (const auto ephemeral_violation{CheckEphemeralSpends(txns, m_pool.m_opts.dust_relay_feerate, m_pool)}) {
+            const Txid& child_txid = ephemeral_violation.value();
+            TxValidationState child_state;
+            child_state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "missing-ephemeral-spends",
+                          strprintf("tx %s did not spend parent's ephemeral dust", child_txid.ToString()));
+            package_state.Invalid(PackageValidationResult::PCKG_TX, "unspent-dust");
+            results.emplace(child_txid, MempoolAcceptResult::Failure(child_state));
+            return PackageMempoolAcceptResult(package_state, std::move(results));
+        }
     }
 
     for (Workspace& ws : workspaces) {
@@ -2028,8 +2059,9 @@ void Chainstate::InvalidChainFound(CBlockIndex* pindexNew)
     if (!m_chainman.m_best_invalid || pindexNew->nChainWork > m_chainman.m_best_invalid->nChainWork) {
         m_chainman.m_best_invalid = pindexNew;
     }
+    SetBlockFailureFlags(pindexNew);
     if (m_chainman.m_best_header != nullptr && m_chainman.m_best_header->GetAncestor(pindexNew->nHeight) == pindexNew) {
-        m_chainman.m_best_header = m_chain.Tip();
+        m_chainman.RecalculateBestHeader();
     }
 
     LogPrintf("%s: invalid block=%s  height=%d  log2_work=%f  date=%s\n", __func__,
@@ -2189,15 +2221,9 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState& state,
                 // string by reporting the error from the second check.
                 error = check2.GetScriptError();
             }
+
             // MANDATORY flag failures correspond to
-            // TxValidationResult::TX_CONSENSUS. Because CONSENSUS
-            // failures are the most serious case of validation
-            // failures, we may need to consider using
-            // RECENT_CONSENSUS_CHANGE for any script failure that
-            // could be due to non-upgraded nodes which we may want to
-            // support, to avoid splitting the network (but this
-            // depends on the details of how net_processing handles
-            // such errors).
+            // TxValidationResult::TX_CONSENSUS.
             return state.Invalid(TxValidationResult::TX_CONSENSUS, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(error)));
         }
     }
@@ -3774,6 +3800,17 @@ bool Chainstate::InvalidateBlock(BlockValidationState& state, CBlockIndex* pinde
         }
     }
     return true;
+}
+
+void Chainstate::SetBlockFailureFlags(CBlockIndex* invalid_block)
+{
+    AssertLockHeld(cs_main);
+
+    for (auto& [_, block_index] : m_blockman.m_block_index) {
+        if (block_index.GetAncestor(invalid_block->nHeight) == invalid_block && !(block_index.nStatus & BLOCK_FAILED_MASK)) {
+            block_index.nStatus |= BLOCK_FAILED_CHILD;
+        }
+    }
 }
 
 void Chainstate::ResetBlockFailureFlags(CBlockIndex *pindex) {
@@ -6396,6 +6433,17 @@ std::optional<int> ChainstateManager::GetSnapshotBaseHeight() const
 {
     const CBlockIndex* base = this->GetSnapshotBaseBlock();
     return base ? std::make_optional(base->nHeight) : std::nullopt;
+}
+
+void ChainstateManager::RecalculateBestHeader()
+{
+    AssertLockHeld(cs_main);
+    m_best_header = ActiveChain().Tip();
+    for (auto& entry : m_blockman.m_block_index) {
+        if (!(entry.second.nStatus & BLOCK_FAILED_MASK) && m_best_header->nChainWork < entry.second.nChainWork) {
+            m_best_header = &entry.second;
+        }
+    }
 }
 
 bool ChainstateManager::ValidatedSnapshotCleanup()

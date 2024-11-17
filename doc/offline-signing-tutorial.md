@@ -60,7 +60,8 @@ The `watch_only_wallet` wallet will be used to track and validate incoming trans
 ```sh
 [online]$ ./build/src/groestlcoin-cli -signet -named createwallet \
               wallet_name="watch_only_wallet" \
-              disable_private_keys=true
+              disable_private_keys=true \
+              blank=true
 
 {
   "name": "watch_only_wallet"

@@ -58,7 +58,6 @@ struct Behaviors {
 // Txid and Wtxid are assumed to be different here. For a nonsegwit transaction, use the wtxid results.
 static std::map<TxValidationResult, Behaviors> expected_behaviors{
     {TxValidationResult::TX_CONSENSUS,               {/*txid_rejects*/0,/*wtxid_rejects*/1,/*txid_recon*/0,/*wtxid_recon*/0,/*keep*/1,/*txid_inv*/0,/*wtxid_inv*/1}},
-    {TxValidationResult::TX_RECENT_CONSENSUS_CHANGE, {                0,                 1,              0,               0,        1,            0,             1}},
     {TxValidationResult::TX_INPUTS_NOT_STANDARD,     {                1,                 1,              0,               0,        1,            1,             1}},
     {TxValidationResult::TX_NOT_STANDARD,            {                0,                 1,              0,               0,        1,            0,             1}},
     {TxValidationResult::TX_MISSING_INPUTS,          {                0,                 0,              0,               0,        1,            0,             1}},
@@ -82,7 +81,7 @@ static bool CheckOrphanBehavior(node::TxDownloadManagerImpl& txdownload_impl, co
     }
 
     if (expect_orphan != txdownload_impl.m_orphanage.HaveTx(tx->GetWitnessHash())) {
-        err_msg = strprintf("unexpectedly %s tx in orpanage", expect_orphan ? "did not find" : "found");
+        err_msg = strprintf("unexpectedly %s tx in orphanage", expect_orphan ? "did not find" : "found");
         return false;
     }
     if (expect_keep != ret.m_should_add_extra_compact_tx) {
