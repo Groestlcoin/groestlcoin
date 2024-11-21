@@ -75,6 +75,13 @@ using node::VerifyLoadedChainstate;
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 constexpr inline auto TEST_DIR_PATH_ELEMENT{"test_common bitcoin"}; // Includes a space to catch possible path escape issues.
+/** Random context to get unique temp data dirs. Separate from m_rng, which can be seeded from a const env var */
+static FastRandomContext g_rng_temp_path;
+static const bool g_rng_temp_path_init{[] {
+    // Must be initialized before any SeedRandomForTest
+    (void)g_rng_temp_path.rand64();
+    return true;
+}()};
 
 struct NetworkSetup
 {
@@ -132,14 +139,16 @@ BasicTestingSetup::BasicTestingSetup(const ChainType chainType, TestOpts opts)
         }
     }
 
-    // Use randomly chosen seed for deterministic PRNG, so that (by default) test
-    // data directories use a random name that doesn't overlap with other tests.
     SeedRandomForTest(SeedRand::FIXED_SEED);
 
     const std::string test_name{G_TEST_GET_FULL_NAME ? G_TEST_GET_FULL_NAME() : ""};
     if (!m_node.args->IsArgSet("-testdatadir")) {
-        const auto now{TicksSinceEpoch<std::chrono::nanoseconds>(SystemClock::now())};
-        m_path_root = fs::temp_directory_path() / TEST_DIR_PATH_ELEMENT / test_name / util::ToString(now);
+        // To avoid colliding with a leftover prior datadir, and to allow
+        // tests, such as the fuzz tests to run in several processes at the
+        // same time, add a random element to the path. Keep it small enough to
+        // avoid a MAX_PATH violation on Windows.
+        const auto rand{HexStr(g_rng_temp_path.randbytes(10))};
+        m_path_root = fs::temp_directory_path() / TEST_DIR_PATH_ELEMENT / test_name / rand;
         TryCreateDirectories(m_path_root);
     } else {
         // Custom data directory
@@ -535,9 +544,11 @@ std::vector<CTransactionRef> TestChain100Setup::PopulateMempool(FastRandomContex
         if (submit) {
             LOCK2(cs_main, m_node.mempool->cs);
             LockPoints lp;
-            m_node.mempool->addUnchecked(CTxMemPoolEntry(ptx, /*fee=*/(total_in - num_outputs * amount_per_output),
-                                                         /*time=*/0, /*entry_height=*/1, /*entry_sequence=*/0,
-                                                         /*spends_coinbase=*/false, /*sigops_cost=*/4, lp));
+            auto changeset = m_node.mempool->GetChangeSet();
+            changeset->StageAddition(ptx, /*fee=*/(total_in - num_outputs * amount_per_output),
+                    /*time=*/0, /*entry_height=*/1, /*entry_sequence=*/0,
+                    /*spends_coinbase=*/false, /*sigops_cost=*/4, lp);
+            changeset->Apply();
         }
         --num_transactions;
     }
@@ -565,9 +576,13 @@ void TestChain100Setup::MockMempoolMinFee(const CFeeRate& target_feerate)
     // The new mempool min feerate is equal to the removed package's feerate + incremental feerate.
     const auto tx_fee = target_feerate.GetFee(GetVirtualTransactionSize(*tx)) -
         m_node.mempool->m_opts.incremental_relay_feerate.GetFee(GetVirtualTransactionSize(*tx));
-    m_node.mempool->addUnchecked(CTxMemPoolEntry(tx, /*fee=*/tx_fee,
-                                                 /*time=*/0, /*entry_height=*/1, /*entry_sequence=*/0,
-                                                 /*spends_coinbase=*/true, /*sigops_cost=*/1, lp));
+    {
+        auto changeset = m_node.mempool->GetChangeSet();
+        changeset->StageAddition(tx, /*fee=*/tx_fee,
+                /*time=*/0, /*entry_height=*/1, /*entry_sequence=*/0,
+                /*spends_coinbase=*/true, /*sigops_cost=*/1, lp);
+        changeset->Apply();
+    }
     m_node.mempool->TrimToSize(0);
     assert(m_node.mempool->GetMinFee() == target_feerate);
 }
