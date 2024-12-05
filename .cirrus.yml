@@ -48,7 +48,7 @@ global_task_template: &GLOBAL_TASK_TEMPLATE
   << : *MAIN_TEMPLATE
 
 task:
-  name: 'Win64, no unit tests, no gui tests, no functional tests'
+  name: 'Win64-cross'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:

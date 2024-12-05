@@ -23,16 +23,24 @@ env:
 
 jobs:
   macos-native-arm64:
-    name: 'macOS 14 native, arm64, no depends, sqlite only, gui'
+    name: ${{ matrix.job-name }}
     # Use latest image, but hardcode version to avoid silent upgrades (and breaks).
     # See: https://github.com/actions/runner-images#available-images.
     runs-on: macos-14
 
     timeout-minutes: 120
 
+    strategy:
+      fail-fast: false
+      matrix:
+        job-type: [standard]
+        include:
+          - job-type: standard
+            file-env: './ci/test/00_setup_env_mac_native.sh'
+            job-name: 'macOS 14 native, arm64, no depends, sqlite only, gui'
+
     env:
       DANGER_RUN_CI_ON_HOST: 1
-      FILE_ENV: './ci/test/00_setup_env_mac_native.sh'
       BASE_ROOT_DIR: ${{ github.workspace }}
 
     steps:
@@ -50,8 +58,7 @@ jobs:
         run: |
           # A workaround for "The `brew link` step did not complete successfully" error.
           brew install --quiet python@3 || brew link --overwrite python@3
-          # Update to install pkgconf, once the GHA image has been updated.
-          brew install --quiet coreutils ninja gnu-getopt ccache boost libevent zeromq qt@5 qrencode
+          brew install --quiet coreutils ninja pkgconf gnu-getopt ccache boost libevent zeromq qt@5 qrencode
 
       - name: Set Ccache directory
         run: echo "CCACHE_DIR=${RUNNER_TEMP}/ccache_dir" >> "$GITHUB_ENV"
@@ -61,11 +68,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.job }}-ccache-${{ github.run_id }}
-          restore-keys: ${{ github.job }}-ccache-
+          key: ${{ github.job }}-${{ matrix.job-type }}-ccache-${{ github.run_id }}
+          restore-keys: ${{ github.job }}-${{ matrix.job-type }}-ccache-
 
       - name: CI script
         run: ./ci/test_run_all.sh
+        env:
+          FILE_ENV: ${{ matrix.file-env }}
 
       - name: Save Ccache cache
         uses: actions/cache/save@v4
@@ -73,7 +82,7 @@ jobs:
         with:
           path: ${{ env.CCACHE_DIR }}
           # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
-          key: ${{ github.job }}-ccache-${{ github.run_id }}
+          key: ${{ github.job }}-${{ matrix.job-type }}-ccache-${{ github.run_id }}
 
   asan-lsan-ubsan-integer-no-depends-usdt:
     name: 'ASan + LSan + UBSan + integer, no depends, USDT'
