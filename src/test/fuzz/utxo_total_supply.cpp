@@ -17,6 +17,8 @@
 #include <util/chaintype.h>
 #include <validation.h>
 
+using node::BlockAssembler;
+
 FUZZ_TARGET(utxo_total_supply)
 {
     /** The testing setup that creates a chainman only (no chainstate) */
@@ -26,6 +28,7 @@ FUZZ_TARGET(utxo_total_supply)
             .extra_args = {"-testactivationheight=bip34@2"},
         },
     };
+    SeedRandomStateForTest(SeedRand::ZEROS); // Can not be done before test_setup
     // Create chainstate
     test_setup.LoadVerifyActivateChainstate();
     auto& node{test_setup.m_node};
@@ -36,9 +39,11 @@ FUZZ_TARGET(utxo_total_supply)
         LOCK(chainman.GetMutex());
         return chainman.ActiveHeight();
     };
+    BlockAssembler::Options options;
+    options.coinbase_output_script = CScript() << OP_FALSE;
     const auto PrepareNextBlock = [&]() {
         // Use OP_FALSE to avoid BIP30 check from hitting early
-        auto block = PrepareBlock(node, CScript{} << OP_FALSE);
+        auto block = PrepareBlock(node, options);
         // Replace OP_FALSE with OP_TRUE
         {
             CMutableTransaction tx{*block->vtx.back()};
