@@ -76,7 +76,8 @@ fi
 
 if [ -z "$NO_DEPENDS" ]; then
   if [[ $CI_IMAGE_NAME_TAG == *centos* ]]; then
-    SHELL_OPTS="CONFIG_SHELL=/bin/dash"
+    # Use bash for GRS
+    SHELL_OPTS="CONFIG_SHELL=/bin/bash"
     # shellcheck disable=SC1090
     source "/opt/rh/gcc-toolset-${STREAM_GCC_V}/enable"
   else
