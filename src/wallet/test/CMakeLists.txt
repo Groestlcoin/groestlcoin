@@ -23,4 +23,4 @@ target_sources(test_groestlcoin
     walletdb_tests.cpp
     walletload_tests.cpp
 )
-target_link_libraries(test_groestlcoin groestlcoin_wallet)
+target_link_libraries(test_groestlcoin bitcoin_wallet)
