@@ -24,7 +24,7 @@ env:
 jobs:
   macos-native-arm64:
     name: ${{ matrix.job-name }}
-    # Use latest image, but hardcode version to avoid silent upgrades (and breaks).
+    # Use any image to support the xcode-select below, but hardcode version to avoid silent upgrades (and breaks).
     # See: https://github.com/actions/runner-images#available-images.
     runs-on: macos-14
 
@@ -49,6 +49,10 @@ jobs:
 
       - name: Clang version
         run: |
+          # Use the earliest Xcode supported by the version of macOS denoted in
+          # doc/release-notes-empty-template.md and providing at least the
+          # minimum clang version denoted in doc/dependencies.md.
+          # See: https://developer.apple.com/documentation/xcode-release-notes/xcode-15-release-notes
           sudo xcode-select --switch /Applications/Xcode_15.0.app
           clang --version
 

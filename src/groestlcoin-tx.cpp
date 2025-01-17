@@ -41,7 +41,7 @@ static bool fCreateBlank;
 static std::map<std::string,UniValue> registers;
 #define CONTINUE_EXECUTION 1 // GRS
 
-const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
+const TranslateFn G_TRANSLATION_FUN{nullptr};
 
 static void SetupBitcoinTxArgs(ArgsManager &argsman)
 {

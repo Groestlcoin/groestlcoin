@@ -58,12 +58,12 @@ task:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
 
 task:
-  name: '32-bit CentOS, dash, gui'
+  name: 'CentOS, dash, gui'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "quay.io/centos/amd64:stream9"
-      FILE_ENV: "./ci/test/00_setup_env_i686_centos.sh"
+      CI_IMAGE_NAME_TAG: "quay.io/centos/centos:stream9"
+      FILE_ENV: "./ci/test/00_setup_env_native_centos.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
     PACKAGE_MANAGER_INSTALL: "yum install -y"

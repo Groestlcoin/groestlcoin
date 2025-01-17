@@ -32,6 +32,7 @@
 #include <interfaces/ipc.h>
 #include <interfaces/mining.h>
 #include <interfaces/node.h>
+#include <kernel/caches.h>
 #include <kernel/context.h>
 #include <key.h>
 #include <logging.h>
@@ -121,7 +122,6 @@ using common::ResolveErrMsg;
 
 using node::ApplyArgsManOptions;
 using node::BlockManager;
-using node::CacheSizes;
 using node::CalculateCacheSizes;
 using node::ChainstateLoadResult;
 using node::ChainstateLoadStatus;
@@ -487,7 +487,7 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
     argsman.AddArg("-conf=<file>", strprintf("Specify path to read-only configuration file. Relative paths will be prefixed by datadir location (only useable from command line, not configuration file) (default: %s)", BITCOIN_CONF_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-datadir=<dir>", "Specify data directory", ArgsManager::ALLOW_ANY | ArgsManager::DISALLOW_NEGATION, OptionsCategory::OPTIONS);
     argsman.AddArg("-dbbatchsize", strprintf("Maximum database write batch size in bytes (default: %u)", nDefaultDbBatchSize), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::OPTIONS);
-    argsman.AddArg("-dbcache=<n>", strprintf("Maximum database cache size <n> MiB (minimum %d, default: %d). Make sure you have enough RAM. In addition, unused memory allocated to the mempool is shared with this cache (see -maxmempool).", nMinDbCache, nDefaultDbCache), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-dbcache=<n>", strprintf("Maximum database cache size <n> MiB (minimum %d, default: %d). Make sure you have enough RAM. In addition, unused memory allocated to the mempool is shared with this cache (see -maxmempool).", MIN_DB_CACHE >> 20, DEFAULT_DB_CACHE >> 20), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-includeconf=<file>", "Specify additional configuration file, relative to the -datadir path (only useable from configuration file, not command line)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-allowignoredconf", strprintf("For backwards compatibility, treat an unused %s file in the datadir as a warning, not an error.", BITCOIN_CONF_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-loadblock=<file>", "Imports blocks from external file on startup", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
@@ -1177,7 +1177,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
     NodeContext& node,
     bool do_reindex,
     const bool do_reindex_chainstate,
-    CacheSizes& cache_sizes,
+    const kernel::CacheSizes& cache_sizes,
     const ArgsManager& args)
 {
     const CChainParams& chainparams = Params();
@@ -1244,9 +1244,8 @@ static ChainstateLoadResult InitAndLoadChainstate(
             _("Error reading from database, shutting down."),
             "", CClientUIInterface::MSG_ERROR);
     };
-    uiInterface.InitMessage(_("Loading block index…").translated);
-    const auto load_block_index_start_time{SteadyClock::now()};
-    auto catch_exceptions = [](auto&& f) {
+    uiInterface.InitMessage(_("Loading block index…"));
+    auto catch_exceptions = [](auto&& f) -> ChainstateLoadResult {
         try {
             return f();
         } catch (const std::exception& e) {
@@ -1256,14 +1255,14 @@ static ChainstateLoadResult InitAndLoadChainstate(
     };
     auto [status, error] = catch_exceptions([&] { return LoadChainstate(chainman, cache_sizes, options); });
     if (status == node::ChainstateLoadStatus::SUCCESS) {
-        uiInterface.InitMessage(_("Verifying blocks…").translated);
+        uiInterface.InitMessage(_("Verifying blocks…"));
         if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
             LogWarning("pruned datadir may not have more than %d blocks; only checking available blocks\n",
                        MIN_BLOCKS_TO_KEEP);
         }
         std::tie(status, error) = catch_exceptions([&] { return VerifyLoadedChainstate(chainman, options); });
         if (status == node::ChainstateLoadStatus::SUCCESS) {
-            LogPrintf(" block index %15dms\n", Ticks<std::chrono::milliseconds>(SteadyClock::now() - load_block_index_start_time));
+            LogInfo("Block index and chainstate loaded");
         }
     }
     return {status, error};
@@ -1419,7 +1418,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
         // Initialize addrman
         assert(!node.addrman);
-        uiInterface.InitMessage(_("Loading P2P addresses…").translated);
+        uiInterface.InitMessage(_("Loading P2P addresses…"));
         auto addrman{LoadAddrman(*node.netgroupman, args)};
         if (!addrman) return InitError(util::ErrorString(addrman));
         node.addrman = std::move(*addrman);
@@ -1603,18 +1602,18 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     ReadNotificationArgs(args, kernel_notifications);
 
     // cache size calculations
-    CacheSizes cache_sizes = CalculateCacheSizes(args, g_enabled_filter_types.size());
+    const auto [index_cache_sizes, kernel_cache_sizes] = CalculateCacheSizes(args, g_enabled_filter_types.size());
 
-    LogPrintf("Cache configuration:\n");
-    LogPrintf("* Using %.1f MiB for block index database\n", cache_sizes.block_tree_db * (1.0 / 1024 / 1024));
+    LogInfo("Cache configuration:");
+    LogInfo("* Using %.1f MiB for block index database", kernel_cache_sizes.block_tree_db * (1.0 / 1024 / 1024));
     if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
-        LogPrintf("* Using %.1f MiB for transaction index database\n", cache_sizes.tx_index * (1.0 / 1024 / 1024));
+        LogInfo("* Using %.1f MiB for transaction index database", index_cache_sizes.tx_index * (1.0 / 1024 / 1024));
     }
     for (BlockFilterType filter_type : g_enabled_filter_types) {
-        LogPrintf("* Using %.1f MiB for %s block filter index database\n",
-                  cache_sizes.filter_index * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
+        LogInfo("* Using %.1f MiB for %s block filter index database",
+                  index_cache_sizes.filter_index * (1.0 / 1024 / 1024), BlockFilterTypeName(filter_type));
     }
-    LogPrintf("* Using %.1f MiB for chain state database\n", cache_sizes.coins_db * (1.0 / 1024 / 1024));
+    LogInfo("* Using %.1f MiB for chain state database", kernel_cache_sizes.coins_db * (1.0 / 1024 / 1024));
 
     assert(!node.mempool);
     assert(!node.chainman);
@@ -1627,7 +1626,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         node,
         do_reindex,
         do_reindex_chainstate,
-        cache_sizes,
+        kernel_cache_sizes,
         args);
     if (status == ChainstateLoadStatus::FAILURE && !do_reindex && !ShutdownRequested(node)) {
         // suggest a reindex
@@ -1646,7 +1645,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             node,
             do_reindex,
             do_reindex_chainstate,
-            cache_sizes,
+            kernel_cache_sizes,
             args);
     }
     if (status != ChainstateLoadStatus::SUCCESS && status != ChainstateLoadStatus::INTERRUPTED) {
@@ -1672,12 +1671,12 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     // ********************************************************* Step 8: start indexers
 
     if (args.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
-        g_txindex = std::make_unique<TxIndex>(interfaces::MakeChain(node), cache_sizes.tx_index, false, do_reindex);
+        g_txindex = std::make_unique<TxIndex>(interfaces::MakeChain(node), index_cache_sizes.tx_index, false, do_reindex);
         node.indexes.emplace_back(g_txindex.get());
     }
 
     for (const auto& filter_type : g_enabled_filter_types) {
-        InitBlockFilterIndex([&]{ return interfaces::MakeChain(node); }, filter_type, cache_sizes.filter_index, false, do_reindex);
+        InitBlockFilterIndex([&]{ return interfaces::MakeChain(node); }, filter_type, index_cache_sizes.filter_index, false, do_reindex);
         node.indexes.emplace_back(GetBlockFilterIndex(filter_type));
     }
 
@@ -1704,7 +1703,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         if (chainman.m_blockman.m_blockfiles_indexed) {
             LOCK(cs_main);
             for (Chainstate* chainstate : chainman.GetAll()) {
-                uiInterface.InitMessage(_("Pruning blockstore…").translated);
+                uiInterface.InitMessage(_("Pruning blockstore…"));
                 chainstate->PruneAndFlush();
             }
         }
@@ -2000,7 +1999,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     // ChainstateManager's active tip.
     SetRPCWarmupFinished();
 
-    uiInterface.InitMessage(_("Done loading").translated);
+    uiInterface.InitMessage(_("Done loading"));
 
     for (const auto& client : node.chain_clients) {
         client->start(scheduler);

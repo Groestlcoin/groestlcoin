@@ -66,13 +66,12 @@ using kernel::BlockTreeDB;
 using node::ApplyArgsManOptions;
 using node::BlockAssembler;
 using node::BlockManager;
-using node::CalculateCacheSizes;
 using node::KernelNotifications;
 using node::LoadChainstate;
 using node::RegenerateCommitments;
 using node::VerifyLoadedChainstate;
 
-const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
+const TranslateFn G_TRANSLATION_FUN{nullptr};
 
 constexpr inline auto TEST_DIR_PATH_ELEMENT{"test_common bitcoin"}; // Includes a space to catch possible path escape issues.
 /** Random context to get unique temp data dirs. Separate from m_rng, which can be seeded from a const env var */
@@ -199,7 +198,9 @@ BasicTestingSetup::~BasicTestingSetup()
 {
     m_node.ecc_context.reset();
     m_node.kernel.reset();
-    SetMockTime(0s); // Reset mocktime for following tests
+    if constexpr (!G_FUZZING) {
+        SetMockTime(0s); // Reset mocktime for following tests
+    }
     LogInstance().DisconnectTestLogger();
     if (m_has_custom_datadir) {
         // Only remove the lock file, preserve the data directory.
@@ -229,8 +230,6 @@ ChainTestingSetup::ChainTestingSetup(const ChainType chainType, TestOpts opts)
     Assert(error.empty());
     m_node.warnings = std::make_unique<node::Warnings>();
 
-    m_cache_sizes = CalculateCacheSizes(m_args);
-
     m_node.notifications = std::make_unique<KernelNotifications>(Assert(m_node.shutdown_request), m_node.exit_status, *Assert(m_node.warnings));
 
     m_make_chainman = [this, &chainparams, opts] {
@@ -256,7 +255,7 @@ ChainTestingSetup::ChainTestingSetup(const ChainType chainType, TestOpts opts)
         LOCK(m_node.chainman->GetMutex());
         m_node.chainman->m_blockman.m_block_tree_db = std::make_unique<BlockTreeDB>(DBParams{
             .path = m_args.GetDataDirNet() / "blocks" / "index",
-            .cache_bytes = static_cast<size_t>(m_cache_sizes.block_tree_db),
+            .cache_bytes = m_kernel_cache_sizes.block_tree_db,
             .memory_only = true,
         });
     };
@@ -292,7 +291,7 @@ void ChainTestingSetup::LoadVerifyActivateChainstate()
     options.check_blocks = m_args.GetIntArg("-checkblocks", DEFAULT_CHECKBLOCKS);
     options.check_level = m_args.GetIntArg("-checklevel", DEFAULT_CHECKLEVEL);
     options.require_full_verification = m_args.IsArgSet("-checkblocks") || m_args.IsArgSet("-checklevel");
-    auto [status, error] = LoadChainstate(chainman, m_cache_sizes, options);
+    auto [status, error] = LoadChainstate(chainman, m_kernel_cache_sizes, options);
     assert(status == node::ChainstateLoadStatus::SUCCESS);
 
     std::tie(status, error) = VerifyLoadedChainstate(chainman, options);
