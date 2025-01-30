@@ -58,7 +58,7 @@ task:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
 
 task:
-  name: 'CentOS, dash, gui'
+  name: 'CentOS, depends, gui'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:

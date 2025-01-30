@@ -9,6 +9,7 @@ export LC_ALL=C.UTF-8
 export HOST=s390x-linux-gnu
 export PACKAGES="python3-zmq"
 export CONTAINER_NAME=ci_s390x
-export CI_IMAGE_NAME_TAG="docker.io/s390x/ubuntu:24.04"
+export CI_IMAGE_NAME_TAG="docker.io/ubuntu:24.04"
+export CI_IMAGE_PLATFORM="linux/s390x"
 export GOAL="install"
 export GROESTLCOIN_CONFIG="-DREDUCE_EXPORTS=ON"
