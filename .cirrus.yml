@@ -52,7 +52,8 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/amd64/debian:bookworm"
+      CI_IMAGE_NAME_TAG: "docker.io/debian:bookworm"
+      CI_IMAGE_PLATFORM: "linux/amd64"
       FILE_ENV: "./ci/test/00_setup_env_win64.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -62,7 +63,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "quay.io/centos/centos:stream9"
+      CI_IMAGE_NAME_TAG: "quay.io/centos/centos:stream10"
       FILE_ENV: "./ci/test/00_setup_env_native_centos.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -110,7 +111,8 @@ task:
     cpu: 4
     memory: 16G  # The default memory is too small, so double everything
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/amd64/ubuntu:24.04"
+      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
+      CI_IMAGE_PLATFORM: "linux/amd64"
       FILE_ENV: "./ci/test/00_setup_env_i686_multiprocess.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
