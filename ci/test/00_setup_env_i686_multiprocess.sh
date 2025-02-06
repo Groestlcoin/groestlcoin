@@ -17,7 +17,6 @@ export GROESTLCOIN_CONFIG="\
  -DCMAKE_BUILD_TYPE=Debug \
  -DCMAKE_C_COMPILER='clang;-m32' \
  -DCMAKE_CXX_COMPILER='clang++;-m32' \
- -DCMAKE_CXX_FLAGS='-Wno-error=documentation' \
  -DAPPEND_CPPFLAGS='-DBOOST_MULTI_INDEX_ENABLE_SAFE_MODE' \
 "
 export GROESTLCOIND=groestlcoin-node  # Used in functional tests
