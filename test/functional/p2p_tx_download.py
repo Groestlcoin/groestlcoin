@@ -105,6 +105,8 @@ class TxDownloadTest(BitcoinTestFramework):
         tx = self.wallet.create_self_transfer()
         wtxid = int(tx['wtxid'], 16)
 
+        self.nodes[0].setmocktime(int(time.time()))
+
         self.log.info(
             "Announce the transaction to all nodes from all {} incoming peers, but never send it".format(NUM_INBOUND))
         msg = msg_inv([CInv(t=MSG_WTX, h=wtxid)])
@@ -125,7 +127,10 @@ class TxDownloadTest(BitcoinTestFramework):
         assert self.nodes[1].getpeerinfo()[0]['inbound'] == False
         timeout = 2 + INBOUND_PEER_TX_DELAY + GETDATA_TX_INTERVAL
         self.log.info("Tx should be received at node 1 after {} seconds".format(timeout))
-        self.sync_mempools(timeout=timeout)
+        self.nodes[0].bumpmocktime(timeout)
+        self.sync_mempools()
+
+        self.nodes[0].setmocktime(0)
 
     def test_in_flight_max(self):
         self.log.info("Test that we don't load peers with more than {} transaction requests immediately".format(MAX_GETDATA_IN_FLIGHT))
@@ -269,6 +274,7 @@ class TxDownloadTest(BitcoinTestFramework):
         pref_peer = self.nodes[0].add_outbound_p2p_connection(
            TestP2PConn(), wait_for_verack=True, p2p_idx=1, connection_type="outbound-full-relay")
         pref_peer.send_message(msg_inv([CInv(t=MSG_WTX, h=0xff00ff00)]))
+        pref_peer.sync_with_ping()
 
         assert_equal(len(self.nodes[0].getpeerinfo()), NUM_INBOUND + 2)
 

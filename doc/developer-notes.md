@@ -400,8 +400,8 @@ If the code is behaving strangely, take a look in the `debug.log` file in the da
 error and debugging messages are written there.
 
 Debug logging can be enabled on startup with the `-debug` and `-loglevel`
-configuration options and toggled while bitcoind is running with the `logging`
-RPC.  For instance, launching bitcoind with `-debug` or `-debug=1` will turn on
+configuration options and toggled while groestlcoind is running with the `logging`
+RPC.  For instance, launching groestlcoind with `-debug` or `-debug=1` will turn on
 all log categories and `-loglevel=trace` will turn on all log severity levels.
 
 The Qt code routes `qDebug()` output to `debug.log` under category "qt": run with `-debug=qt`
@@ -432,8 +432,8 @@ RPC that, when enabled, logs the location and duration of each lock contention
 to the `debug.log` file.
 
 The `-DCMAKE_BUILD_TYPE=Debug` build option adds `-DDEBUG_LOCKCONTENTION` to the
-compiler flags. You may also enable it manually by building with `-DDEBUG_LOCKCONTENTION` added to your CPPFLAGS,
-i.e. `CPPFLAGS="-DDEBUG_LOCKCONTENTION"`, then build and run groestlcoind.
+compiler flags. You may also enable it manually by building with `-DDEBUG_LOCKCONTENTION`
+added to your CPPFLAGS, i.e. `-DAPPEND_CPPFLAGS="-DDEBUG_LOCKCONTENTION"`.
 
 You can then use the `-debug=lock` configuration option at groestlcoind startup or
 `groestlcoin-cli logging '["lock"]'` at runtime to turn on lock contention logging.
