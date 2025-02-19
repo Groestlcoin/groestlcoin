@@ -27,7 +27,7 @@ Supporting RPCs are:
   by `scanblocks`) and returns rich event data related to spends or receives associated
   with the given descriptors.
 
-Bitcoin Core v24 extended `wsh()` output descriptor with [Miniscript](https://bitcoin.sipa.be/miniscript/) support (initially watch-only). Signing support for Miniscript descriptors was added in v25. And since v26 Miniscript expressions can now be used in Taproot descriptors.
+Groestlcoin Core v24 extended `wsh()` output descriptor with [Miniscript](https://bitcoin.sipa.be/miniscript/) support (initially watch-only). Signing support for Miniscript descriptors was added in v25. And since v26 Miniscript expressions can now be used in Taproot descriptors.
 
 This document describes the language. For the specifics on usage, see the RPC
 documentation for the functions mentioned above.

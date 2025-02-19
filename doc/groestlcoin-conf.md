@@ -12,11 +12,11 @@ Users should never make any configuration changes which they do not understand. 
 
 Options specified in the configuration file can be overridden by options in the [`settings.json` file](files.md) and by options specified on the command line.
 
-The `settings.json` file contains dynamic settings that are set by the Bitcoin Core GUI and RPCs at runtime, and augment or replace the static settings specified in the `bitcoin.conf` file.
+The `settings.json` file contains dynamic settings that are set by the Groestlcoin Core GUI and RPCs at runtime, and augment or replace the static settings specified in the `groestlcoin.conf` file.
 
-Command line options also augment or replace `bitcoin.conf` options, and can be useful for scripting and debugging.
+Command line options also augment or replace `groestlcoin.conf` options, and can be useful for scripting and debugging.
 
-It is possible to see which setting values are in use by checking `debug.log` output. Any unrecognized options that are found in `bitcoin.conf` also show up as warnings in `debug.log` output.
+It is possible to see which setting values are in use by checking `debug.log` output. Any unrecognized options that are found in `groestlcoin.conf` also show up as warnings in `debug.log` output.
 
 ## Configuration File Format
 

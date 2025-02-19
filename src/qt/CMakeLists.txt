@@ -49,7 +49,7 @@ qt5_add_translation(qm_files ${ts_files})
 
 configure_file(bitcoin_locale.qrc bitcoin_locale.qrc USE_SOURCE_PERMISSIONS COPYONLY)
 
-# The bitcoinqt sources have to include headers in
+# The groestlcoinqt sources have to include headers in
 # order to parse them to collect translatable strings.
 add_library(bitcoinqt STATIC EXCLUDE_FROM_ALL
   bantablemodel.cpp
