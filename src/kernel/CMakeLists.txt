@@ -2,6 +2,8 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://opensource.org/license/mit/.
 
+include(GNUInstallDirs)
+
 # TODO: libgroestlcoinkernel is a work in progress consensus engine
 #       library, as more and more modules are decoupled from the
 #       consensus engine, this list will shrink to only those
@@ -124,24 +126,27 @@ if(NOT BUILD_SHARED_LIBS)
   set(all_kernel_static_link_libs "")
   get_target_static_link_libs(groestlcoinkernel all_kernel_static_link_libs)
 
-  install(TARGETS ${all_kernel_static_link_libs} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Kernel)
+  install(TARGETS ${all_kernel_static_link_libs} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libgroestlcoinkernel)
   list(TRANSFORM all_kernel_static_link_libs PREPEND "-l")
   # LIBS_PRIVATE is substituted in the pkg-config file.
   list(JOIN all_kernel_static_link_libs " " LIBS_PRIVATE)
 endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/libgroestlcoinkernel.pc.in ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc @ONLY)
-install(FILES ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" COMPONENT Kernel)
+install(FILES ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" COMPONENT libgroestlcoinkernel)
 
-include(GNUInstallDirs)
+# Add a convenience libgroestlcoinkernel target as a synonym for groestlcoinkernel.
+add_custom_target(libgroestlcoinkernel)
+add_dependencies(libgroestlcoinkernel groestlcoinkernel)
+
 install(TARGETS groestlcoinkernel
   RUNTIME
     DESTINATION ${CMAKE_INSTALL_BINDIR}
-    COMPONENT Kernel
+    COMPONENT libgroestlcoinkernel
   LIBRARY
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    COMPONENT Kernel
+    COMPONENT libgroestlcoinkernel
   ARCHIVE
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    COMPONENT Kernel
+    COMPONENT libgroestlcoinkernel
 )

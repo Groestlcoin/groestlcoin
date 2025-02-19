@@ -87,6 +87,7 @@ add_executable(test_groestlcoin
   netbase_tests.cpp
   node_warnings_tests.cpp
   orphanage_tests.cpp
+  pcp_tests.cpp
   peerman_tests.cpp
   pmt_tests.cpp
   policy_fee_tests.cpp
@@ -213,6 +214,4 @@ endfunction()
 
 add_all_test_targets()
 
-install(TARGETS test_groestlcoin
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+install_binary_component(test_groestlcoin)

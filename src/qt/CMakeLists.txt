@@ -236,7 +236,7 @@ target_link_libraries(groestlcoin-qt
 )
 
 import_plugins(groestlcoin-qt)
-set(installable_targets groestlcoin-qt)
+install_binary_component(groestlcoin-qt HAS_MANPAGE)
 if(WIN32)
   set_target_properties(groestlcoin-qt PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
@@ -253,16 +253,11 @@ if(WITH_MULTIPROCESS)
     bitcoin_ipc
   )
   import_plugins(groestlcoin-gui)
-  list(APPEND installable_targets groestlcoin-gui)
+  install_binary_component(groestlcoin-gui)
   if(WIN32)
     set_target_properties(groestlcoin-gui PROPERTIES WIN32_EXECUTABLE TRUE)
   endif()
 endif()
-
-install(TARGETS ${installable_targets}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  COMPONENT GUI
-)
 
 if(BUILD_GUI_TESTS)
   add_subdirectory(test)

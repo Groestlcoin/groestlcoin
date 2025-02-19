@@ -8,7 +8,7 @@ declare -A LIBS
 LIBS[cli]="libbitcoin_cli.a"
 LIBS[common]="libbitcoin_common.a"
 LIBS[consensus]="libbitcoin_consensus.a"
-LIBS[crypto]="crypto/libbitcoin_crypto.a crypto/libbitcoin_crypto_x86_shani.a crypto/libbitcoin_crypto_sse41.a crypto/libbitcoin_crypto_avx2.a"
+LIBS[crypto]="crypto/libbitcoin_crypto.a"
 LIBS[node]="libbitcoin_node.a"
 LIBS[util]="util/libbitcoin_util.a"
 LIBS[wallet]="wallet/libbitcoin_wallet.a"
@@ -50,9 +50,6 @@ SUPPRESS["init.cpp.o bdb.cpp.o _ZN6wallet27BerkeleyDatabaseSanityCheckEv"]=1
 # https://github.com/bitcoin/bitcoin/issues/10102
 SUPPRESS["common.cpp.o interface_ui.cpp.o _Z11InitWarningRK13bilingual_str"]=1
 SUPPRESS["common.cpp.o interface_ui.cpp.o _Z9InitErrorRK13bilingual_str"]=1
-# rpc/external_signer.cpp adds defines node RPC methods but is built as part of the
-# common library. It should be moved to the node library instead.
-SUPPRESS["external_signer.cpp.o server.cpp.o _ZN9CRPCTable13appendCommandERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPK11CRPCCommand"]=1
 
 usage() {
    echo "Usage: $(basename "${BASH_SOURCE[0]}") [BUILD_DIR]"

@@ -383,14 +383,14 @@ bool CConnman::CheckIncomingNonce(uint64_t nonce)
     return true;
 }
 
-/** Get the bind address for a socket as CAddress */
-static CAddress GetBindAddress(const Sock& sock)
+/** Get the bind address for a socket as CService. */
+static CService GetBindAddress(const Sock& sock)
 {
-    CAddress addr_bind;
+    CService addr_bind;
     struct sockaddr_storage sockaddr_bind;
     socklen_t sockaddr_bind_len = sizeof(sockaddr_bind);
     if (!sock.GetSockName((struct sockaddr*)&sockaddr_bind, &sockaddr_bind_len)) {
-        addr_bind.SetSockAddr((const struct sockaddr*)&sockaddr_bind);
+        addr_bind.SetSockAddr((const struct sockaddr*)&sockaddr_bind, sockaddr_bind_len);
     } else {
         LogPrintLevel(BCLog::NET, BCLog::Level::Warning, "getsockname failed\n");
     }
@@ -461,7 +461,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
     // Connect
     std::unique_ptr<Sock> sock;
     Proxy proxy;
-    CAddress addr_bind;
+    CService addr_bind;
     assert(!addr_bind.IsValid());
     std::unique_ptr<i2p::sam::Session> i2p_transient_session;
 
@@ -498,7 +498,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
 
                 if (connected) {
                     sock = std::move(conn.sock);
-                    addr_bind = CAddress{conn.me, NODE_NONE};
+                    addr_bind = conn.me;
                 }
             } else if (use_proxy) {
                 LogPrintLevel(BCLog::PROXY, BCLog::Level::Debug, "Using proxy: %s to connect to %s\n", proxy.ToString(), target_addr.ToStringAddrPort());
@@ -1739,7 +1739,6 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
     auto sock = hListenSocket.sock->Accept((struct sockaddr*)&sockaddr, &len);
-    CAddress addr;
 
     if (!sock) {
         const int nErr = WSAGetLastError();
@@ -1749,13 +1748,14 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
         return;
     }
 
-    if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr)) {
+    CService addr;
+    if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr, len)) {
         LogPrintLevel(BCLog::NET, BCLog::Level::Warning, "Unknown socket family\n");
     } else {
-        addr = CAddress{MaybeFlipIPv6toCJDNS(addr), NODE_NONE};
+        addr = MaybeFlipIPv6toCJDNS(addr);
     }
 
-    const CAddress addr_bind{MaybeFlipIPv6toCJDNS(GetBindAddress(*sock)), NODE_NONE};
+    const CService addr_bind{MaybeFlipIPv6toCJDNS(GetBindAddress(*sock))};
 
     NetPermissionFlags permission_flags = NetPermissionFlags::None;
     hListenSocket.AddSocketPermissionFlags(permission_flags);
@@ -1765,8 +1765,8 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
 
 void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                             NetPermissionFlags permission_flags,
-                                            const CAddress& addr_bind,
-                                            const CAddress& addr)
+                                            const CService& addr_bind,
+                                            const CService& addr)
 {
     int nInbound = 0;
 
@@ -1833,7 +1833,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
 
     CNode* pnode = new CNode(id,
                              std::move(sock),
-                             addr,
+                             CAddress{addr, NODE_NONE},
                              CalculateKeyedNetGroup(addr),
                              nonce,
                              addr_bind,
@@ -2249,7 +2249,7 @@ void CConnman::ThreadDNSAddressSeed()
 {
     int outbound_connection_count = 0;
 
-    if (gArgs.IsArgSet("-seednode")) {
+    if (!gArgs.GetArgs("-seednode").empty()) {
         auto start = NodeClock::now();
         constexpr std::chrono::seconds SEEDNODE_TIMEOUT = 30s;
         LogPrintf("-seednode enabled. Trying the provided seeds for %d seconds before defaulting to the dnsseeds.\n", SEEDNODE_TIMEOUT.count());
@@ -2552,7 +2552,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, Spa
     auto next_extra_network_peer{start + rng.rand_exp_duration(EXTRA_NETWORK_PEER_INTERVAL)};
     const bool dnsseed = gArgs.GetBoolArg("-dnsseed", DEFAULT_DNSSEED);
     bool add_fixed_seeds = gArgs.GetBoolArg("-fixedseeds", DEFAULT_FIXEDSEEDS);
-    const bool use_seednodes{gArgs.IsArgSet("-seednode")};
+    const bool use_seednodes{!gArgs.GetArgs("-seednode").empty()};
 
     auto seed_node_timer = NodeClock::now();
     bool add_addr_fetch{addrman.Size() == 0 && !seed_nodes.empty()};
@@ -3108,8 +3108,7 @@ void CConnman::ThreadI2PAcceptIncoming()
             continue;
         }
 
-        CreateNodeFromAcceptedSocket(std::move(conn.sock), NetPermissionFlags::None,
-                                     CAddress{conn.me, NODE_NONE}, CAddress{conn.peer, NODE_NONE});
+        CreateNodeFromAcceptedSocket(std::move(conn.sock), NetPermissionFlags::None, conn.me, conn.peer);
 
         err_wait = err_wait_begin;
     }
@@ -3799,7 +3798,7 @@ CNode::CNode(NodeId idIn,
              const CAddress& addrIn,
              uint64_t nKeyedNetGroupIn,
              uint64_t nLocalHostNonceIn,
-             const CAddress& addrBindIn,
+             const CService& addrBindIn,
              const std::string& addrNameIn,
              ConnectionType conn_type_in,
              bool inbound_onion,
@@ -3936,7 +3935,7 @@ CSipHasher CConnman::GetDeterministicRandomizer(uint64_t id) const
     return CSipHasher(nSeed0, nSeed1).Write(id);
 }
 
-uint64_t CConnman::CalculateKeyedNetGroup(const CAddress& address) const
+uint64_t CConnman::CalculateKeyedNetGroup(const CNetAddr& address) const
 {
     std::vector<unsigned char> vchNetGroup(m_netgroupman.GetGroup(address));
 

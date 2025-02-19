@@ -23,25 +23,6 @@ function(add_maintenance_targets)
     return()
   endif()
 
-  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(exe_format MACHO)
-  elseif(WIN32)
-    set(exe_format PE)
-  else()
-    set(exe_format ELF)
-  endif()
-
-  # In CMake, the components of the compiler invocation are separated into distinct variables:
-  #  - CMAKE_CXX_COMPILER: the full path to the compiler binary itself (e.g., /usr/bin/clang++).
-  #  - CMAKE_CXX_COMPILER_ARG1: a string containing initial compiler options (e.g., --target=x86_64-apple-darwin -nostdlibinc).
-  # By concatenating these variables, we form the complete command line to be passed to a Python script via the CXX environment variable.
-  string(STRIP "${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" cxx_compiler_command)
-  add_custom_target(test-security-check
-    COMMAND ${CMAKE_COMMAND} -E env CXX=${cxx_compiler_command} CXXFLAGS=${CMAKE_CXX_FLAGS} LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${PYTHON_COMMAND} ${PROJECT_SOURCE_DIR}/contrib/devtools/test-security-check.py TestSecurityChecks.test_${exe_format}
-    COMMAND ${CMAKE_COMMAND} -E env CXX=${cxx_compiler_command} CXXFLAGS=${CMAKE_CXX_FLAGS} LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${PYTHON_COMMAND} ${PROJECT_SOURCE_DIR}/contrib/devtools/test-symbol-check.py TestSymbolChecks.test_${exe_format}
-    VERBATIM
-  )
-
   foreach(target IN ITEMS groestlcoind groestlcoin-qt groestlcoin-cli groestlcoin-tx groestlcoin-util groestlcoin-wallet test_groestlcoin bench_groestlcoin)
     if(TARGET ${target})
       list(APPEND executables $<TARGET_FILE:${target}>)
@@ -54,15 +35,11 @@ function(add_maintenance_targets)
     VERBATIM
   )
 
-  if(ENABLE_HARDENING)
-    add_custom_target(check-security
-      COMMAND ${CMAKE_COMMAND} -E echo "Checking binary security..."
-      COMMAND ${PYTHON_COMMAND} ${PROJECT_SOURCE_DIR}/contrib/devtools/security-check.py ${executables}
-      VERBATIM
-    )
-  else()
-    add_custom_target(check-security)
-  endif()
+  add_custom_target(check-security
+    COMMAND ${CMAKE_COMMAND} -E echo "Checking binary security..."
+    COMMAND ${PYTHON_COMMAND} ${PROJECT_SOURCE_DIR}/contrib/devtools/security-check.py ${executables}
+    VERBATIM
+  )
 endfunction()
 
 function(add_windows_deploy_target)
@@ -103,7 +80,7 @@ function(add_macos_deploy_target)
 
     add_custom_command(
       OUTPUT ${PROJECT_BINARY_DIR}/${macos_app}/Contents/MacOS/Groestlcoin-Qt
-      COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --config $<CONFIG> --component GUI --prefix ${macos_app}/Contents/MacOS --strip
+      COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --config $<CONFIG> --component groestlcoin-qt --prefix ${macos_app}/Contents/MacOS --strip
       COMMAND ${CMAKE_COMMAND} -E rename ${macos_app}/Contents/MacOS/bin/$<TARGET_FILE_NAME:groestlcoin-qt> ${macos_app}/Contents/MacOS/Groestlcoin-Qt
       COMMAND ${CMAKE_COMMAND} -E rm -rf ${macos_app}/Contents/MacOS/bin
       VERBATIM
