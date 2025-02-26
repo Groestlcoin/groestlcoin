@@ -48,22 +48,11 @@ global_task_template: &GLOBAL_TASK_TEMPLATE
   << : *MAIN_TEMPLATE
 
 task:
-  name: 'ARM, no unit tests, no functional tests'
-  << : *GLOBAL_TASK_TEMPLATE
-  container:
-    docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:noble"
-      CI_IMAGE_PLATFORM: "linux/arm64"
-      FILE_ENV: "./ci/test/00_setup_env_arm.sh"
-  env:
-    << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
-
-task:
   name: 'Win64-cross'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:noble"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:noble"
       CI_IMAGE_PLATFORM: "linux/amd64"
       FILE_ENV: "./ci/test/00_setup_env_win64.sh"
   env:
@@ -87,7 +76,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:22.04"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:22.04"
       FILE_ENV: "./ci/test/00_setup_env_native_previous_releases.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -99,7 +88,7 @@ task:
     cpu: 4
     memory: 16G  # The default memory is too small, so double everything
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:24.04"
       FILE_ENV: "./ci/test/00_setup_env_native_tsan.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -109,7 +98,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:24.04"
       FILE_ENV: "./ci/test/00_setup_env_native_msan.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -122,7 +111,7 @@ task:
     cpu: 4
     memory: 16G  # The default memory is too small, so double everything
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:24.04"
       CI_IMAGE_PLATFORM: "linux/amd64"
       FILE_ENV: "./ci/test/00_setup_env_i686_multiprocess.sh"
   env:
@@ -133,7 +122,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/debian:bookworm"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/debian:bookworm"
       FILE_ENV: "./ci/test/00_setup_env_native_nowallet_libgroestlcoinkernel.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
@@ -143,7 +132,7 @@ task:
   << : *GLOBAL_TASK_TEMPLATE
   container:
     docker_arguments:
-      CI_IMAGE_NAME_TAG: "docker.io/ubuntu:24.04"
+      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:24.04"
       FILE_ENV: "./ci/test/00_setup_env_mac_cross.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
