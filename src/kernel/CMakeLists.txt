@@ -105,6 +105,10 @@ set_target_properties(groestlcoinkernel PROPERTIES
   CXX_VISIBILITY_PRESET default
 )
 
+# Add a convenience libgroestlcoinkernel target as a synonym for groestlcoinkernel.
+add_custom_target(libgroestlcoinkernel)
+add_dependencies(libgroestlcoinkernel groestlcoinkernel)
+
 # When building the static library, install all static libraries the
 # groestlcoinkernel depends on.
 if(NOT BUILD_SHARED_LIBS)
@@ -113,6 +117,7 @@ if(NOT BUILD_SHARED_LIBS)
     get_target_property(linked_libraries ${target} LINK_LIBRARIES)
     foreach(dep ${linked_libraries})
       if(TARGET ${dep})
+        add_dependencies(libgroestlcoinkernel ${dep})
         get_target_property(dep_type ${dep} TYPE)
         if(dep_type STREQUAL "STATIC_LIBRARY")
           list(APPEND ${libs_out} ${dep})
@@ -134,10 +139,6 @@ endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/libgroestlcoinkernel.pc.in ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" COMPONENT libgroestlcoinkernel)
-
-# Add a convenience libgroestlcoinkernel target as a synonym for groestlcoinkernel.
-add_custom_target(libgroestlcoinkernel)
-add_dependencies(libgroestlcoinkernel groestlcoinkernel)
 
 install(TARGETS groestlcoinkernel
   RUNTIME
