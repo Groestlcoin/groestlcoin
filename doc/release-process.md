@@ -44,6 +44,8 @@ Release Process
     - On mainnet, the selected value must not be orphaned, so it may be useful to set the height two blocks back from the tip.
     - Testnet should be set with a height some tens of thousands back from the tip, due to reorgs there.
   - `nMinimumChainWork` with the "chainwork" value of RPC `getblockheader` using the same height as that selected for the previous step.
+  - `m_assumeutxo_data` array should be appended to with the values returned by calling `groestlcoin-cli -rpcclienttimeout=0 -named dumptxoutset utxo.dat rollback=<height or hash>`
+    The same height considerations for `defaultAssumeValid` apply.
 * Consider updating the headers synchronization tuning parameters to account for the chainparams updates.
   The optimal values change very slowly, so this isn't strictly necessary every release, but doing so doesn't hurt.
   - Update configuration variables in [`contrib/devtools/headerssync-params.py`](/contrib/devtools/headerssync-params.py):
@@ -132,8 +134,8 @@ Then open a Pull Request to the [guix.sigs repository](https://github.com/Groest
 
 In the `guix-build-${VERSION}/output/x86_64-apple-darwin` and `guix-build-${VERSION}/output/arm64-apple-darwin` directories:
 
-    tar xf groestlcoin-osx-unsigned.tar.gz
-    ./detached-sig-create.sh /path/to/codesign.p12
+    tar xf groestlcoin-${VERSION}-${ARCH}-apple-darwin-codesigning.tar.gz
+    ./detached-sig-create.sh /path/to/codesign.p12 /path/to/AuthKey_foo.p8 uuid
     Enter the keychain password and authorize the signature
     signature-osx.tar.gz will be created
 
@@ -141,8 +143,8 @@ In the `guix-build-${VERSION}/output/x86_64-apple-darwin` and `guix-build-${VERS
 
 In the `guix-build-${VERSION}/output/x86_64-w64-mingw32` directory:
 
-    tar xf groestlcoin-win-unsigned.tar.gz
-    ./detached-sig-create.sh -key /path/to/codesign.key
+    tar xf groestlcoin-${VERSION}-win64-codesigning.tar.gz
+    ./detached-sig-create.sh /path/to/codesign.key
     Enter the passphrase for the key when prompted
     signature-win.tar.gz will be created
 
