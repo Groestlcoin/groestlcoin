@@ -21,8 +21,8 @@ make -C depends NO_QT=1 MULTIPROCESS=1
 HOST_PLATFORM="x86_64-pc-linux-gnu"
 cmake -B build --toolchain=depends/$HOST_PLATFORM/toolchain.cmake
 cmake --build build
-build/src/groestlcoin-node -regtest -printtoconsole -debug=ipc
-GROESTLCOIND=$(pwd)/build/src/groestlcoin-node build/test/functional/test_runner.py
+build/bin/groestlcoin-node -regtest -printtoconsole -debug=ipc
+GROESTLCOIND=$(pwd)/build/bin/groestlcoin-node build/test/functional/test_runner.py
 ```
 
 The `cmake` build will pick up settings and library locations from the depends directory, so there is no need to pass `-DWITH_MULTIPROCESS=ON` as a separate flag when using the depends system (it's controlled by the `MULTIPROCESS=1` option).
@@ -32,5 +32,5 @@ Alternately, you can install [Cap'n Proto](https://capnproto.org/) and [libmulti
 ## Usage
 
 `groestlcoin-node` is a drop-in replacement for `groestlcoind`, and `groestlcoin-gui` is a drop-in replacement for `groestlcoin-qt`, and there are no differences in use or external behavior between the new and old executables. But internally after [#10102](https://github.com/bitcoin/bitcoin/pull/10102), `groestlcoin-gui` will spawn a `groestlcoin-node` process to run P2P and RPC code, communicating with it across a socket pair, and `groestlcoin-node` will spawn `groestlcoin-wallet` to run wallet code, also communicating over a socket pair. This will let node, wallet, and GUI code run in separate address spaces for better isolation, and allow future improvements like being able to start and stop components independently on different machines and environments.
-[#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `groestlcoin-node` `-ipcbind` option and an `groestlcoind-wallet` `-ipcconnect` option to allow new wallet processes to connect to an existing node process.
+[#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `groestlcoin-node` `-ipcbind` option and a `groestlcoind-wallet` `-ipcconnect` option to allow new wallet processes to connect to an existing node process.
 And [#19461](https://github.com/bitcoin/bitcoin/pull/19461) adds a new `groestlcoin-gui` `-ipcconnect` option to allow new GUI processes to connect to an existing node process.

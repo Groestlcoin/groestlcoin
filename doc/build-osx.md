@@ -95,6 +95,8 @@ Qt, libqrencode and pass `-DBUILD_GUI=ON`. Skip if you don't intend to use the G
 brew install qt@5
 ```
 
+Note: Building may fail if Qt 6 is installed (`qt` or `qt@6`)
+
 Note: Building with Qt binaries downloaded from the Qt website is not officially supported.
 See the notes in [#7714](https://github.com/bitcoin/bitcoin/issues/7714).
 
@@ -199,8 +201,8 @@ cmake --build build --target deploy
 
 ## Running Groestlcoin Core
 
-Groestlcoin Core should now be available at `./build/src/groestlcoind`.
-If you compiled support for the GUI, it should be available at `./build/src/qt/groestlcoin-qt`.
+Groestlcoin Core should now be available at `./build/bin/groestlcoind`.
+If you compiled support for the GUI, it should be available at `./build/bin/groestlcoin-qt`.
 
 The first time you run `groestlcoind` or `groestlcoin-qt`, it will start downloading the blockchain.
 This process could take couple of hours.
@@ -230,8 +232,8 @@ tail -f $HOME/Library/Application\ Support/Groestlcoin/debug.log
 ## Other commands:
 
 ```shell
-./build/src/groestlcoind -daemon      # Starts the groestlcoin daemon.
-./build/src/groestlcoin-cli --help    # Outputs a list of command-line options.
-./build/src/groestlcoin-cli help      # Outputs a list of RPC commands when the daemon is running.
-./build/src/qt/groestlcoin-qt -server # Starts the groestlcoin-qt server mode, allows groestlcoin-cli control
+./build/bin/groestlcoind -daemon      # Starts the groestlcoin daemon.
+./build/bin/groestlcoin-cli --help    # Outputs a list of command-line options.
+./build/bin/groestlcoin-cli help      # Outputs a list of RPC commands when the daemon is running.
+./build/bin/groestlcoin-qt -server # Starts the groestlcoin-qt server mode, allows groestlcoin-cli control
 ```

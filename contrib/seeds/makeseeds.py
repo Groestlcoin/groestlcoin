@@ -28,10 +28,10 @@ MAX_SEEDS_PER_ASN = {
 
 MIN_BLOCKS = 4000000
 
-PATTERN_IPV4 = re.compile(r"^((\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})):(\d+)$")
-PATTERN_IPV6 = re.compile(r"^\[([0-9a-z:]+)\]:(\d+)$")
+PATTERN_IPV4 = re.compile(r"^(([0-2]?\d{1,2})\.([0-2]?\d{1,2})\.([0-2]?\d{1,2})\.([0-2]?\d{1,2})):(\d{1,5})$")
+PATTERN_IPV6 = re.compile(r"^\[([\da-f:]+)]:(\d{1,5})$", re.IGNORECASE)
 PATTERN_ONION = re.compile(r"^([a-z2-7]{56}\.onion):(\d+)$")
-PATTERN_I2P = re.compile(r"^([a-z2-7]{52}\.b32.i2p):(\d+)$")
+PATTERN_I2P = re.compile(r"^([a-z2-7]{52}\.b32\.i2p):(\d{1,5})$")
 PATTERN_AGENT = re.compile(
     r"^/Groestlcoin:("
     r"2.13.(3)|"
@@ -215,7 +215,7 @@ def main():
     random.shuffle(ips)
     print('Done.', file=sys.stderr)
 
-    print('\x1b[7m  IPv4   IPv6  Onion  I2P    CJDNS Pass                                               \x1b[0m', file=sys.stderr)
+    print('\x1b[7m  IPv4   IPv6  Onion    I2P  CJDNS Pass                                               \x1b[0m', file=sys.stderr)
     print(f'{ip_stats(ips):s} Initial', file=sys.stderr)
     # Skip entries with invalid address.
     ips = [ip for ip in ips if ip is not None]

@@ -188,7 +188,7 @@ In a different terminal, starting Groestlcoin Core in SigNet mode and with
 re-indexing enabled.
 
 ```
-$ ./build/src/groestlcoind -signet -reindex
+$ ./build/bin/groestlcoind -signet -reindex
 ```
 
 This produces the following output.

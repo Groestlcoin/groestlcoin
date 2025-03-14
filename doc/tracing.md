@@ -73,7 +73,7 @@ Arguments passed:
 
 Note: The message is passed to the tracepoint in full, however, due to space
 limitations in the eBPF kernel VM it might not be possible to pass the message
-to user-space in full. Messages longer than a 32kb might be cut off. This can
+to user-space in full. Messages longer than 32kb might be cut off. This can
 be detected in tracing scripts by comparing the message size to the length of
 the passed message.
 
@@ -92,7 +92,7 @@ Arguments passed:
 
 Note: The message is passed to the tracepoint in full, however, due to space
 limitations in the eBPF kernel VM it might not be possible to pass the message
-to user-space in full. Messages longer than a 32kb might be cut off. This can
+to user-space in full. Messages longer than 32kb might be cut off. This can
 be detected in tracing scripts by comparing the message size to the length of
 the passed message.
 
@@ -122,7 +122,7 @@ Arguments passed:
 
 #### Tracepoint `net:evicted_inbound_connection`
 
-Is called when a inbound connection is evicted by us. Passes information about the evicted peer and the time at connection establishment.
+Is called when an inbound connection is evicted by us. Passes information about the evicted peer and the time at connection establishment.
 
 Arguments passed:
 1. Peer ID as `int64`
@@ -430,13 +430,13 @@ USDT support.
 To list probes in Groestlcoin Core, use `info probes` in `gdb`:
 
 ```
-$ gdb ./build/src/groestlcoind
+$ gdb ./build/bin/groestlcoind
 …
 (gdb) info probes
 Type Provider   Name             Where              Semaphore Object
-stap net        inbound_message  0x000000000014419e 0x0000000000d29bd2 /build/src/groestlcoind
-stap net        outbound_message 0x0000000000107c05 0x0000000000d29bd0 /build/src/groestlcoind
-stap validation block_connected  0x00000000002fb10c 0x0000000000d29bd8 /build/src/groestlcoind
+stap net        inbound_message  0x000000000014419e 0x0000000000d29bd2 /build/bin/groestlcoind
+stap net        outbound_message 0x0000000000107c05 0x0000000000d29bd0 /build/bin/groestlcoind
+stap validation block_connected  0x00000000002fb10c 0x0000000000d29bd8 /build/bin/groestlcoind
 …
 ```
 
@@ -446,7 +446,7 @@ The `readelf` tool can be used to display the USDT tracepoints in Groestlcoin Co
 Look for the notes with the description `NT_STAPSDT`.
 
 ```
-$ readelf -n ./build/src/groestlcoind | grep NT_STAPSDT -A 4 -B 2
+$ readelf -n ./build/bin/groestlcoind | grep NT_STAPSDT -A 4 -B 2
 Displaying notes found in: .note.stapsdt
   Owner                 Data size	Description
   stapsdt              0x0000005d	NT_STAPSDT (SystemTap probe descriptors)
@@ -470,7 +470,7 @@ between distributions. For example, on
 [ubuntu binary]: https://github.com/iovisor/bcc/blob/master/INSTALL.md#ubuntu---binary
 
 ```
-$ tplist -l ./build/src/groestlcoind -v
+$ tplist -l ./build/bin/groestlcoind -v
 b'net':b'outbound_message' [sema 0xd29bd0]
   1 location(s)
   6 argument(s)

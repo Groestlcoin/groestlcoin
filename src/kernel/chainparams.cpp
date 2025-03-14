@@ -176,16 +176,6 @@ public:
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;
 
-        checkpointData = {
-            {
-                {28888, uint256{"00000000000228ce19f55cf0c45e04c7aa5a6a873ed23902b3654c3c49884502"}},
-                {58888, uint256{"0000000000dd85f4d5471febeb174a3f3f1598ab0af6616e9f266b56272274ef"}},
-                {111111, uint256{"00000000013de206275ee83f93bee57622335e422acbf126a37020484c6e113c"}},
-                {1000000, uint256{"000000000df8560f2612d5f28b52ed1cf81b0f87ac0c9c7242cbcf721ca6854a"}},
-                {2000000, uint256{"00000000000434d5b8d1c3308df7b6e3fd773657dfb28f5dd2f70854ef94cc66"}},
-            }
-        };
-
         m_assumeutxo_data = {
             // TODO to be specified in a future patch like this: ./contrib/devtools/utxo_snapshot.sh 4794500 utxo.dat groestlcoin-cli
         };
@@ -273,12 +263,6 @@ public:
 
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;
-
-        checkpointData = {
-            {
-                { 50000 , uint256{"00000081951486bb535f8cffec8ac0641bd24b814f89641f6cc2cad737f18950"}},
-            }
-        };
 
         m_assumeutxo_data = {
             // TODO to be specified in a future patch.
@@ -373,12 +357,6 @@ public:
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;
 
-        checkpointData = {
-            {
-                {},
-            }
-        };
-
         m_assumeutxo_data = {
             {}
         };
@@ -399,12 +377,12 @@ public:
     explicit SigNetParams(const SigNetOptions& options)
     {
         std::vector<uint8_t> bin;
+        vFixedSeeds.clear();
         vSeeds.clear();
 
         if (!options.challenge) {
             bin = "51210379156a07950b904a74e0d276e6d96bb61c4e0f89c9f69d3a5f75f161c9f8684051ae"_hex_v_u8;
-
-            // Hardcoded nodes can be removed once there are more DNS seeds
+            vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_signet), std::end(chainparams_seed_signet));
             vSeeds.emplace_back("198.199.105.43");
             vSeeds.emplace_back("2604:a880:1:20::96:6001");
             vSeeds.emplace_back("ubmgcth2ngfb7qapyrkpnn3i6p2dmu76zvd3hfs2mw3u4t54v2qa66id.onion:31331");
@@ -481,8 +459,6 @@ public:
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"0000007fcaa2a27993c6cde9e7818c254357af517b876ceba2f23592bb14ab31"});
         assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
-
-        vFixedSeeds.clear();
 
         m_assumeutxo_data = {
             // TODO to be specified in a future patch.
@@ -589,12 +565,6 @@ public:
 
         fDefaultConsistencyChecks = true;
         m_is_mockable_chain = true;
-
-        checkpointData = {
-            {
-                {0, uint256{"000000ffbb50fc9898cdd36ec163e6ba23230164c0052a28876255b7dcf2cd36"}},
-            }
-        };
 
         m_assumeutxo_data = {
             // TODO to be specified in a future patch.

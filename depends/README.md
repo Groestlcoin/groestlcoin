@@ -115,9 +115,8 @@ The following can be set when running make: `make FOO=bar`
 - `NO_QT`: Don't download/build/cache Qt and its dependencies
 - `NO_QR`: Don't download/build/cache packages needed for enabling qrencode
 - `NO_ZMQ`: Don't download/build/cache packages needed for enabling ZeroMQ
-- `NO_WALLET`: Don't download/build/cache libs needed to enable the wallet
+- `NO_WALLET`: Don't download/build/cache libs needed to enable the wallet (SQLite)
 - `NO_BDB`: Don't download/build/cache BerkeleyDB
-- `NO_SQLITE`: Don't download/build/cache SQLite
 - `NO_USDT`: Don't download/build/cache packages needed for enabling USDT tracepoints
 - `MULTIPROCESS`: Build libmultiprocess (experimental)
 - `DEBUG`: Disable some optimizations and enable more runtime checking
@@ -127,7 +126,6 @@ The following can be set when running make: `make FOO=bar`
   resides in the `depends` directory, and the log file is printed out automatically in case
   of build error. After successful build log files are moved along with package archives
 - `LTO`: Enable options needed for LTO. Does not add `-flto` related options to *FLAGS.
-- `NO_HARDEN=1`: Don't use hardening options when building packages
 
 If some packages are not built, for example `make NO_WALLET=1`, the appropriate CMake cache
 variables will be set when generating the Groestlcoin Core buildsystem. In this case, `-DENABLE_WALLET=OFF`.

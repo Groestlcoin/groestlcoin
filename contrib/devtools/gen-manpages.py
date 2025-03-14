@@ -9,12 +9,12 @@ import tempfile
 import argparse
 
 BINARIES = [
-'src/groestlcoind',
-'src/groestlcoin-cli',
-'src/groestlcoin-tx',
-'src/groestlcoin-wallet',
-'src/groestlcoin-util',
-'src/qt/groestlcoin-qt',
+'bin/groestlcoind',
+'bin/groestlcoin-cli',
+'bin/groestlcoin-tx',
+'bin/groestlcoin-wallet',
+'bin/groestlcoin-util',
+'bin/groestlcoin-qt',
 ]
 
 parser = argparse.ArgumentParser(
