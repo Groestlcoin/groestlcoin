@@ -8,7 +8,7 @@
 
   This script requires a 'groestlcoind' binary compiled with eBPF support and the
   'utxocache' tracepoints. By default, it's assumed that 'groestlcoind' is
-  located in './build/src/groestlcoind'. This can be modified in the script below.
+  located in './build/bin/groestlcoind'. This can be modified in the script below.
 
   NOTE: requires bpftrace v0.12.0 or above.
 */
@@ -22,7 +22,7 @@ BEGIN
 /*
   Attaches to the 'utxocache:add' tracepoint and prints additions to the UTXO set cache.
 */
-usdt:./build/src/groestlcoind:utxocache:add
+usdt:./build/bin/groestlcoind:utxocache:add
 {
   $txid = arg0;
   $index = (uint32)arg1;
@@ -44,7 +44,7 @@ usdt:./build/src/groestlcoind:utxocache:add
 /*
   Attaches to the 'utxocache:spent' tracepoint and prints spents from the UTXO set cache.
 */
-usdt:./build/src/groestlcoind:utxocache:spent
+usdt:./build/bin/groestlcoind:utxocache:spent
 {
   $txid = arg0;
   $index = (uint32)arg1;
@@ -66,7 +66,7 @@ usdt:./build/src/groestlcoind:utxocache:spent
 /*
   Attaches to the 'utxocache:uncache' tracepoint and uncache UTXOs from the UTXO set cache.
 */
-usdt:./build/src/groestlcoind:utxocache:uncache
+usdt:./build/bin/groestlcoind:utxocache:uncache
 {
   $txid = arg0;
   $index = (uint32)arg1;

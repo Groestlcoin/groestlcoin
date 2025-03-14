@@ -187,6 +187,6 @@ This example lists the steps necessary to setup and build a command line only di
     cmake -B build
     cmake --build build
     ctest --test-dir build
-    ./build/src/groestlcoind
+    ./build/bin/groestlcoind
 
 If you intend to work with legacy Berkeley DB wallets, see [Berkeley DB](#berkeley-db) section.

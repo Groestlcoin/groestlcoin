@@ -11,7 +11,7 @@ When following your systems build instructions, make sure to install the `Qt` de
 To run:
 
 ```sh
-./build/src/qt/groestlcoin-qt
+./build/bin/groestlcoin-qt
 ```
 
 ## Files and Directories

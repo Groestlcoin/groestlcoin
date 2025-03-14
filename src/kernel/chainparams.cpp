@@ -399,12 +399,12 @@ public:
     explicit SigNetParams(const SigNetOptions& options)
     {
         std::vector<uint8_t> bin;
+        vFixedSeeds.clear();
         vSeeds.clear();
 
         if (!options.challenge) {
             bin = "51210379156a07950b904a74e0d276e6d96bb61c4e0f89c9f69d3a5f75f161c9f8684051ae"_hex_v_u8;
-
-            // Hardcoded nodes can be removed once there are more DNS seeds
+            vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_signet), std::end(chainparams_seed_signet));
             vSeeds.emplace_back("198.199.105.43");
             vSeeds.emplace_back("2604:a880:1:20::96:6001");
             vSeeds.emplace_back("ubmgcth2ngfb7qapyrkpnn3i6p2dmu76zvd3hfs2mw3u4t54v2qa66id.onion:31331");
@@ -481,8 +481,6 @@ public:
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"0000007fcaa2a27993c6cde9e7818c254357af517b876ceba2f23592bb14ab31"});
         assert(genesis.hashMerkleRoot == uint256{"3ce968df58f9c8a752306c4b7264afab93149dbc578bd08a42c446caaa6628bb"});
-
-        vFixedSeeds.clear();
 
         m_assumeutxo_data = {
             // TODO to be specified in a future patch.
