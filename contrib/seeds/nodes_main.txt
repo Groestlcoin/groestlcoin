@@ -28,8 +28,6 @@
 139.59.16.104:1331
 46.101.148.45:1331
 46.101.100.9:1331
-
-# manually added 2021-04 for minimal torv3 bootstrap support
 wd6qntxyftioxzwlelevsdrieh7ruxzsju2qna42culnqkbv32yhetad.onion:1331
 vsc6kyudmzcndtnbgthmk6u45ewqoe2xkxkpfplcsmnmsq3hl7im2uyd.onion:1331
 7uofqbelwzflqsbiz6nm5saatbemxieg4ogb2perqyollfn37g5wkead.onion:1331

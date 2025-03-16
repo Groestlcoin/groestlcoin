@@ -1,5 +1,3 @@
-# List of fixed seed nodes for testnet
-
 104.236.178.245:17777
 198.199.105.43:17777
 45.32.235.71:17777
@@ -9,8 +7,6 @@
 78.141.220.223:17777
 95.179.140.39:17777
 209.250.234.91:17777
-
-# manually added 2021-04 for minimal torv3 bootstrap support
 wsrq6xvwue34rxuvhlt62kfoeous5tyuokabznqlt7qknr3jxojwt2qd.onion:17777
 kdbypsudc5ubv44wcp5votejeloce4jwoddcqa5a46xq7fxbufnxv4yd.onion:17777
 jodon7sfebzfjeghmfdbp6glwqtzssjfnymqhkxex6gevlfj7xmn3pyd.onion:17777
