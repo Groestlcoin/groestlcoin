@@ -67,7 +67,6 @@ task:
       FILE_ENV: "./ci/test/00_setup_env_native_centos.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
-    PACKAGE_MANAGER_INSTALL: "yum install -y"
 
 task:
   name: 'previous releases, depends DEBUG'
