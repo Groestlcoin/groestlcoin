@@ -16,7 +16,7 @@ public:
 	const unsigned char *P;
 	size_t Size;
 
-	ConstBuf(std::span<const unsigned char> p) {
+	ConstBuf(const std::span<unsigned char> p) {
 		if (p.begin() == p.end()) {
 			P = 0;
 			Size = 0;
