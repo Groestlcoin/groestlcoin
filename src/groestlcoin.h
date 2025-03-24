@@ -16,7 +16,7 @@ public:
 	const unsigned char *P;
 	size_t Size;
 
-	ConstBuf(Span<const unsigned char> p) {
+	ConstBuf(std::span<const unsigned char> p) {
 		if (p.begin() == p.end()) {
 			P = 0;
 			Size = 0;
@@ -62,9 +62,9 @@ class GroestlHasher {
 private:
 	void *ctx;
 public:
-	void Finalize(Span<unsigned char> output);
+	void Finalize(std::span<unsigned char> output);
 	GroestlHasher& Write(const unsigned char *data, size_t len);
-	GroestlHasher& Write(Span<const unsigned char> input);
+	GroestlHasher& Write(std::span<const unsigned char> input);
 	GroestlHasher();
 	GroestlHasher(GroestlHasher&& x);
 	~GroestlHasher();
@@ -78,7 +78,7 @@ private:
     GroestlHasher ctx;
 
 public:
-    void write(Span<const std::byte> src)
+    void write(std::span<const std::byte> src)
     {
         ctx.Write(UCharCast(src.data()), src.size());
     }
