@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2022 The Bitcoin Core developers
+// Copyright (c) 2014-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -87,7 +87,7 @@ static const int8_t mapBase58[256] = {
     return true;
 }
 
-std::string EncodeBase58(Span<const unsigned char> input)
+std::string EncodeBase58(std::span<const unsigned char> input)
 {
     // Skip & count leading zeroes.
     int zeroes = 0;
@@ -135,7 +135,7 @@ bool DecodeBase58(const std::string& str, std::vector<unsigned char>& vchRet, in
     return DecodeBase58(str.c_str(), vchRet, max_ret_len);
 }
 
-std::string EncodeBase58Check(Span<const unsigned char> input)
+std::string EncodeBase58Check(std::span<const unsigned char> input)
 {
     // add 4-byte hash check to the end
     std::vector<unsigned char> vch(input.begin(), input.end());
@@ -153,8 +153,8 @@ std::string EncodeBase58Check(Span<const unsigned char> input)
         return false;
     }
     // re-calculate the checksum, ensure it matches the included 4-byte checksum
-    uint256 hash = XCoin::HashForAddress(XCoin::ConstBuf(Span{vchRet}.first(vchRet.size() - 4))); // GRS
-    // uint256 hash = Hash(Span{vchRet}.first(vchRet.size() - 4));
+    uint256 hash = XCoin::HashForAddress(XCoin::ConstBuf(std::span{vchRet}.first(vchRet.size() - 4))); // GRS
+    // uint256 hash = Hash(std::span{vchRet}.first(vchRet.size() - 4));
     if (memcmp(&hash, &vchRet[vchRet.size() - 4], 4) != 0) {
         vchRet.clear();
         return false;

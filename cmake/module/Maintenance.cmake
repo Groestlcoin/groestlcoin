@@ -44,6 +44,14 @@ endfunction()
 
 function(add_windows_deploy_target)
   if(MINGW AND TARGET groestlcoin-qt AND TARGET groestlcoind AND TARGET groestlcoin-cli AND TARGET groestlcoin-tx AND TARGET groestlcoin-wallet AND TARGET groestlcoin-util AND TARGET test_groestlcoin)
+    find_program(MAKENSIS_EXECUTABLE makensis)
+    if(NOT MAKENSIS_EXECUTABLE)
+      add_custom_target(deploy
+        COMMAND ${CMAKE_COMMAND} -E echo "Error: NSIS not found"
+      )
+      return()
+    endif()
+
     # TODO: Consider replacing this code with the CPack NSIS Generator.
     #       See https://cmake.org/cmake/help/latest/cpack_gen/nsis.html
     include(GenerateSetupNsi)
@@ -58,7 +66,7 @@ function(add_windows_deploy_target)
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoin-wallet> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoin-wallet>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoin-util> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoin-util>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:test_groestlcoin> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:test_groestlcoin>
-      COMMAND makensis -V2 ${PROJECT_BINARY_DIR}/groestlcoin-win64-setup.nsi
+      COMMAND ${MAKENSIS_EXECUTABLE} -V2 ${PROJECT_BINARY_DIR}/groestlcoin-win64-setup.nsi
       VERBATIM
     )
     add_custom_target(deploy DEPENDS ${PROJECT_BINARY_DIR}/groestlcoin-win64-setup.exe)
@@ -112,16 +120,22 @@ function(add_macos_deploy_target)
         DEPENDS ${PROJECT_BINARY_DIR}/dist/${macos_app}/Contents/MacOS/Groestlcoin-Qt
       )
 
-      find_program(ZIP_COMMAND zip REQUIRED)
-      add_custom_command(
-        OUTPUT ${PROJECT_BINARY_DIR}/dist/${osx_volname}.zip
-        WORKING_DIRECTORY dist
-        COMMAND ${PROJECT_SOURCE_DIR}/cmake/script/macos_zip.sh ${ZIP_COMMAND} ${osx_volname}.zip
-        VERBATIM
-      )
-      add_custom_target(deploy
-        DEPENDS ${PROJECT_BINARY_DIR}/dist/${osx_volname}.zip
-      )
+      find_program(ZIP_EXECUTABLE zip)
+      if(NOT ZIP_EXECUTABLE)
+        add_custom_target(deploy
+          COMMAND ${CMAKE_COMMAND} -E echo "Error: ZIP not found"
+        )
+      else()
+        add_custom_command(
+          OUTPUT ${PROJECT_BINARY_DIR}/dist/${osx_volname}.zip
+          WORKING_DIRECTORY dist
+          COMMAND ${PROJECT_SOURCE_DIR}/cmake/script/macos_zip.sh ${ZIP_EXECUTABLE} ${osx_volname}.zip
+          VERBATIM
+        )
+        add_custom_target(deploy
+          DEPENDS ${PROJECT_BINARY_DIR}/dist/${osx_volname}.zip
+        )
+      endif()
     endif()
     add_dependencies(deploydir groestlcoin-qt)
     add_dependencies(deploy deploydir)
