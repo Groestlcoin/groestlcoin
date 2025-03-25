@@ -22,7 +22,7 @@ public:
 			P = 0;
 			Size = 0;
 		} else {
-			P = (unsigned char*)(*p.begin());
+			P = (unsigned char*)(p.data());
             Size = p.size();
 		}
 	}
