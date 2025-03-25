@@ -55,7 +55,7 @@ void GroestlHasher::Finalize(std::span<unsigned char> output) {
 	sph_groestl512_init(&c2);
 	sph_groestl512(&c2, static_cast<const void*>(&hash[0]), 64);
 	sph_groestl512_close(&c2, static_cast<void*>(&hash[2]));
-	memcpy(output.begin(), static_cast<void*>(&hash[2]), 32);
+	memcpy(output.data(), static_cast<void*>(&hash[2]), 32);
 }
 
 GroestlHasher& GroestlHasher::Write(const unsigned char *data, size_t len) {
@@ -66,7 +66,7 @@ GroestlHasher& GroestlHasher::Write(const unsigned char *data, size_t len) {
 
 GroestlHasher& GroestlHasher::Write(std::span<const unsigned char> input) {
 	auto c = (sph_groestl512_context*)ctx;
-	sph_groestl512(c, input.begin(), input.size());
+	sph_groestl512(c, input.data(), input.size());
     return *this;
 }
 
