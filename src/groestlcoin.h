@@ -8,6 +8,7 @@
 #include <uint256.h>
 #include <serialize.h>
 #include <crypto/common.h>
+#include <span.h>
 
 namespace XCoin {
 
@@ -16,12 +17,12 @@ public:
 	const unsigned char *P;
 	size_t Size;
 
-	ConstBuf(const std::span<unsigned char> p) {
+	ConstBuf(const std::span<const unsigned char> p) {
 		if (p.begin() == p.end()) {
 			P = 0;
 			Size = 0;
 		} else {
-			P = (unsigned char*)(p.begin());
+			P = (unsigned char*)(p.data());
             Size = p.size();
 		}
 	}
