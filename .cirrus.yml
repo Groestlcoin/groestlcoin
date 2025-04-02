@@ -48,17 +48,6 @@ global_task_template: &GLOBAL_TASK_TEMPLATE
   << : *MAIN_TEMPLATE
 
 task:
-  name: 'Win64-cross'
-  << : *GLOBAL_TASK_TEMPLATE
-  container:
-    docker_arguments:
-      CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:noble"
-      CI_IMAGE_PLATFORM: "linux/amd64"
-      FILE_ENV: "./ci/test/00_setup_env_win64.sh"
-  env:
-    << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
-
-task:
   name: 'CentOS, depends, gui'
   << : *GLOBAL_TASK_TEMPLATE
   container:

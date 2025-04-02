@@ -21,6 +21,12 @@ env:
   CI_FAILFAST_TEST_LEAVE_DANGLING: 1  # GHA does not care about dangling processes and setting this variable avoids killing the CI script itself on error
   MAKEJOBS: '-j10'
 
+defaults:
+  run:
+    # Enforce fail-fast behavior for all platforms.
+    # See: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
+    shell: bash
+
 jobs:
   macos-native-arm64:
     name: ${{ matrix.job-name }}
@@ -62,7 +68,7 @@ jobs:
         run: |
           # A workaround for "The `brew link` step did not complete successfully" error.
           brew install --quiet python@3 || brew link --overwrite python@3
-          brew install --quiet coreutils ninja pkgconf gnu-getopt ccache boost libevent zeromq qt@5 qrencode
+          brew install --quiet coreutils ninja pkgconf gnu-getopt ccache boost libevent zeromq qt@6 qrencode
 
       - name: Set Ccache directory
         run: echo "CCACHE_DIR=${RUNNER_TEMP}/ccache_dir" >> "$GITHUB_ENV"
@@ -88,6 +94,60 @@ jobs:
           # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
           key: ${{ github.job }}-${{ matrix.job-type }}-ccache-${{ github.run_id }}
 
+  windows-cross:
+    name: 'Linux->Windows cross, no tests'
+    runs-on: ubuntu-latest
+    if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
+
+    env:
+      FILE_ENV: './ci/test/00_setup_env_win64.sh'
+      DANGER_CI_ON_HOST_FOLDERS: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set CI directories
+        run: |
+          echo "CCACHE_DIR=${{ runner.temp }}/ccache_dir" >> "$GITHUB_ENV"
+          echo "BASE_ROOT_DIR=${{ runner.temp }}" >> "$GITHUB_ENV"
+          echo "DEPENDS_DIR=${{ runner.temp }}/depends" >> "$GITHUB_ENV"
+          echo "BASE_BUILD_DIR=${{ runner.temp }}/build" >> "$GITHUB_ENV"
+
+      - name: Depends cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPENDS_DIR }}/built
+          key: ${{ github.job }}-depends-${{ hashFiles('depends/**', 'ci/test/00_setup_env_win64.sh') }}
+
+      - name: Restore Ccache cache
+        id: ccache-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.job }}-ccache-${{ github.run_id }}
+          restore-keys: ${{ github.job }}-ccache-
+
+      - name: CI script
+        run: ./ci/test_run_all.sh
+
+      - name: Save Ccache cache
+        uses: actions/cache/save@v4
+        if: github.event_name != 'pull_request' && steps.ccache-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.job }}-ccache-${{ github.run_id }}
+
+      - name: Upload built executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86_64-w64-mingw32-executables-${{ github.run_id }}
+          path: |
+            ${{ env.BASE_BUILD_DIR }}/bin/*.exe
+            ${{ env.BASE_BUILD_DIR }}/src/secp256k1/bin/*.exe
+            ${{ env.BASE_BUILD_DIR }}/src/univalue/*.exe
+            ${{ env.BASE_BUILD_DIR }}/test/config.ini
+            
   asan-lsan-ubsan-integer-no-depends-usdt:
     name: 'ASan + LSan + UBSan + integer, no depends, USDT'
     runs-on: ubuntu-24.04 # has to match container in ci/test/00_setup_env_native_asan.sh for tracing tools

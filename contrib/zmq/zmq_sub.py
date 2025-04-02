@@ -7,7 +7,7 @@
     ZMQ example using python3's asyncio
 
     Groestlcoin should be started with the command line arguments:
-        groestlcoind -testnet -daemon \
+        groestlcoind -testnet4 -daemon \
                 -zmqpubrawtx=tcp://127.0.0.1:21441 \
                 -zmqpubrawblock=tcp://127.0.0.1:21441 \
                 -zmqpubhashtx=tcp://127.0.0.1:21441 \
