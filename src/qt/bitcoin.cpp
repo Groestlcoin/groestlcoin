@@ -164,12 +164,7 @@ static void RegisterMetaTypes()
     qRegisterMetaType<std::function<void()>>("std::function<void()>");
     qRegisterMetaType<QMessageBox::Icon>("QMessageBox::Icon");
     qRegisterMetaType<interfaces::BlockAndHeaderTipInfo>("interfaces::BlockAndHeaderTipInfo");
-
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-    qRegisterMetaTypeStreamOperators<BitcoinUnit>("BitcoinUnit");
-#else
     qRegisterMetaType<BitcoinUnit>("BitcoinUnit");
-#endif
 }
 
 static QString GetLangTerritory()
@@ -208,11 +203,7 @@ static void initTranslations(QTranslator &qtTranslatorBase, QTranslator &qtTrans
     // - First load the translator for the base language, without territory
     // - Then load the more specific locale translator
 
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-    const QString translation_path{QLibraryInfo::location(QLibraryInfo::TranslationsPath)};
-#else
     const QString translation_path{QLibraryInfo::path(QLibraryInfo::TranslationsPath)};
-#endif
     // Load e.g. qt_de.qm
     if (qtTranslatorBase.load("qt_" + lang, translation_path)) {
         QApplication::installTranslator(&qtTranslatorBase);
@@ -585,12 +576,6 @@ int GuiMain(int argc, char* argv[])
     /// 1. Basic Qt initialization (not dependent on parameters or configuration)
     Q_INIT_RESOURCE(bitcoin);
     Q_INIT_RESOURCE(bitcoin_locale);
-
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-    // Generate high-dpi pixmaps
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
 
 #if defined(QT_QPA_PLATFORM_ANDROID)
     QApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
