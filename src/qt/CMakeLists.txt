@@ -269,7 +269,7 @@ if(WIN32)
   set_target_properties(groestlcoin-qt PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-if(WITH_MULTIPROCESS)
+if(ENABLE_IPC)
   add_executable(groestlcoin-gui
     main.cpp
     ../init/groestlcoin-gui.cpp
