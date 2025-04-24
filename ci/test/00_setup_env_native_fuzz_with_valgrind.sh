@@ -13,4 +13,5 @@ export NO_DEPENDS=1
 export GOAL="all"
 export GROESTLCOIN_CONFIG="\
  -DBUILD_FOR_FUZZING=ON \
+ -DCMAKE_CXX_FLAGS='-Wno-error=array-bounds' \
 "
