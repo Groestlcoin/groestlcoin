@@ -26,11 +26,12 @@ from test_framework.util import (
     assert_raises_rpc_error,
 )
 
+LAST_KEYPOOL_INDEX = 9 # Index of the last derived address with the keypool size of 10
 
 class BackwardsCompatibilityTest(BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
-        self.num_nodes = 10
+        self.num_nodes = 8
         # Add new version after each release:
         self.extra_args = [
             ["-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # Pre-release: use to mine blocks. noban for immediate tx relay
@@ -38,11 +39,9 @@ class BackwardsCompatibilityTest(BitcoinTestFramework):
             ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v25.0
             ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v24.0.1
             ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v23.0
-            ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v22.0
+            ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1", f"-keypool={LAST_KEYPOOL_INDEX + 1}"], # v22.0
             ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v0.21.0
             ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v0.20.1
-            ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=noban@127.0.0.1"], # v0.19.1
-            ["-nowallet", "-walletrbf=1", "-addresstype=bech32", "-whitelist=127.0.0.1"], # v0.18.1
         ]
         self.wallet_names = [self.default_wallet_name]
 
@@ -60,8 +59,6 @@ class BackwardsCompatibilityTest(BitcoinTestFramework):
             220000,
             210000,
             200100,
-            190100,
-            180100,
         ])
 
         self.start_nodes()
@@ -85,21 +82,98 @@ class BackwardsCompatibilityTest(BitcoinTestFramework):
         node_major, _, _ = self.split_version(node)
         return node_major >= major
 
+    def test_v22_inactivehdchain_path(self):
+        self.log.info("Testing inactive hd chain bad derivation path cleanup")
+        # 0.21.x and 22.x would both produce bad derivation paths when topping up an inactive hd chain
+        # Make sure that this is being automatically cleaned up by migration
+        node_master = self.nodes[1]
+        node_v22 = self.nodes[self.num_nodes - 3]
+        wallet_name = "bad_deriv_path"
+        node_v22.createwallet(wallet_name=wallet_name, descriptors=False)
+        bad_deriv_wallet = node_v22.get_wallet_rpc(wallet_name)
+
+        # Make a dump of the wallet to get an unused address
+        dump_path = node_v22.wallets_path / f"{wallet_name}.dump"
+        bad_deriv_wallet.dumpwallet(dump_path)
+        addr = None
+        seed = None
+        with open(dump_path, encoding="utf8") as f:
+            for line in f:
+                if f"hdkeypath=m/0'/0'/{LAST_KEYPOOL_INDEX}'" in line:
+                    addr = line.split(" ")[4].split("=")[1]
+                elif " hdseed=1 " in line:
+                    seed = line.split(" ")[0]
+        assert addr is not None
+        assert seed is not None
+        # Rotate seed and unload
+        bad_deriv_wallet.sethdseed()
+        bad_deriv_wallet.unloadwallet()
+        # Receive at addr to trigger inactive chain topup on next load
+        self.nodes[0].sendtoaddress(addr, 1)
+        self.generate(self.nodes[0], 1, sync_fun=self.no_op)
+        self.sync_all(nodes=[self.nodes[0], node_master, node_v22])
+        node_v22.loadwallet(wallet_name)
+
+        # Dump again to find bad hd keypath
+        bad_deriv_path = f"m/0'/0'/{LAST_KEYPOOL_INDEX}'/0'/0'/{LAST_KEYPOOL_INDEX + 1}'"
+        good_deriv_path = f"m/0h/0h/{LAST_KEYPOOL_INDEX + 1}h"
+        os.unlink(dump_path)
+        bad_deriv_wallet.dumpwallet(dump_path)
+        bad_path_addr = None
+        with open(dump_path, encoding="utf8") as f:
+            for line in f:
+                if f"hdkeypath={bad_deriv_path}" in line:
+                    bad_path_addr = line.split(" ")[4].split("=")[1]
+        assert bad_path_addr is not None
+        assert_equal(bad_deriv_wallet.getaddressinfo(bad_path_addr)["hdkeypath"], bad_deriv_path)
+
+        # Verify that this bad derivation path addr is actually at m/0'/0'/10' by making a new wallet with the same seed but larger keypool
+        node_v22.createwallet(wallet_name="path_verify", descriptors=False, blank=True)
+        verify_wallet = node_v22.get_wallet_rpc("path_verify")
+        verify_wallet.sethdseed(True, seed)
+        # Bad addr is after keypool, so need to generate it by refilling
+        verify_wallet.keypoolrefill(LAST_KEYPOOL_INDEX + 2)
+        assert_equal(verify_wallet.getaddressinfo(bad_path_addr)["hdkeypath"], good_deriv_path.replace("h", "'"))
+
+        # Migrate with master
+        # Since all keymeta records are now deleted after migration, the derivation path
+        # should now be correct as it is derived on-the-fly from the inactive hd chain's descriptor
+        backup_path = node_v22.wallets_path / f"{wallet_name}.bak"
+        bad_deriv_wallet.backupwallet(backup_path)
+        wallet_dir_master = os.path.join(node_master.wallets_path, wallet_name)
+        os.makedirs(wallet_dir_master, exist_ok=True)
+        shutil.copy(backup_path, os.path.join(wallet_dir_master, "wallet.dat"))
+        node_master.migratewallet(wallet_name)
+        bad_deriv_wallet_master = node_master.get_wallet_rpc(wallet_name)
+        assert_equal(bad_deriv_wallet_master.getaddressinfo(bad_path_addr)["hdkeypath"], good_deriv_path)
+        bad_deriv_wallet_master.unloadwallet()
+
+        # If we have sqlite3, verify that there are no keymeta records
+        try:
+            import sqlite3
+            wallet_db = node_master.wallets_path / wallet_name / "wallet.dat"
+            conn = sqlite3.connect(wallet_db)
+            with conn:
+                # Retrieve all records that have the "keymeta" prefix. The remaining key data varies for each record.
+                keymeta_rec = conn.execute("SELECT value FROM main where key >= x'076b65796d657461' AND key < x'076b65796d657462'").fetchone()
+                assert_equal(keymeta_rec, None)
+            conn.close()
+        except ImportError:
+            self.log.warning("sqlite3 module not available, skipping lack of keymeta records check")
+
     def run_test(self):
         node_miner = self.nodes[0]
         node_master = self.nodes[1]
-        node_v21 = self.nodes[self.num_nodes - 4]
-        node_v18 = self.nodes[self.num_nodes - 1]
+        node_v21 = self.nodes[self.num_nodes - 2]
+        node_v20 = self.nodes[self.num_nodes - 1] # bdb only
 
         legacy_nodes = self.nodes[2:] # Nodes that support legacy wallets
-        legacy_only_nodes = self.nodes[-3:] # Nodes that only support legacy wallets
-        descriptors_nodes = self.nodes[2:-3] # Nodes that support descriptor wallets
+        descriptors_nodes = self.nodes[2:-1] # Nodes that support descriptor wallets
 
         self.generatetoaddress(node_miner, COINBASE_MATURITY + 1, node_miner.getnewaddress())
 
         # Sanity check the test framework:
-        res = node_v18.getblockchaininfo()
-        assert_equal(res['blocks'], COINBASE_MATURITY + 1)
+        assert_equal(node_v20.getblockchaininfo()["blocks"], COINBASE_MATURITY + 1)
 
         self.log.info("Test wallet backwards compatibility...")
         # Create a number of wallets and open them in older versions:
@@ -206,13 +280,11 @@ class BackwardsCompatibilityTest(BitcoinTestFramework):
                         )
 
         # Check that descriptor wallets don't work on legacy only nodes
-        self.log.info("Test descriptor wallet incompatibility on:")
-        for node in legacy_only_nodes:
-            self.log.info(f"- {node.version}")
-            # Descriptor wallets appear to be corrupted wallets to old software
-            assert self.major_version_less_than(node, 21)
-            for wallet_name in ["w1", "w2", "w3"]:
-                assert_raises_rpc_error(-4, "Wallet file verification failed: wallet.dat corrupt, salvage failed", node.loadwallet, wallet_name)
+        self.log.info("Test descriptor wallet incompatibility on v0.20")
+        # Descriptor wallets appear to be corrupted wallets to old software
+        assert self.major_version_equals(node_v20, 20)
+        for wallet_name in ["w1", "w2", "w3"]:
+            assert_raises_rpc_error(-4, "Wallet file verification failed: wallet.dat corrupt, salvage failed", node_v20.loadwallet, wallet_name)
 
         # w1 cannot be opened by 0.21 since it contains a taproot descriptor
         self.log.info("Test that 0.21 cannot open wallet containing tr() descriptors")
@@ -307,6 +379,8 @@ class BackwardsCompatibilityTest(BitcoinTestFramework):
             # Restore the wallet to master
             # Legacy wallets are no longer supported. Trying to load these should result in an error
             assert_raises_rpc_error(-18, "The wallet appears to be a Legacy wallet, please use the wallet migration tool (migratewallet RPC)", node_master.restorewallet, wallet_name, backup_path)
+
+        self.test_v22_inactivehdchain_path()
 
 if __name__ == '__main__':
     BackwardsCompatibilityTest(__file__).main()
