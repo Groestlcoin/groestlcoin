@@ -7,6 +7,7 @@
 #include <wallet/wallettool.h>
 
 #include <common/args.h>
+#include <util/check.h>
 #include <util/fs.h>
 #include <util/translation.h>
 #include <wallet/dump.h>
@@ -33,12 +34,8 @@ static void WalletCreate(CWallet* wallet_instance, uint64_t wallet_creation_flag
     wallet_instance->SetMinVersion(FEATURE_LATEST);
     wallet_instance->InitWalletFlags(wallet_creation_flags);
 
-    if (!wallet_instance->IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS)) {
-        auto spk_man = wallet_instance->GetOrCreateLegacyScriptPubKeyMan();
-        spk_man->SetupGeneration(false);
-    } else {
-        wallet_instance->SetupDescriptorScriptPubKeyMans();
-    }
+    Assert(wallet_instance->IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS));
+    wallet_instance->SetupDescriptorScriptPubKeyMans();
 
     tfm::format(std::cout, "Topping up keypool...\n");
     wallet_instance->TopUpKeyPool();
@@ -115,26 +112,6 @@ bool ExecuteWalletToolFunc(const ArgsManager& args, const std::string& command)
         tfm::format(std::cerr, "The -dumpfile option can only be used with the \"dump\" and \"createfromdump\" commands.\n");
         return false;
     }
-    if (args.IsArgSet("-descriptors")) {
-        if (command != "create") {
-            tfm::format(std::cerr, "The -descriptors option can only be used with the 'create' command.\n");
-            return false;
-        }
-        if (!args.GetBoolArg("-descriptors", true)) {
-            tfm::format(std::cerr, "The -descriptors option must be set to \"true\"\n");
-            return false;
-        }
-    }
-    if (args.IsArgSet("-legacy")) {
-        if (command != "create") {
-            tfm::format(std::cerr, "The -legacy option can only be used with the 'create' command.\n");
-            return false;
-        }
-        if (args.GetBoolArg("-legacy", true)) {
-            tfm::format(std::cerr, "The -legacy option must be set to \"false\"\n");
-            return false;
-        }
-    }
     if (command == "create" && !args.IsArgSet("-wallet")) {
         tfm::format(std::cerr, "Wallet name must be provided when creating a new wallet.\n");
         return false;
@@ -168,7 +145,7 @@ bool ExecuteWalletToolFunc(const ArgsManager& args, const std::string& command)
         options.require_existing = true;
         DatabaseStatus status;
 
-        if (args.GetBoolArg("-withinternalbdb", false) && IsBDBFile(BDBDataFile(path))) {
+        if (IsBDBFile(BDBDataFile(path))) {
             options.require_format = DatabaseFormat::BERKELEY_RO;
         }
 

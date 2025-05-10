@@ -55,14 +55,6 @@ It is not necessary to build wallet functionality to run groestlcoind or the GUI
 pkgin install sqlite3
 ```
 
-###### Legacy Wallet Support
-
-`db5` is required to enable support for legacy wallets.
-
-```bash
-pkgin install db5
-```
-
 #### GUI Dependencies
 ###### Qt6
 

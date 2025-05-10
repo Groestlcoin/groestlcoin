@@ -19,6 +19,10 @@ if(POLICY CMP0171)
   cmake_policy(SET CMP0171 NEW)
 endif()
 
+# When adjusting CMake flag variables, we must not override those explicitly
+# set by the user. These are a subset of the CACHE_VARIABLES property.
+get_directory_property(precious_variables CACHE_VARIABLES)
+
 #=============================
 # Project / Package metadata
 #=============================
@@ -108,22 +112,6 @@ if(ENABLE_WALLET)
     find_package(unofficial-sqlite3 CONFIG REQUIRED)
   else()
     find_package(SQLite3 3.7.17 REQUIRED)
-  endif()
-endif()
-option(WITH_BDB "Enable Berkeley DB (BDB) wallet support." OFF)
-cmake_dependent_option(WARN_INCOMPATIBLE_BDB "Warn when using a Berkeley DB (BDB) version other than 5.3." ON "WITH_BDB" OFF)
-if(WITH_BDB)
-  find_package(BerkeleyDB 5.3 MODULE REQUIRED)
-  set(USE_BDB ON)
-  if(NOT BerkeleyDB_VERSION VERSION_EQUAL 5.3)
-    message(WARNING "Found Berkeley DB (BDB) other than 5.3.\n"
-                    "BDB (legacy) wallets opened by this build will not be portable!"
-    )
-    if(WARN_INCOMPATIBLE_BDB)
-      message(WARNING "If this is intended, pass \"-DWARN_INCOMPATIBLE_BDB=OFF\".\n"
-                      "Passing \"-DWITH_BDB=OFF\" will suppress this warning."
-      )
-    endif()
   endif()
 endif()
 cmake_dependent_option(BUILD_WALLET_TOOL "Build groestlcoin-wallet tool." ${BUILD_TESTS} "ENABLE_WALLET" OFF)
@@ -677,9 +665,6 @@ message("  groestlcoin-chainstate (experimental) ... ${BUILD_UTIL_CHAINSTATE}")
 message("  libgroestlcoinkernel (experimental) ..... ${BUILD_KERNEL_LIB}")
 message("Optional features:")
 message("  wallet support ...................... ${ENABLE_WALLET}")
-if(ENABLE_WALLET)
-  message("   - legacy wallets (Berkeley DB) ..... ${WITH_BDB}")
-endif()
 message("  external signer ..................... ${ENABLE_EXTERNAL_SIGNER}")
 message("  ZeroMQ .............................. ${WITH_ZMQ}")
 if(ENABLE_IPC)

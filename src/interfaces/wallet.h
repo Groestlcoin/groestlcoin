@@ -107,9 +107,6 @@ public:
     //! Return whether wallet has private key.
     virtual bool isSpendable(const CTxDestination& dest) = 0;
 
-    //! Return whether wallet has watch only keys.
-    virtual bool haveWatchOnly() = 0;
-
     //! Add or update address.
     virtual bool setAddressBook(const CTxDestination& dest, const std::string& name, const std::optional<wallet::AddressPurpose>& purpose) = 0;
 
@@ -282,9 +279,6 @@ public:
     // Remove wallet.
     virtual void remove() = 0;
 
-    //! Return whether is a legacy wallet
-    virtual bool isLegacy() = 0;
-
     //! Register handler for unload message.
     using UnloadFn = std::function<void()>;
     virtual std::unique_ptr<Handler> handleUnload(UnloadFn fn) = 0;
@@ -308,10 +302,6 @@ public:
     //! Register handler for transaction changed messages.
     using TransactionChangedFn = std::function<void(const uint256& txid, ChangeType status)>;
     virtual std::unique_ptr<Handler> handleTransactionChanged(TransactionChangedFn fn) = 0;
-
-    //! Register handler for watchonly changed messages.
-    using WatchOnlyChangedFn = std::function<void(bool have_watch_only)>;
-    virtual std::unique_ptr<Handler> handleWatchOnlyChanged(WatchOnlyChangedFn fn) = 0;
 
     //! Register handler for keypool changed messages.
     using CanGetAddressesChangedFn = std::function<void()>;

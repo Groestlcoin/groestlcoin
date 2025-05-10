@@ -11,8 +11,6 @@ Supporting RPCs are:
   addresses.
 - `listunspent` outputs a specialized descriptor for the reported unspent outputs.
 - `getaddressinfo` outputs a descriptor for solvable addresses (since v2.18).
-- `importmulti` takes as input descriptors to import into a legacy wallet
-  (since v2.18).
 - `generatetodescriptor` takes as input a descriptor and generates coins to it
   (`regtest` only, since v2.19).
 - `utxoupdatepsbt` takes as input descriptors to add information to the psbt
@@ -319,5 +317,5 @@ roughly 1 in a trillion chance of not detecting the errors.
 
 All RPCs in Groestlcoin Core will include the checksum in their output. Only
 certain RPCs require checksums on input, including `deriveaddresses` and
-`importmulti`. The checksum for a descriptor without one can be computed
+`importdescriptors`. The checksum for a descriptor without one can be computed
 using the `getdescriptorinfo` RPC.

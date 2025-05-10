@@ -42,10 +42,6 @@
 #include <string.h>
 #endif
 
-#if HAVE_DECL_GETIFADDRS && HAVE_DECL_FREEIFADDRS
-#include <ifaddrs.h>
-#endif
-
 #include <algorithm>
 #include <array>
 #include <cmath>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2022 The Bitcoin Core developers
+# Copyright (c) 2014-present The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Run regression test suite.
@@ -28,8 +28,6 @@ import sys
 import tempfile
 import re
 import logging
-
-os.environ["REQUIRE_WALLET_TYPE_SET"] = "1"
 
 # Minimum amount of space to run the tests.
 MIN_FREE_SPACE = 1.1 * 1024 * 1024 * 1024
@@ -357,6 +355,7 @@ BASE_SCRIPTS = [
     'p2p_handshake.py --v2transport',
     'feature_dirsymlinks.py',
     'feature_help.py',
+    'feature_framework_startup_failures.py',
     'feature_shutdown.py',
     'wallet_migration.py',
     'p2p_ibd_txrelay.py',

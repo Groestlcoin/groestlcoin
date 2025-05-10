@@ -20,16 +20,10 @@ from test_framework.util import (
 
 
 class ToolWalletTest(BitcoinTestFramework):
-    def add_options(self, parser):
-        parser.add_argument("--bdbro", action="store_true", help="Use the BerkeleyRO internal parser when dumping a Berkeley DB wallet file")
-        parser.add_argument("--swap-bdb-endian", action="store_true",help="When making Legacy BDB wallets, always make then byte swapped internally")
-
     def set_test_params(self):
         self.num_nodes = 1
         self.setup_clean_chain = True
         self.rpc_timeout = 120
-        if self.options.swap_bdb_endian:
-            self.extra_args = [["-swapbdbendian"]]
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_wallet()
@@ -37,8 +31,6 @@ class ToolWalletTest(BitcoinTestFramework):
 
     def bitcoin_wallet_process(self, *args):
         default_args = ['-datadir={}'.format(self.nodes[0].datadir_path), '-chain=%s' % self.chain]
-        if "dump" in args and self.options.bdbro:
-            default_args.append("-withinternalbdb")
 
         return subprocess.Popen(self.get_binaries().wallet_argv() + default_args + list(args), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
@@ -103,12 +95,6 @@ class ToolWalletTest(BitcoinTestFramework):
             file_magic = f.read(16)
             assert file_magic == b'SQLite format 3\x00'
 
-    def assert_is_bdb(self, filename):
-        with open(filename, 'rb') as f:
-            f.seek(12, 0)
-            file_magic = f.read(4)
-            assert file_magic == b'\x00\x05\x31\x62' or file_magic == b'\x62\x31\x05\x00'
-
     def write_dump(self, dump, filename, magic=None, skip_checksum=False):
         if magic is None:
             magic = "BITCOIN_CORE_WALLET_DUMP"
@@ -124,27 +110,6 @@ class ToolWalletTest(BitcoinTestFramework):
                 row = ",".join(["checksum", dump["checksum"]]) + "\n"
                 f.write(row)
 
-    def assert_dump(self, expected, received):
-        e = expected.copy()
-        r = received.copy()
-
-        # BDB will add a "version" record that is not present in sqlite
-        # In that case, we should ignore this record in both
-        # But because this also effects the checksum, we also need to drop that.
-        v_key = "0776657273696f6e" # Version key
-        if v_key in e and v_key not in r:
-            del e[v_key]
-            del e["checksum"]
-            del r["checksum"]
-        if v_key not in e and v_key in r:
-            del r[v_key]
-            del e["checksum"]
-            del r["checksum"]
-
-        assert_equal(len(e), len(r))
-        for k, v in e.items():
-            assert_equal(v, r[k])
-
     def do_tool_createfromdump(self, wallet_name, dumpfile):
         dumppath = self.nodes[0].datadir_path / dumpfile
         rt_dumppath = self.nodes[0].datadir_path / "rt-{}.dump".format(wallet_name)
@@ -159,12 +124,8 @@ class ToolWalletTest(BitcoinTestFramework):
 
         self.assert_tool_output("The dumpfile may contain private keys. To ensure the safety of your Bitcoin, do not share the dumpfile.\n", '-wallet={}'.format(wallet_name), '-dumpfile={}'.format(rt_dumppath), 'dump')
 
-        rt_dump_data = self.read_dump(rt_dumppath)
         wallet_dat = self.nodes[0].wallets_path / wallet_name / "wallet.dat"
-        if rt_dump_data["format"] == "bdb":
-            self.assert_is_bdb(wallet_dat)
-        else:
-            self.assert_is_sqlite(wallet_dat)
+        self.assert_is_sqlite(wallet_dat)
 
     def test_invalid_tool_commands_and_args(self):
         self.log.info('Testing that various invalid commands raise with specific error messages')
@@ -313,7 +274,7 @@ class ToolWalletTest(BitcoinTestFramework):
         self.assert_raises_tool_error('Dump file {} does not exist.'.format(non_exist_dump), '-wallet=todump', '-dumpfile={}'.format(non_exist_dump), 'createfromdump')
         wallet_path = self.nodes[0].wallets_path / "todump2"
         self.assert_raises_tool_error('Failed to create database path \'{}\'. Database already exists.'.format(wallet_path), '-wallet=todump2', '-dumpfile={}'.format(wallet_dump), 'createfromdump')
-        self.assert_raises_tool_error("The -descriptors option can only be used with the 'create' command.", '-descriptors', '-wallet=todump2', '-dumpfile={}'.format(wallet_dump), 'createfromdump')
+        self.assert_raises_tool_error("Invalid parameter -descriptors", '-descriptors', '-wallet=todump2', '-dumpfile={}'.format(wallet_dump), 'createfromdump')
 
         self.log.info('Checking createfromdump')
         self.do_tool_createfromdump("load", "wallet.dump")
@@ -455,9 +416,9 @@ class ToolWalletTest(BitcoinTestFramework):
     def test_no_create_legacy(self):
         self.log.info("Test that legacy wallets cannot be created")
 
-        self.assert_raises_tool_error("The -legacy option must be set to \"false\"", "-wallet=legacy", "-legacy", "create")
+        self.assert_raises_tool_error("Invalid parameter -legacy", "-wallet=legacy", "-legacy", "create")
         assert not (self.nodes[0].wallets_path / "legacy").exists()
-        self.assert_raises_tool_error("The -descriptors option must be set to \"true\"", "-wallet=legacy", "-descriptors=false", "create")
+        self.assert_raises_tool_error("Invalid parameter -descriptors", "-wallet=legacy", "-descriptors=false", "create")
         assert not (self.nodes[0].wallets_path / "legacy").exists()
 
     def run_test(self):

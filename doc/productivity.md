@@ -52,8 +52,6 @@ During the generation of the build system only essential build options are enabl
 
 Run `cmake -B build -LH` to see the full list of available options. GUI tools, such as `ccmake` and `cmake-gui`, can be also helpful.
 
-If you do need the wallet enabled (`-DENABLE_WALLET=ON`).
-
 ### Make use of your threads with `-j`
 
 If you have multiple threads on your machine, you can utilize all of them with:
