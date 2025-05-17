@@ -212,6 +212,7 @@ if(ENABLE_WALLET)
       wallet/wallettool.cpp
     )
     add_windows_resources(groestlcoin-wallet groestlcoin-wallet-res.rc)
+    add_windows_application_manifest(groestlcoin-wallet)
     target_link_libraries(groestlcoin-wallet
       core_interface
       bitcoin_wallet
@@ -348,6 +349,7 @@ if(BUILD_DAEMON)
     init/groestlcoind.cpp
   )
   add_windows_resources(groestlcoind groestlcoind-res.rc)
+  add_windows_application_manifest(groestlcoind)
   target_link_libraries(groestlcoind
     core_interface
     bitcoin_node
@@ -401,6 +403,7 @@ target_link_libraries(bitcoin_cli
 if(BUILD_CLI)
   add_executable(groestlcoin-cli groestlcoin-cli.cpp)
   add_windows_resources(groestlcoin-cli groestlcoin-cli-res.rc)
+  add_windows_application_manifest(groestlcoin-cli)
   target_link_libraries(groestlcoin-cli
     core_interface
     bitcoin_cli
@@ -416,6 +419,7 @@ endif()
 if(BUILD_TX)
   add_executable(groestlcoin-tx groestlcoin-tx.cpp)
   add_windows_resources(groestlcoin-tx groestlcoin-tx-res.rc)
+  add_windows_application_manifest(groestlcoin-tx)
   target_link_libraries(groestlcoin-tx
     core_interface
     bitcoin_common
@@ -429,6 +433,7 @@ endif()
 if(BUILD_UTIL)
   add_executable(groestlcoin-util groestlcoin-util.cpp)
   add_windows_resources(groestlcoin-util groestlcoin-util-res.rc)
+  add_windows_application_manifest(groestlcoin-util)
   target_link_libraries(groestlcoin-util
     core_interface
     bitcoin_common

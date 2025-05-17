@@ -256,6 +256,7 @@ add_executable(groestlcoin-qt
 )
 
 add_windows_resources(groestlcoin-qt res/groestlcoin-qt-res.rc)
+add_windows_application_manifest(groestlcoin-qt)
 
 target_link_libraries(groestlcoin-qt
   core_interface

@@ -138,7 +138,7 @@ if(WITH_QRENCODE)
   set(USE_QRCODE TRUE)
 endif()
 
-cmake_dependent_option(WITH_DBUS "Enable DBus support." ON "CMAKE_SYSTEM_NAME STREQUAL \"Linux\" AND BUILD_GUI" OFF)
+cmake_dependent_option(WITH_DBUS "Enable DBus support." ON "NOT CMAKE_SYSTEM_NAME MATCHES \"(Windows|Darwin)\" AND BUILD_GUI" OFF)
 
 option(ENABLE_IPC "Build multiprocess groestlcoin-node and groestlcoin-gui executables in addition to monolithic groestlcoind and groestlcoin-qt executables. Requires libmultiprocess library. Experimental." OFF)
 cmake_dependent_option(WITH_EXTERNAL_LIBMULTIPROCESS "Build with external libmultiprocess library instead of with local git subtree when ENABLE_IPC is enabled. This is not normally recommended, but can be useful for developing libmultiprocess itself." OFF "ENABLE_IPC" OFF)
@@ -275,6 +275,10 @@ if(WIN32)
       /Zc:preprocessor
       /Zc:__cplusplus
       /sdl
+    )
+    target_link_options(core_interface INTERFACE
+      # We embed our own manifests.
+      /MANIFEST:NO
     )
     # Improve parallelism in MSBuild.
     # See: https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/.
@@ -679,7 +683,7 @@ endif()
 message("  IPC ................................. ${ipc_status}")
 message("  USDT tracing ........................ ${WITH_USDT}")
 message("  QR code (GUI) ....................... ${WITH_QRENCODE}")
-message("  DBus (GUI, Linux only) .............. ${WITH_DBUS}")
+message("  DBus (GUI) .......................... ${WITH_DBUS}")
 message("Tests:")
 message("  test_groestlcoin ........................ ${BUILD_TESTS}")
 message("  test_groestlcoin-qt ..................... ${BUILD_GUI_TESTS}")
