@@ -2,7 +2,7 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
       type="win32"
-      name="org.bitcoincore.${target}"
+      name="org.groestlcoin.${target}"
       version="${CLIENT_VERSION_MAJOR}.${CLIENT_VERSION_MINOR}.${CLIENT_VERSION_BUILD}.0"
   />
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
