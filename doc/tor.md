@@ -27,6 +27,8 @@ e.g. for `-onlynet=onion`.
 
 You can use the `getnodeaddresses` RPC to fetch a number of onion peers known to your node; run `groestlcoin-cli help getnodeaddresses` for details.
 
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli`.
+
 ## 1. Run Groestlcoin Core behind a Tor proxy
 
 The first step is running Groestlcoin Core behind a Tor proxy. This will already anonymize all
@@ -63,6 +65,8 @@ outgoing connections, but more is possible.
 In a typical situation, this suffices to run behind a Tor proxy:
 
     ./groestlcoind -proxy=127.0.0.1:9050
+
+`groestlcoin node` or `groestlcoin gui` can also be substituted for `groestlcoind`.
 
 ## 2. Automatically create a Groestlcoin Core onion service
 

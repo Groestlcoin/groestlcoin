@@ -112,4 +112,6 @@ There are several ways to see your CJDNS address in Groestlcoin Core:
 To see which CJDNS peers your node is connected to, use `groestlcoin-cli -netinfo 4`
 or the `getpeerinfo` RPC (i.e. `groestlcoin-cli getpeerinfo`).
 
-You can use the `getnodeaddresses` RPC to fetch a number of CJDNS peers known to your node; run `groestcoin-cli help getnodeaddresses` for details.
+You can use the `getnodeaddresses` RPC to fetch a number of CJDNS peers known to your node; run `groestlcoin-cli help getnodeaddresses` for details.
+
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli`.

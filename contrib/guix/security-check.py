@@ -126,6 +126,9 @@ def check_ELF_FORTIFY(binary) -> bool:
     # groestlcoin-util does not currently contain any fortified functions
     if 'Groestlcoin Core groestlcoin-util utility version ' in binary.strings:
         return True
+    # bitcoin wrapper does not currently contain any fortified functions
+    if '--monolithic' in binary.strings:
+        return True
 
     chk_funcs = set()
 

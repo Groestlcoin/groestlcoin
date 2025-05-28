@@ -199,8 +199,12 @@ cmake --build build --target deploy
 Groestlcoin Core should now be available at `./build/bin/groestlcoind`.
 If you compiled support for the GUI, it should be available at `./build/bin/groestlcoin-qt`.
 
+There is also a multifunction command line interface at `./build/bin/groestlcoin`
+supporting subcommands like `groestlcoin node`, `groestlcoin gui`, `groestlcoin rpc`, and
+others that can be listed with `groestlcoin help`.
+
 The first time you run `groestlcoind` or `groestlcoin-qt`, it will start downloading the blockchain.
-This process could take couple of hours.
+This process could take many hours, or even days on slower than average systems.
 
 By default, blockchain and wallet data files will be stored in:
 

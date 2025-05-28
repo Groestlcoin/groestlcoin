@@ -23,7 +23,7 @@ function(add_maintenance_targets)
     return()
   endif()
 
-  foreach(target IN ITEMS groestlcoind groestlcoin-qt groestlcoin-cli groestlcoin-tx groestlcoin-util groestlcoin-wallet test_groestlcoin bench_groestlcoin)
+  foreach(target IN ITEMS groestlcoin groestlcoind groestlcoin-qt groestlcoin-cli groestlcoin-tx groestlcoin-util groestlcoin-wallet test_groestlcoin bench_groestlcoin)
     if(TARGET ${target})
       list(APPEND executables $<TARGET_FILE:${target}>)
     endif()
@@ -43,7 +43,7 @@ function(add_maintenance_targets)
 endfunction()
 
 function(add_windows_deploy_target)
-  if(MINGW AND TARGET groestlcoin-qt AND TARGET groestlcoind AND TARGET groestlcoin-cli AND TARGET groestlcoin-tx AND TARGET groestlcoin-wallet AND TARGET groestlcoin-util AND TARGET test_groestlcoin)
+  if(MINGW AND TARGET groestlcoin AND TARGET groestlcoin-qt AND TARGET groestlcoind AND TARGET groestlcoin-cli AND TARGET groestlcoin-tx AND TARGET groestlcoin-wallet AND TARGET groestlcoin-util AND TARGET test_groestlcoin)
     find_program(MAKENSIS_EXECUTABLE makensis)
     if(NOT MAKENSIS_EXECUTABLE)
       add_custom_target(deploy
@@ -59,6 +59,7 @@ function(add_windows_deploy_target)
     add_custom_command(
       OUTPUT ${PROJECT_BINARY_DIR}/groestlcoin-win64-setup.exe
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/release
+      COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoin> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoin>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoin-qt> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoin-qt>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoind> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoind>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:groestlcoin-cli> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:groestlcoin-cli>

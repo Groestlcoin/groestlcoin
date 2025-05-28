@@ -25,8 +25,8 @@ make -C depends NO_QT=1 MULTIPROCESS=1
 HOST_PLATFORM="x86_64-pc-linux-gnu"
 cmake -B build --toolchain=depends/$HOST_PLATFORM/toolchain.cmake
 cmake --build build
-build/bin/groestlcoin-node -regtest -printtoconsole -debug=ipc
-GROESTLCOIND=$(pwd)/build/bin/groestlcoin-node build/test/functional/test_runner.py
+build/bin/groestlcoin -m node -regtest -printtoconsole -debug=ipc
+GROESTLCOIN_CMD="groestlcoin -m" build/test/functional/test_runner.py
 ```
 
 The `cmake` build will pick up settings and library locations from the depends directory, so there is no need to pass `-DENABLE_IPC=ON` as a separate flag when using the depends system (it's controlled by the `MULTIPROCESS=1` option).
@@ -41,6 +41,11 @@ By default when `-DENABLE_IPC=ON` is enabled, the libmultiprocess sources at [..
 
 ## Usage
 
-`groestlcoin-node` is a drop-in replacement for `groestlcoind`, and `groestlcoin-gui` is a drop-in replacement for `groestlcoin-qt`, and there are no differences in use or external behavior between the new and old executables. But internally after [#10102](https://github.com/bitcoin/bitcoin/pull/10102), `groestlcoin-gui` will spawn a `groestlcoin-node` process to run P2P and RPC code, communicating with it across a socket pair, and `groestlcoin-node` will spawn `groestlcoin-wallet` to run wallet code, also communicating over a socket pair. This will let node, wallet, and GUI code run in separate address spaces for better isolation, and allow future improvements like being able to start and stop components independently on different machines and environments.
-[#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `groestlcoin-node` `-ipcbind` option and a `groestlcoind-wallet` `-ipcconnect` option to allow new wallet processes to connect to an existing node process.
-And [#19461](https://github.com/bitcoin/bitcoin/pull/19461) adds a new `groestlcoin-gui` `-ipcconnect` option to allow new GUI processes to connect to an existing node process.
+Recommended way to use multiprocess binaries is to invoke `groestlcoin` CLI like `groestlcoin -m node -debug=ipc` or `groestlcoin -m gui -printtoconsole -debug=ipc`.
+
+When the `-m` (`--multiprocess`) option is used the `groestlcoin` command will execute multiprocess binaries instead of monolithic ones (`groestlcoin-node` instead of `groestlcoind`, and `groestlcoin-gui` instead of `groestlcoin-qt`). The multiprocess binaries can also be invoked directly, but this is not recommended as they may change or be renamed in the future, and they are not installed in the PATH.
+
+The multiprocess binaries currently function the same as the monolithic binaries, except they support an `-ipcbind` option.
+
+In the future, after [#10102](https://github.com/bitcoin/bitcoin/pull/10102) they will have other differences. Specifically `groestlcoin-gui` will spawn a `groestlcoin-node` process to run P2P and RPC code, communicating with it across a socket pair, and `groestlcoin-node` will spawn `groestlcoin-wallet` to run wallet code, also communicating over a socket pair. This will let node, wallet, and GUI code run in separate address spaces for better isolation, and allow future improvements like being able to start and stop components independently on different machines and environments. [#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `groestlcoin-wallet -ipcconnect` option to allow new wallet processes to connect to an existing node process.
+And [#19461](https://github.com/bitcoin/bitcoin/pull/19461) adds a new `groestlcoin-gui -ipcconnect` option to allow new GUI processes to connect to an existing node process.

@@ -17,6 +17,9 @@ Unpack the files into a directory and run:
 
 - `bin/groestlcoin-qt` (GUI) or
 - `bin/groestlcoind` (headless)
+- `bin/groestlcoin` (wrapper command)
+
+The `groestlcoin` command supports subcommands like `groestlcoin gui`, `groestlcoin node`, and `groestlcoin rpc` exposing different functionality. Subcommands can be listed with `groestlcoin help`.
 
 ### Windows
 

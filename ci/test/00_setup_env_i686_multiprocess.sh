@@ -19,4 +19,4 @@ export GROESTLCOIN_CONFIG="\
  -DCMAKE_CXX_COMPILER='clang++;-m32' \
  -DAPPEND_CPPFLAGS='-DBOOST_MULTI_INDEX_ENABLE_SAFE_MODE' \
 "
-export GROESTLCOIND=groestlcoin-node  # Used in functional tests
+export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests
