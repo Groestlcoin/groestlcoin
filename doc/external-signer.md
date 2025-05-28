@@ -14,7 +14,7 @@ Start Groestlcoin Core:
 $ groestlcoind -signer=../HWI/hwi.py
 ```
 
-`bitcoin node` can also be substituted for `bitcoind`.
+`groestlcoin node` can also be substituted for `groestlcoind`.
 
 ### Device setup
 
@@ -42,7 +42,7 @@ Create a wallet, this automatically imports the public keys:
 $ groestlcoin-cli createwallet "hww" true true "" true true true
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli`.
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli`.
 
 ### Verify an address
 

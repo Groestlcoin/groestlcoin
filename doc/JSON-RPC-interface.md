@@ -62,7 +62,7 @@ groestlcoin-cli -named createwallet wallet_name=mywallet load_on_startup=true
 groestlcoin-cli -named createwallet mywallet load_on_startup=true
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli -named`, and is a newer alternative.
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli -named`, and is a newer alternative.
 
 ## Versioning
 

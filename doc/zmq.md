@@ -87,7 +87,7 @@ For instance:
                -zmqpubrawtx=ipc:///tmp/groestlcoind.tx.raw \
                -zmqpubhashtxhwm=10000
 
-`bitcoin node` or `bitcoin gui` can also be substituted for `bitcoind`.
+`groestlcoin node` or `groestlcoin gui` can also be substituted for `groestlcoind`.
 
 Notification types correspond to message topics (details in next section). For instance,
 for the notification `-zmqpubhashtx` the topic is `hashtx`. These options can also be

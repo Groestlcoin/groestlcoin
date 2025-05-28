@@ -34,7 +34,7 @@ We are going to first create an `offline_wallet` on the offline host. We will th
 }
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli`.
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli`.
 
 > [!NOTE]
 > The use of a passphrase is crucial to encrypt the wallet.dat file. This encryption ensures that even if an unauthorized individual gains access to the offline host, they won't be able to access the wallet's contents. Further details about securing your wallet can be found in  [Managing the Wallet](https://github.com/Groestlcoin/groestlcoin/blob/master/doc/managing-wallets.md#12-encrypting-the-wallet)

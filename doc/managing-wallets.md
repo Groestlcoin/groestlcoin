@@ -15,7 +15,7 @@ The following command, for example, creates a descriptor wallet. More informatio
 $ groestlcoin-cli createwallet "wallet-01"
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli`.
+`groestlcoin rpc` can also be substituted for `groestlcoin-cli`.
 
 By default, wallets are created in the `wallets` folder of the data directory, which varies by operating system, as shown below. The user can change the default by using the `-datadir` or `-walletdir` initialization parameters.
 
