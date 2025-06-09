@@ -14,14 +14,14 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "Bitcoin"
-            VALUE "FileDescription",    "bitcoin (Bitcoin wrapper executable that can call other executables)"
+            VALUE "CompanyName",        "Groestlcoin"
+            VALUE "FileDescription",    "groestlcoin (Groestlcoin wrapper executable that can call other executables)"
             VALUE "FileVersion",        CLIENT_VERSION_STRING
-            VALUE "InternalName",       "bitcoin"
+            VALUE "InternalName",       "groestlcoin"
             VALUE "LegalCopyright",     COPYRIGHT_STR
             VALUE "LegalTrademarks1",   "Distributed under the MIT software license, see the accompanying file COPYING or http://www.opensource.org/licenses/mit-license.php."
-            VALUE "OriginalFilename",   "bitcoin.exe"
-            VALUE "ProductName",        "bitcoin"
+            VALUE "OriginalFilename",   "groestlcoin.exe"
+            VALUE "ProductName",        "groestlcoin"
             VALUE "ProductVersion",     CLIENT_VERSION_STRING
         END
     END
