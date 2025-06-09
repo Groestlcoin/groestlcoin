@@ -344,6 +344,8 @@ target_link_libraries(bitcoin_node
 # Groestlcoin wrapper executable that can call other executables.
 if(BUILD_BITCOIN_BIN)
   add_executable(groestlcoin bitcoin.cpp)
+  add_windows_resources(groestlcoin groestlcoin-res.rc)
+  add_windows_application_manifest(groestlcoin)
   target_link_libraries(groestlcoin core_interface bitcoin_util)
   install_binary_component(groestlcoin)
 endif()

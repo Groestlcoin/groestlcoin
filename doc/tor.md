@@ -64,7 +64,7 @@ outgoing connections, but more is possible.
 
 In a typical situation, this suffices to run behind a Tor proxy:
 
-    ./groestlcoind -proxy=127.0.0.1:9050
+    groestlcoind -proxy=127.0.0.1:9050
 
 `groestlcoin node` or `groestlcoin gui` can also be substituted for `groestlcoind`.
 
@@ -191,25 +191,25 @@ should be equal to binding address and port for inbound Tor connections (127.0.0
 
 In a typical situation, where you're only reachable via Tor, this should suffice:
 
-    ./groestlcoind -proxy=127.0.0.1:9050 -externalip=wd6qntxyftioxzwlelevsdrieh7ruxzsju2qna42culnqkbv32yhetad.onion -listen
+    groestlcoind -proxy=127.0.0.1:9050 -externalip=wd6qntxyftioxzwlelevsdrieh7ruxzsju2qna42culnqkbv32yhetad.onion -listen
 
 (obviously, replace the .onion address with your own). It should be noted that you still
 listen on all devices and another node could establish a clearnet connection, when knowing
 your address. To mitigate this, additionally bind the address of your Tor proxy:
 
-    ./groestlcoind ... -bind=127.0.0.1:1442=onion
+    groestlcoind ... -bind=127.0.0.1:1442=onion
 
 If you don't care too much about hiding your node, and want to be reachable on IPv4
 as well, use `discover` instead:
 
-    ./groestlcoind ... -discover
+    groestlcoind ... -discover
 
 and open port 1331 on your firewall (or use port mapping, i.e., `-natpmp`).
 
 If you only want to use Tor to reach .onion addresses, but not use it as a proxy
 for normal IPv4/IPv6 communication, use:
 
-    ./groestlcoind -onion=127.0.0.1:9050 -externalip=wd6qntxyftioxzwlelevsdrieh7ruxzsju2qna42culnqkbv32yhetad.onion -discover
+    groestlcoind -onion=127.0.0.1:9050 -externalip=wd6qntxyftioxzwlelevsdrieh7ruxzsju2qna42culnqkbv32yhetad.onion -discover
 
 ## 4. Privacy recommendations
 
