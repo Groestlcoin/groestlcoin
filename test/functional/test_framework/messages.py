@@ -74,8 +74,10 @@ WITNESS_SCALE_FACTOR = 4
 DEFAULT_ANCESTOR_LIMIT = 25    # default max number of in-mempool ancestors
 DEFAULT_DESCENDANT_LIMIT = 25  # default max number of in-mempool descendants
 
-# Default setting for -datacarriersize. 80 bytes of data, +1 for OP_RETURN, +2 for the pushdata opcodes.
-MAX_OP_RETURN_RELAY = 83
+
+# Default setting for -datacarriersize.
+MAX_OP_RETURN_RELAY = 100_000
+
 
 DEFAULT_MEMPOOL_EXPIRY_HOURS = 336  # hours
 
@@ -83,7 +85,7 @@ MAGIC_BYTES = {
     "mainnet": b"\xf9\xbe\xb4\xd4",
     "testnet4": b"\x0b\x11\x09\x07",
     "regtest": b"\xfa\xbf\xb5\xda",
-    "signet": b"\x0a\x03\xcf\x40", 
+    "signet": b"\x0a\x03\xcf\x40",
 }
 
 def sha256(s):
@@ -586,8 +588,7 @@ class CTxWitness:
 
 
 class CTransaction:
-    __slots__ = ("hash", "nLockTime", "version", "sha256", "vin", "vout",
-                 "wit")
+    __slots__ = ("nLockTime", "version", "vin", "vout", "wit")
 
     def __init__(self, tx=None):
         if tx is None:
@@ -596,15 +597,11 @@ class CTransaction:
             self.vout = []
             self.wit = CTxWitness()
             self.nLockTime = 0
-            self.sha256 = None
-            self.hash = None
         else:
             self.version = tx.version
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
-            self.sha256 = tx.sha256
-            self.hash = tx.hash
             self.wit = copy.deepcopy(tx.wit)
 
     def deserialize(self, f):
@@ -626,8 +623,6 @@ class CTransaction:
         else:
             self.wit = CTxWitness()
         self.nLockTime = int.from_bytes(f.read(4), "little")
-        self.sha256 = None
-        self.hash = None
 
     def serialize_without_witness(self):
         r = b""
@@ -665,28 +660,27 @@ class CTransaction:
     def serialize(self):
         return self.serialize_with_witness()
 
-    def getwtxid(self):
+    @property
+    def wtxid_hex(self):
+        """Return wtxid (transaction hash with witness) as hex string."""
         return hash256(self.serialize())[::-1].hex()
 
-    # Recalculate the txid (transaction hash without witness)
-    def rehash(self):
-        self.sha256 = None
-        self.calc_sha256()
-        return self.hash
+    @property
+    def wtxid_int(self):
+        """Return wtxid (transaction hash with witness) as integer."""
+        return uint256_from_str(hash256(self.serialize_with_witness()))
 
-    # We will only cache the serialization without witness in
-    # self.sha256 and self.hash -- those are expected to be the txid.
-    def calc_sha256(self, with_witness=False):
-        if with_witness:
-            # Don't cache the result, just return it
-            return uint256_from_str(sha256(self.serialize_with_witness()))
+    @property
+    def txid_hex(self):
+        """Return txid (transaction hash without witness) as hex string."""
+        return sha256(self.serialize_without_witness())[::-1].hex()
 
-        if self.sha256 is None:
-            self.sha256 = uint256_from_str(sha256(self.serialize_without_witness()))
-        self.hash = sha256(self.serialize_without_witness())[::-1].hex()
+    @property
+    def txid_int(self):
+        """Return txid (transaction hash without witness) as integer."""
+        return uint256_from_str(sha256(self.serialize_without_witness()))
 
     def is_valid(self):
-        self.calc_sha256()
         for tout in self.vout:
             if tout.nValue < 0 or tout.nValue > 21000000 * COIN:
                 return False
@@ -814,8 +808,7 @@ class CBlock(CBlockHeader):
     def calc_merkle_root(self):
         hashes = []
         for tx in self.vtx:
-            tx.calc_sha256()
-            hashes.append(ser_uint256(tx.sha256))
+            hashes.append(ser_uint256(tx.txid_int))
         return self.get_merkle_root(hashes)
 
     def calc_witness_merkle_root(self):
@@ -825,7 +818,7 @@ class CBlock(CBlockHeader):
 
         for tx in self.vtx[1:]:
             # Calculate the hashes with witness data
-            hashes.append(ser_uint256(tx.calc_sha256(True)))
+            hashes.append(ser_uint256(tx.wtxid_int))
 
         return self.get_merkle_root(hashes)
 
@@ -1007,9 +1000,9 @@ class HeaderAndShortIDs:
         [k0, k1] = self.get_siphash_keys()
         for i in range(len(block.vtx)):
             if i not in prefill_list:
-                tx_hash = block.vtx[i].sha256
+                tx_hash = block.vtx[i].txid_int
                 if use_witness:
-                    tx_hash = block.vtx[i].calc_sha256(with_witness=True)
+                    tx_hash = block.vtx[i].wtxid_int
                 self.shortids.append(calculate_shortid(k0, k1, tx_hash))
 
     def __repr__(self):

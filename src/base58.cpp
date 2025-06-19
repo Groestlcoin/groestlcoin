@@ -10,8 +10,8 @@
 #include <util/strencodings.h>
 #include <util/string.h>
 
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 
 #include <limits>
 

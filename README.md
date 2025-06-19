@@ -96,6 +96,8 @@ in Python.
 These tests can be run (if the [test dependencies](/test) are installed) with: `build/test/functional/test_runner.py`
 (assuming `build` is your build directory).
 
+The CI (Continuous Integration) systems make sure that every pull request is tested on Windows, Linux, and macOS.
+The CI must pass on all commits before merge to avoid unrelated CI failures on new pull requests.
 
 The -debug=... command-line option controls debugging; running with just -debug will turn
 on all categories (and give you a very large debug.log file).
@@ -113,7 +115,11 @@ If you are testing something that can run on one machine, run with the -regtest 
 Translations
 ------------
 
-Translations are periodically pulled from Transifex and merged into the git repository.
+Changes to translations as well as new translations can be submitted to
+[Bitcoin Core's Transifex page](https://explore.transifex.com/bitcoin/bitcoin/).
+
+Translations are periodically pulled from Transifex and merged into the git repository. See the
+[translation process](doc/translation_process.md) for details on how this works.
 
 **Important**: We do not accept translation changes as GitHub pull requests because the next
 pull from Transifex would automatically overwrite them again.

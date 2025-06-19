@@ -22,7 +22,7 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "Groestlcoin"
+            VALUE "CompanyName",        CLIENT_NAME " project"
             VALUE "FileDescription",    CLIENT_NAME " (GUI node for Groestlcoin)"
             VALUE "FileVersion",        VER_FILEVERSION_STR
             VALUE "InternalName",       "groestlcoin-qt"
