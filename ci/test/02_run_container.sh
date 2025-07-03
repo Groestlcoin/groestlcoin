@@ -5,7 +5,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 export LC_ALL=C.UTF-8
-export CI_IMAGE_LABEL="bitcoin-ci-test"
+export CI_IMAGE_LABEL="groestlcoin-ci-test"
 
 set -o errexit -o pipefail -o xtrace
 
