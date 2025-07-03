@@ -4,7 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <groestlcoin.h>
-#include <boost/assign/list_of.hpp>
 #include <arith_uint256.h>
 #include <chain.h>
 #include <consensus/params.h>
@@ -37,9 +36,6 @@ using namespace util::hex_literals;
 
 #include <assert.h>
 #include <memory>
-
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
 
 // Workaround MSVC bug triggering C7595 when calling consteval constructors in
 // initializer lists.
