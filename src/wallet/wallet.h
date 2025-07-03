@@ -160,14 +160,24 @@ static constexpr uint64_t KNOWN_WALLET_FLAGS =
 static constexpr uint64_t MUTABLE_WALLET_FLAGS =
         WALLET_FLAG_AVOID_REUSE;
 
-static const std::map<std::string,WalletFlags> WALLET_FLAG_MAP{
-    {"avoid_reuse", WALLET_FLAG_AVOID_REUSE},
-    {"blank", WALLET_FLAG_BLANK_WALLET},
-    {"key_origin_metadata", WALLET_FLAG_KEY_ORIGIN_METADATA},
-    {"last_hardened_xpub_cached", WALLET_FLAG_LAST_HARDENED_XPUB_CACHED},
-    {"disable_private_keys", WALLET_FLAG_DISABLE_PRIVATE_KEYS},
-    {"descriptor_wallet", WALLET_FLAG_DESCRIPTORS},
-    {"external_signer", WALLET_FLAG_EXTERNAL_SIGNER}
+static const std::map<WalletFlags, std::string> WALLET_FLAG_TO_STRING{
+    {WALLET_FLAG_AVOID_REUSE, "avoid_reuse"},
+    {WALLET_FLAG_BLANK_WALLET, "blank"},
+    {WALLET_FLAG_KEY_ORIGIN_METADATA, "key_origin_metadata"},
+    {WALLET_FLAG_LAST_HARDENED_XPUB_CACHED, "last_hardened_xpub_cached"},
+    {WALLET_FLAG_DISABLE_PRIVATE_KEYS, "disable_private_keys"},
+    {WALLET_FLAG_DESCRIPTORS, "descriptor_wallet"},
+    {WALLET_FLAG_EXTERNAL_SIGNER, "external_signer"}
+};
+
+static const std::map<std::string, WalletFlags> STRING_TO_WALLET_FLAG{
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_AVOID_REUSE), WALLET_FLAG_AVOID_REUSE},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_BLANK_WALLET), WALLET_FLAG_BLANK_WALLET},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_KEY_ORIGIN_METADATA), WALLET_FLAG_KEY_ORIGIN_METADATA},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_LAST_HARDENED_XPUB_CACHED), WALLET_FLAG_LAST_HARDENED_XPUB_CACHED},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_DISABLE_PRIVATE_KEYS), WALLET_FLAG_DISABLE_PRIVATE_KEYS},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_DESCRIPTORS), WALLET_FLAG_DESCRIPTORS},
+    {WALLET_FLAG_TO_STRING.at(WALLET_FLAG_EXTERNAL_SIGNER), WALLET_FLAG_EXTERNAL_SIGNER}
 };
 
 /** A wrapper to reserve an address from a wallet
@@ -428,6 +438,9 @@ private:
     //! Cache of descriptor ScriptPubKeys used for IsMine. Maps ScriptPubKey to set of spkms
     std::unordered_map<CScript, std::vector<ScriptPubKeyMan*>, SaltedSipHasher> m_cached_spks;
 
+    //! Set of both spent and unspent transaction outputs owned by this wallet
+    std::unordered_map<COutPoint, WalletTXO, SaltedOutpointHasher> m_txos GUARDED_BY(cs_wallet);
+
     /**
      * Catch wallet up to current chain, scanning new blocks, updating the best
      * block locator and m_last_block_processed, and registering for
@@ -509,6 +522,14 @@ public:
     const CWalletTx* GetWalletTx(const Txid& hash) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     std::set<Txid> GetTxConflicts(const CWalletTx& wtx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+
+    const std::unordered_map<COutPoint, WalletTXO, SaltedOutpointHasher>& GetTXOs() const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet) { AssertLockHeld(cs_wallet); return m_txos; };
+    std::optional<WalletTXO> GetTXO(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+
+    /** Cache outputs that belong to the wallet from a single transaction */
+    void RefreshTXOsFromTx(const CWalletTx& wtx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    /** Cache outputs that belong to the wallet for all transactions in the wallet */
+    void RefreshAllTXOs() EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /**
      * Return depth of transaction in blockchain:
@@ -904,6 +925,8 @@ public:
     void InitWalletFlags(uint64_t flags);
     /** Loads the flags into the wallet. (used by LoadWallet) */
     bool LoadWalletFlags(uint64_t flags);
+    //! Retrieve all of the wallet's flags
+    uint64_t GetWalletFlags() const;
 
     /** Returns a bracketed wallet name for displaying in logs, will return [default wallet] if the wallet has no name */
     std::string GetDisplayName() const override

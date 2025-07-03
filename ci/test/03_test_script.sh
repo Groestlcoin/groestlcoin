@@ -83,7 +83,7 @@ if [ -z "$NO_DEPENDS" ]; then
   bash -c "$SHELL_OPTS make $MAKEJOBS -C depends HOST=$HOST $DEP_OPTS LOG=1"
 fi
 if [ "$DOWNLOAD_PREVIOUS_RELEASES" = "true" ]; then
-  test/get_previous_releases.py -b -t "$PREVIOUS_RELEASES_DIR"
+  test/get_previous_releases.py --target-dir "$PREVIOUS_RELEASES_DIR"
 fi
 
 GROESTLCOIN_CONFIG_ALL="-DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF"

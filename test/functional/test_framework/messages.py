@@ -233,6 +233,11 @@ def ser_string_vector(l):
     return r
 
 
+def deser_block_spent_outputs(f):
+    nit = deser_compact_size(f)
+    return [deser_vector(f, CTxOut) for _ in range(nit)]
+
+
 def from_hex(obj, hex_string):
     """Deserialize from a hex string representation (e.g. from RPC)
 
@@ -1372,10 +1377,10 @@ class msg_block:
         return "msg_block(block=%s)" % (repr(self.block))
 
 
-# for cases where a user needs tighter control over what is sent over the wire
-# note that the user must supply the name of the msgtype, and the data
+# Generic type to control the raw bytes sent over the wire.
+# The msgtype and the data must be provided.
 class msg_generic:
-    __slots__ = ("data")
+    __slots__ = ("msgtype", "data")
 
     def __init__(self, msgtype, data=None):
         self.msgtype = msgtype

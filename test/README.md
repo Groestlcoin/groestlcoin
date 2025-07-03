@@ -10,10 +10,9 @@ This directory contains the following sets of tests:
 - [functional](/test/functional) which test the functionality of
 bitcoind and bitcoin-qt by interacting with them through the RPC and P2P
 interfaces.
-- [util](/test/util) which tests the utilities (bitcoin-util, bitcoin-tx, ...).
 - [lint](/test/lint/) which perform various static analysis checks.
 
-The util tests are run as part of `ctest` invocation. The fuzz tests, functional
+The fuzz tests, functional
 tests and lint scripts can be run as explained in the sections below.
 
 # Running tests locally
@@ -100,7 +99,7 @@ build/test/functional/test_runner.py --extended
 In order to run backwards compatibility tests, first run:
 
 ```
-test/get_previous_releases.py -b
+test/get_previous_releases.py
 ```
 
 to download the necessary previous release binaries.
@@ -320,11 +319,6 @@ perf report -i /path/to/datadir/send-big-msgs.perf.data.xxxx --stdio | c++filt |
 
 For ways to generate more granular profiles, see the README in
 [test/functional](/test/functional).
-
-### Util tests
-
-Util tests can be run locally by running `build/test/util/test_runner.py`.
-Use the `-v` option for verbose output.
 
 ### Lint tests
 

@@ -8,6 +8,7 @@ import configparser
 from enum import Enum
 import argparse
 from datetime import datetime, timezone
+import json
 import logging
 import os
 import platform
@@ -83,6 +84,10 @@ class Binaries:
         "Return argv array that should be used to invoke bitcoin-cli"
         # Add -nonamed because "bitcoin rpc" enables -named by default, but bitcoin-cli doesn't
         return self._argv("rpc", self.paths.bitcoincli) + ["-nonamed"]
+
+    def tx_argv(self):
+        "Return argv array that should be used to invoke bitcoin-tx"
+        return self._argv("tx", self.paths.bitcointx)
 
     def util_argv(self):
         "Return argv array that should be used to invoke bitcoin-util"
@@ -272,9 +277,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         self.options.timeout_factor = self.options.timeout_factor or (4 if self.options.valgrind else 1)
         self.options.previous_releases_path = previous_releases_path
 
-        config = configparser.ConfigParser()
-        config.read_file(open(self.options.configfile))
-        self.config = config
+        self.config = configparser.ConfigParser()
+        self.config.read_file(open(self.options.configfile))
         self.binary_paths = self.get_binary_paths()
         if self.options.v1transport:
             self.options.v2transport=False
@@ -286,19 +290,20 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         paths = types.SimpleNamespace()
         binaries = {
-            "bitcoind": ("bitcoind", "BITCOIND"),
-            "bitcoin-cli": ("bitcoincli", "BITCOINCLI"),
-            "bitcoin-util": ("bitcoinutil", "BITCOINUTIL"),
-            "bitcoin-chainstate": ("bitcoinchainstate", "BITCOINCHAINSTATE"),
-            "bitcoin-wallet": ("bitcoinwallet", "BITCOINWALLET"),
+            "bitcoind": "BITCOIND",
+            "bitcoin-cli": "BITCOINCLI",
+            "bitcoin-util": "BITCOINUTIL",
+            "bitcoin-tx": "BITCOINTX",
+            "bitcoin-chainstate": "BITCOINCHAINSTATE",
+            "bitcoin-wallet": "BITCOINWALLET",
         }
-        for binary, [attribute_name, env_variable_name] in binaries.items():
+        for binary, env_variable_name in binaries.items():
             default_filename = os.path.join(
                 self.config["environment"]["BUILDDIR"],
                 "bin",
                 binary + self.config["environment"]["EXEEXT"],
             )
-            setattr(paths, attribute_name, os.getenv(env_variable_name, default=default_filename))
+            setattr(paths, env_variable_name.lower(), os.getenv(env_variable_name, default=default_filename))
         # BITCOIN_CMD environment variable can be specified to invoke bitcoin
         # wrapper binary instead of other executables.
         paths.bitcoin_cmd = shlex.split(os.getenv("BITCOIN_CMD", "")) or None
@@ -314,10 +319,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         self.options.cachedir = os.path.abspath(self.options.cachedir)
 
-        config = self.config
-
         os.environ['PATH'] = os.pathsep.join([
-            os.path.join(config['environment']['BUILDDIR'], 'bin'),
+            os.path.join(self.config["environment"]["BUILDDIR"], "bin"),
             os.environ['PATH']
         ])
 
@@ -553,7 +556,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
                 bins_missing = True
         if bins_missing:
             raise AssertionError("At least one release binary is missing. "
-                                 "Previous releases binaries can be downloaded via `test/get_previous_releases.py -b`.")
+                                 "Previous releases binaries can be downloaded via `test/get_previous_releases.py`.")
         assert_equal(len(extra_confs), num_nodes)
         assert_equal(len(extra_args), num_nodes)
         assert_equal(len(versions), num_nodes)
@@ -593,7 +596,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         node.wait_for_rpc_connection()
 
         if self.options.coveragedir is not None:
-            coverage.write_all_rpc_commands(self.options.coveragedir, node.rpc)
+            coverage.write_all_rpc_commands(self.options.coveragedir, node._rpc)
 
     def start_nodes(self, extra_args=None, *args, **kwargs):
         """Start multiple bitcoinds"""
@@ -608,7 +611,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         if self.options.coveragedir is not None:
             for node in self.nodes:
-                coverage.write_all_rpc_commands(self.options.coveragedir, node.rpc)
+                coverage.write_all_rpc_commands(self.options.coveragedir, node._rpc)
 
     def stop_node(self, i, expected_stderr='', wait=0):
         """Stop a bitcoind test node"""
@@ -1000,6 +1003,11 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         if not self.is_wallet_tool_compiled():
             raise SkipTest("bitcoin-wallet has not been compiled")
 
+    def skip_if_no_bitcoin_tx(self):
+        """Skip the running test if bitcoin-tx has not been compiled."""
+        if not self.is_bitcoin_tx_compiled():
+            raise SkipTest("bitcoin-tx has not been compiled")
+
     def skip_if_no_bitcoin_util(self):
         """Skip the running test if bitcoin-util has not been compiled."""
         if not self.is_bitcoin_util_compiled():
@@ -1054,6 +1062,10 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         """Checks whether bitcoin-wallet was compiled."""
         return self.config["components"].getboolean("ENABLE_WALLET_TOOL")
 
+    def is_bitcoin_tx_compiled(self):
+        """Checks whether bitcoin-tx was compiled."""
+        return self.config["components"].getboolean("BUILD_BITCOIN_TX")
+
     def is_bitcoin_util_compiled(self):
         """Checks whether bitcoin-util was compiled."""
         return self.config["components"].getboolean("ENABLE_BITCOIN_UTIL")
@@ -1072,3 +1084,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
     def has_blockfile(self, node, filenum: str):
         return (node.blocks_path/ f"blk{filenum}.dat").is_file()
+
+    def convert_to_json_for_cli(self, text):
+        if self.options.usecli:
+            return json.dumps(text)
+        return text

@@ -10,6 +10,7 @@
 #include <primitives/transaction.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include <util/check.h>
 #include <util/overloaded.h>
 #include <util/strencodings.h>
 #include <util/string.h>
@@ -203,7 +204,6 @@ public:
      */
     mapValue_t mapValue;
     std::vector<std::pair<std::string, std::string> > vOrderForm;
-    unsigned int fTimeReceivedIsTxTime;
     unsigned int nTimeReceived; //!< time received by this node
     /**
      * Stable timestamp that never changes, and reflects the order a transaction
@@ -219,7 +219,7 @@ public:
     std::multimap<int64_t, CWalletTx*>::const_iterator m_it_wtxOrdered;
 
     // memory only
-    enum AmountType { DEBIT, CREDIT, IMMATURE_CREDIT, AVAILABLE_CREDIT, AMOUNTTYPE_ENUM_ELEMENTS };
+    enum AmountType { DEBIT, CREDIT, AMOUNTTYPE_ENUM_ELEMENTS };
     mutable CachableAmount m_amounts[AMOUNTTYPE_ENUM_ELEMENTS];
     /**
      * This flag is true if all m_amounts caches are empty. This is particularly
@@ -240,7 +240,6 @@ public:
     {
         mapValue.clear();
         vOrderForm.clear();
-        fTimeReceivedIsTxTime = false;
         nTimeReceived = 0;
         nTimeSmart = 0;
         fChangeCached = false;
@@ -274,10 +273,11 @@ public:
 
         std::vector<uint8_t> dummy_vector1; //!< Used to be vMerkleBranch
         std::vector<uint8_t> dummy_vector2; //!< Used to be vtxPrev
-        bool dummy_bool = false; //!< Used to be fFromMe and fSpent
+        bool dummy_bool = false; //!< Used to be fFromMe, and fSpent
+        uint32_t dummy_int = 0; // Used to be fTimeReceivedIsTxTime
         uint256 serializedHash = TxStateSerializedBlockHash(m_state);
         int serializedIndex = TxStateSerializedIndex(m_state);
-        s << TX_WITH_WITNESS(tx) << serializedHash << dummy_vector1 << serializedIndex << dummy_vector2 << mapValueCopy << vOrderForm << fTimeReceivedIsTxTime << nTimeReceived << dummy_bool << dummy_bool;
+        s << TX_WITH_WITNESS(tx) << serializedHash << dummy_vector1 << serializedIndex << dummy_vector2 << mapValueCopy << vOrderForm << dummy_int << nTimeReceived << dummy_bool << dummy_bool;
     }
 
     template<typename Stream>
@@ -287,10 +287,11 @@ public:
 
         std::vector<uint256> dummy_vector1; //!< Used to be vMerkleBranch
         std::vector<CMerkleTx> dummy_vector2; //!< Used to be vtxPrev
-        bool dummy_bool; //! Used to be fFromMe and fSpent
+        bool dummy_bool; //! Used to be fFromMe, and fSpent
+        uint32_t dummy_int; // Used to be fTimeReceivedIsTxTime
         uint256 serialized_block_hash;
         int serializedIndex;
-        s >> TX_WITH_WITNESS(tx) >> serialized_block_hash >> dummy_vector1 >> serializedIndex >> dummy_vector2 >> mapValue >> vOrderForm >> fTimeReceivedIsTxTime >> nTimeReceived >> dummy_bool >> dummy_bool;
+        s >> TX_WITH_WITNESS(tx) >> serialized_block_hash >> dummy_vector1 >> serializedIndex >> dummy_vector2 >> mapValue >> vOrderForm >> dummy_int >> nTimeReceived >> dummy_bool >> dummy_bool;
 
         m_state = TxStateInterpretSerialized({serialized_block_hash, serializedIndex});
 
@@ -315,8 +316,6 @@ public:
     {
         m_amounts[DEBIT].Reset();
         m_amounts[CREDIT].Reset();
-        m_amounts[IMMATURE_CREDIT].Reset();
-        m_amounts[AVAILABLE_CREDIT].Reset();
         fChangeCached = false;
         m_is_cache_empty = true;
     }
@@ -361,6 +360,30 @@ struct WalletTxOrderComparator {
     {
         return a->nOrderPos < b->nOrderPos;
     }
+};
+
+class WalletTXO
+{
+private:
+    const CWalletTx& m_wtx;
+    const CTxOut& m_output;
+    isminetype m_ismine;
+
+public:
+    WalletTXO(const CWalletTx& wtx, const CTxOut& output, const isminetype ismine)
+    : m_wtx(wtx),
+    m_output(output),
+    m_ismine(ismine)
+    {
+        Assume(std::ranges::find(wtx.tx->vout, output) != wtx.tx->vout.end());
+    }
+
+    const CWalletTx& GetWalletTx() const { return m_wtx; }
+
+    const CTxOut& GetTxOut() const { return m_output; }
+
+    isminetype GetIsMine() const { return m_ismine; }
+    void SetIsMine(isminetype ismine) { m_ismine = ismine; }
 };
 } // namespace wallet
 

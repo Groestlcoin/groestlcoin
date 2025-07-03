@@ -2298,7 +2298,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
     }
 
     std::shared_ptr<const CBlock> pblock;
-    if (a_recent_block && a_recent_block->GetHash() == pindex->GetBlockHash()) {
+    if (a_recent_block && a_recent_block->GetHash() == inv.hash) {
         pblock = a_recent_block;
     } else if (inv.IsMsgWitnessBlk()) {
         // Fast-path: in this case it is possible to serve the block directly from disk,
@@ -2318,7 +2318,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
     } else {
         // Send block from disk
         std::shared_ptr<CBlock> pblockRead = std::make_shared<CBlock>();
-        if (!m_chainman.m_blockman.ReadBlock(*pblockRead, block_pos)) {
+        if (!m_chainman.m_blockman.ReadBlock(*pblockRead, block_pos, inv.hash)) {
             if (WITH_LOCK(m_chainman.GetMutex(), return m_chainman.m_blockman.IsBlockPruned(*pindex))) {
                 LogDebug(BCLog::NET, "Block was pruned before it could be read, %s\n", pfrom.DisconnectMsg(fLogIPs));
             } else {
@@ -2364,7 +2364,7 @@ void PeerManagerImpl::ProcessGetBlockData(CNode& pfrom, Peer& peer, const CInv& 
             // and we don't feel like constructing the object for them, so
             // instead we respond with the full, non-compact block.
             if (can_direct_fetch && pindex->nHeight >= tip->nHeight - MAX_CMPCTBLOCK_DEPTH) {
-                if (a_recent_compact_block && a_recent_compact_block->header.GetHash() == pindex->GetBlockHash()) {
+                if (a_recent_compact_block && a_recent_compact_block->header.GetHash() == inv.hash) {
                     MakeAndPushMessage(pfrom, NetMsgType::CMPCTBLOCK, *a_recent_compact_block);
                 } else {
                     CBlockHeaderAndShortTxIDs cmpctblock{*pblock, m_rng.rand64()};
@@ -3360,7 +3360,11 @@ void PeerManagerImpl::ProcessCompactBlockTxns(CNode& pfrom, Peer& peer, const Bl
         }
 
         PartiallyDownloadedBlock& partialBlock = *range_flight.first->second.second->partialBlock;
-        ReadStatus status = partialBlock.FillBlock(*pblock, block_transactions.txn);
+
+        // We should not have gotten this far in compact block processing unless it's attached to a known header
+        const CBlockIndex* prev_block{Assume(m_chainman.m_blockman.LookupBlockIndex(partialBlock.header.hashPrevBlock))};
+        ReadStatus status = partialBlock.FillBlock(*pblock, block_transactions.txn,
+                                                   /*segwit_active=*/DeploymentActiveAfter(prev_block, m_chainman, Consensus::DEPLOYMENT_SEGWIT));
         if (status == READ_STATUS_INVALID) {
             RemoveBlockRequest(block_transactions.blockhash, pfrom.GetId()); // Reset in-flight state in case Misbehaving does not result in a disconnect
             Misbehaving(peer, "invalid compact block/non-matching block transactions");
@@ -3377,23 +3381,7 @@ void PeerManagerImpl::ProcessCompactBlockTxns(CNode& pfrom, Peer& peer, const Bl
                 return;
             }
         } else {
-            // Block is either okay, or possibly we received
-            // READ_STATUS_CHECKBLOCK_FAILED.
-            // Note that CheckBlock can only fail for one of a few reasons:
-            // 1. bad-proof-of-work (impossible here, because we've already
-            //    accepted the header)
-            // 2. merkleroot doesn't match the transactions given (already
-            //    caught in FillBlock with READ_STATUS_FAILED, so
-            //    impossible here)
-            // 3. the block is otherwise invalid (eg invalid coinbase,
-            //    block is too big, too many legacy sigops, etc).
-            // So if CheckBlock failed, #3 is the only possibility.
-            // Under BIP 152, we don't discourage the peer unless proof of work is
-            // invalid (we don't require all the stateless checks to have
-            // been run).  This is handled below, so just treat this as
-            // though the block was successfully read, and rely on the
-            // handling in ProcessNewBlock to ensure the block index is
-            // updated, etc.
+            // Block is okay for further processing
             RemoveBlockRequest(block_transactions.blockhash, pfrom.GetId()); // it is now an empty pointer
             fBlockRead = true;
             // mapBlockSource is used for potentially punishing peers and
@@ -4173,7 +4161,7 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         if (!block_pos.IsNull()) {
             CBlock block;
-            const bool ret{m_chainman.m_blockman.ReadBlock(block, block_pos)};
+            const bool ret{m_chainman.m_blockman.ReadBlock(block, block_pos, req.blockhash)};
             // If height is above MAX_BLOCKTXN_DEPTH then this block cannot get
             // pruned after we release cs_main above, so this read should never fail.
             assert(ret);
@@ -4529,7 +4517,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     return;
                 }
                 std::vector<CTransactionRef> dummy;
-                status = tempBlock.FillBlock(*pblock, dummy);
+                const CBlockIndex* prev_block{Assume(m_chainman.m_blockman.LookupBlockIndex(cmpctblock.header.hashPrevBlock))};
+                status = tempBlock.FillBlock(*pblock, dummy,
+                                             /*segwit_active=*/DeploymentActiveAfter(prev_block, m_chainman, Consensus::DEPLOYMENT_SEGWIT));
                 if (status == READ_STATUS_OK) {
                     fBlockReconstructed = true;
                 }

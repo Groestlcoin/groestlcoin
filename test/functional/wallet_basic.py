@@ -69,9 +69,9 @@ class WalletTest(BitcoinTestFramework):
 
         self.generate(self.nodes[0], 1, sync_fun=self.no_op)
 
-        walletinfo = self.nodes[0].getwalletinfo()
-        assert_equal(walletinfo['immature_balance'], 50)
-        assert_equal(walletinfo['balance'], 0)
+        balances = self.nodes[0].getbalances()
+        assert_equal(balances["mine"]["immature"], 50)
+        assert_equal(balances["mine"]["trusted"], 0)
 
         self.sync_all(self.nodes[0:3])
         self.generate(self.nodes[1], COINBASE_MATURITY + 1, sync_fun=lambda: self.sync_all(self.nodes[0:3]))
@@ -118,8 +118,7 @@ class WalletTest(BitcoinTestFramework):
         # but 10 will go to node2 and the rest will go to node0
         balance = self.nodes[0].getbalance()
         assert_equal(set([txout1['value'], txout2['value']]), set([10, balance]))
-        walletinfo = self.nodes[0].getwalletinfo()
-        assert_equal(walletinfo['immature_balance'], 0)
+        assert_equal(self.nodes[0].getbalances()["mine"]["immature"], 0)
 
         # Have node0 mine a block, thus it will collect its own fee.
         self.generate(self.nodes[0], 1, sync_fun=lambda: self.sync_all(self.nodes[0:3]))
@@ -454,14 +453,14 @@ class WalletTest(BitcoinTestFramework):
         #   - True: unicode escaped as \u....
         #   - False: unicode directly as UTF-8
         for mode in [True, False]:
-            self.nodes[0].rpc.ensure_ascii = mode
+            self.nodes[0]._rpc.ensure_ascii = mode
             # unicode check: Basic Multilingual Plane, Supplementary Plane respectively
             for label in [u'рыба', u'𝅘𝅥𝅯']:
                 addr = self.nodes[0].getnewaddress()
                 self.nodes[0].setlabel(addr, label)
                 test_address(self.nodes[0], addr, labels=[label])
                 assert label in self.nodes[0].listlabels()
-        self.nodes[0].rpc.ensure_ascii = True  # restore to default
+        self.nodes[0]._rpc.ensure_ascii = True  # restore to default
 
         # -reindex tests
         chainlimit = 6

@@ -16,7 +16,7 @@ get_target_property(qt_lib_type Qt6::Core TYPE)
 function(import_plugins target)
   if(qt_lib_type STREQUAL "STATIC_LIBRARY")
     set(plugins Qt6::QMinimalIntegrationPlugin)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|FreeBSD)$")
       list(APPEND plugins Qt6::QXcbIntegrationPlugin)
     elseif(WIN32)
       list(APPEND plugins Qt6::QWindowsIntegrationPlugin Qt6::QModernWindowsStylePlugin)
@@ -349,7 +349,7 @@ else()
   get_translatable_sources(qt_translatable_sources src/qt)
   file(GLOB ui_files ${CMAKE_CURRENT_SOURCE_DIR}/forms/*.ui)
   add_custom_target(translate
-    COMMAND ${CMAKE_COMMAND} -E env XGETTEXT=${XGETTEXT_EXECUTABLE} COPYRIGHT_HOLDERS=${COPYRIGHT_HOLDERS} ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/share/qt/extract_strings_qt.py ${translatable_sources}
+    COMMAND ${CMAKE_COMMAND} -E env XGETTEXT=${XGETTEXT_EXECUTABLE} COPYRIGHT_HOLDERS=${COPYRIGHT_HOLDERS} $<TARGET_FILE:Python3::Interpreter> ${PROJECT_SOURCE_DIR}/share/qt/extract_strings_qt.py ${translatable_sources}
     COMMAND Qt6::lupdate -no-obsolete -I ${PROJECT_SOURCE_DIR}/src -locations relative ${CMAKE_CURRENT_SOURCE_DIR}/bitcoinstrings.cpp ${ui_files} ${qt_translatable_sources} -ts ${CMAKE_CURRENT_SOURCE_DIR}/locale/bitcoin_en.ts
     COMMAND Qt6::lconvert -drop-translations -o ${CMAKE_CURRENT_SOURCE_DIR}/locale/bitcoin_en.xlf -i ${CMAKE_CURRENT_SOURCE_DIR}/locale/bitcoin_en.ts
     COMMAND ${SED_EXECUTABLE} -i.old -e "s|source-language=\"en\" target-language=\"en\"|source-language=\"en\"|" -e "/<target xml:space=\"preserve\"><\\/target>/d" ${CMAKE_CURRENT_SOURCE_DIR}/locale/bitcoin_en.xlf
