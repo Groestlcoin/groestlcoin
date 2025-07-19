@@ -35,6 +35,7 @@ add_executable(bench_bitcoin
   mempool_eviction.cpp
   mempool_stress.cpp
   merkle_root.cpp
+  obfuscation.cpp
   parse_hex.cpp
   peer_eviction.cpp
   poly1305.cpp
@@ -48,9 +49,10 @@ add_executable(bench_bitcoin
   sign_transaction.cpp
   streams_findbyte.cpp
   strencodings.cpp
+  txgraph.cpp
+  txorphanage.cpp
   util_time.cpp
   verify_script.cpp
-  xor.cpp
 )
 
 include(TargetDataSources)

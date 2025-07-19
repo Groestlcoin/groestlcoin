@@ -223,8 +223,9 @@ def download_binary(tag, args) -> int:
 
     Path(archive).unlink()
 
-    if tag >= "v23" and platform == "arm64-apple-darwin":
-        # Starting with v23 there are arm64 binaries for ARM (e.g. M1, M2) macs, but they have to be signed to run
+    if tag >= "v23" and tag < "v28.2" and args.host == "arm64-apple-darwin":
+        # Starting with v23 there are arm64 binaries for ARM (e.g. M1, M2) mac.
+        # Until v28.2 they had to be signed to run.
         binary_path = f'{os.getcwd()}/{tag}/bin/'
 
         for arm_binary in os.listdir(binary_path):
@@ -296,7 +297,12 @@ def main(args) -> int:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        epilog='''
+        HOST can be set to any of the `host-platform-triplet`s from
+        depends/README.md for which a release exists.
+        ''',
+    )
     parser.add_argument('-r', '--remove-dir', action='store_true',
                         help='remove existing directory.')
     parser.add_argument('-t', '--target-dir', action='store',
