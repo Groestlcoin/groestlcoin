@@ -84,7 +84,7 @@ For instance:
     $ groestlcoind -zmqpubhashtx=tcp://127.0.0.1:21441 \
                -zmqpubhashtx=tcp://192.168.1.2:21441 \
                -zmqpubhashblock="tcp://[::1]:21331" \
-               -zmqpubrawtx=ipc:///tmp/groestlcoind.tx.raw \
+               -zmqpubrawtx=unix:/tmp/groestlcoind.tx.raw \
                -zmqpubhashtxhwm=10000
 
 `groestlcoin node` or `groestlcoin gui` can also be substituted for `groestlcoind`.

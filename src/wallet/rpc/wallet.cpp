@@ -438,8 +438,8 @@ static RPCHelpMan createwallet()
 static RPCHelpMan unloadwallet()
 {
     return RPCHelpMan{"unloadwallet",
-                "Unloads the wallet referenced by the request endpoint, otherwise unloads the wallet specified in the argument.\n"
-                "Specifying the wallet name on a wallet endpoint is invalid.",
+                "Unloads the wallet referenced by the request endpoint or the wallet_name argument.\n"
+                "If both are specified, they must be identical.",
                 {
                     {"wallet_name", RPCArg::Type::STR, RPCArg::DefaultHint{"the wallet name from the RPC endpoint"}, "The name of the wallet to unload. If provided both here and in the RPC endpoint, the two must be identical."},
                     {"load_on_startup", RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Save wallet name to persistent settings and load on startup. True to add wallet to startup list, false to remove, null to leave unchanged."},
@@ -456,14 +456,7 @@ static RPCHelpMan unloadwallet()
                 },
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
-    std::string wallet_name;
-    if (GetWalletNameFromJSONRPCRequest(request, wallet_name)) {
-        if (!(request.params[0].isNull() || request.params[0].get_str() == wallet_name)) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "RPC endpoint wallet and wallet_name parameter specify different wallets");
-        }
-    } else {
-        wallet_name = request.params[0].get_str();
-    }
+    const std::string wallet_name{EnsureUniqueWalletName(request, self.MaybeArg<std::string>("wallet_name"))};
 
     WalletContext& context = EnsureWalletContext(request.context);
     std::shared_ptr<CWallet> wallet = GetWallet(context, wallet_name);
@@ -493,69 +486,6 @@ static RPCHelpMan unloadwallet()
     PushWarnings(warnings, result);
 
     return result;
-},
-    };
-}
-
-static RPCHelpMan upgradewallet()
-{
-    return RPCHelpMan{
-        "upgradewallet",
-        "Upgrade the wallet. Upgrades to the latest version if no version number is specified.\n"
-        "New keys may be generated and a new wallet backup will need to be made.",
-        {
-            {"version", RPCArg::Type::NUM, RPCArg::Default{int{FEATURE_LATEST}}, "The version number to upgrade to. Default is the latest wallet version."}
-        },
-        RPCResult{
-            RPCResult::Type::OBJ, "", "",
-            {
-                {RPCResult::Type::STR, "wallet_name", "Name of wallet this operation was performed on"},
-                {RPCResult::Type::NUM, "previous_version", "Version of wallet before this operation"},
-                {RPCResult::Type::NUM, "current_version", "Version of wallet after this operation"},
-                {RPCResult::Type::STR, "result", /*optional=*/true, "Description of result, if no error"},
-                {RPCResult::Type::STR, "error", /*optional=*/true, "Error message (if there is one)"}
-            },
-        },
-        RPCExamples{
-            HelpExampleCli("upgradewallet", "169900")
-            + HelpExampleRpc("upgradewallet", "169900")
-        },
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
-{
-    std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
-    if (!pwallet) return UniValue::VNULL;
-
-    EnsureWalletIsUnlocked(*pwallet);
-
-    int version = 0;
-    if (!request.params[0].isNull()) {
-        version = request.params[0].getInt<int>();
-    }
-    bilingual_str error;
-    const int previous_version{pwallet->GetVersion()};
-    const bool wallet_upgraded{pwallet->UpgradeWallet(version, error)};
-    const int current_version{pwallet->GetVersion()};
-    std::string result;
-
-    if (wallet_upgraded) {
-        if (previous_version == current_version) {
-            result = "Already at latest version. Wallet version unchanged.";
-        } else {
-            result = strprintf("Wallet upgraded successfully from version %i to version %i.", previous_version, current_version);
-        }
-    }
-
-    UniValue obj(UniValue::VOBJ);
-    obj.pushKV("wallet_name", pwallet->GetName());
-    obj.pushKV("previous_version", previous_version);
-    obj.pushKV("current_version", current_version);
-    if (!result.empty()) {
-        obj.pushKV("result", result);
-    } else {
-        CHECK_NONFATAL(!error.empty());
-        obj.pushKV("error", error.original);
-    }
-    return obj;
 },
     };
 }
@@ -685,17 +615,7 @@ static RPCHelpMan migratewallet()
         },
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
-            std::string wallet_name;
-            if (GetWalletNameFromJSONRPCRequest(request, wallet_name)) {
-                if (!(request.params[0].isNull() || request.params[0].get_str() == wallet_name)) {
-                    throw JSONRPCError(RPC_INVALID_PARAMETER, "RPC endpoint wallet and wallet_name parameter specify different wallets");
-                }
-            } else {
-                if (request.params[0].isNull()) {
-                    throw JSONRPCError(RPC_INVALID_PARAMETER, "Either RPC endpoint wallet or wallet_name parameter must be provided");
-                }
-                wallet_name = request.params[0].get_str();
-            }
+            const std::string wallet_name{EnsureUniqueWalletName(request, self.MaybeArg<std::string>("wallet_name"))};
 
             SecureString wallet_pass;
             wallet_pass.reserve(100);
@@ -1042,7 +962,6 @@ std::span<const CRPCCommand> GetWalletRPCCommands()
         {"wallet", &simulaterawtransaction},
         {"wallet", &sendall},
         {"wallet", &unloadwallet},
-        {"wallet", &upgradewallet},
         {"wallet", &walletcreatefundedpsbt},
 #ifdef ENABLE_EXTERNAL_SIGNER
         {"wallet", &walletdisplayaddress},

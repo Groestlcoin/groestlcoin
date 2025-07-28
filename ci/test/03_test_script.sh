@@ -106,7 +106,11 @@ if [[ "${RUN_TIDY}" == "true" ]]; then
   GROESTLCOIN_CONFIG_ALL="$GROESTLCOIN_CONFIG_ALL -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 fi
 
-bash -c "cmake -S $BASE_ROOT_DIR -B ${BASE_BUILD_DIR} $GROESTLCOIN_CONFIG_ALL $GROESTLCOIN_CONFIG || ( (cat $(cmake -P "${BASE_ROOT_DIR}/ci/test/GetCMakeLogFiles.cmake")) && false)"
+bash -c "cmake -S $BASE_ROOT_DIR -B ${BASE_BUILD_DIR} $GROESTLCOIN_CONFIG_ALL $GROESTLCOIN_CONFIG" || (
+  # shellcheck disable=SC2046
+  cat $(cmake -P "${BASE_ROOT_DIR}/ci/test/GetCMakeLogFiles.cmake")
+  false
+)
 
 # shellcheck disable=SC2086
 cmake --build "${BASE_BUILD_DIR}" "$MAKEJOBS" --target all $GOAL || (
