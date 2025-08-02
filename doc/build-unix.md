@@ -159,7 +159,7 @@ SQLite is required for the descriptor wallet:
 
     apk add sqlite-dev
 
-To build Bitcoin Core without wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+To build Groestlcoin Core without wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
 
 ZMQ dependencies (provides ZMQ API):
 
@@ -169,7 +169,7 @@ User-Space, Statically Defined Tracing (USDT) is not supported or tested on Alpi
 
 GUI dependencies:
 
-Bitcoin Core includes a GUI built with the cross-platform Qt Framework. To compile the GUI, we need to install
+Groestlcoin Core includes a GUI built with the cross-platform Qt Framework. To compile the GUI, we need to install
 the necessary parts of Qt, the libqrencode and pass `-DBUILD_GUI=ON`. Skip if you don't intend to use the GUI.
 
     apk add qt6-qtbase-dev  qt6-qttools-dev
