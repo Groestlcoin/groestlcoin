@@ -70,7 +70,7 @@ task:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
 
 task:
-  name: 'TSan, depends, gui'
+  name: 'TSan, depends, no gui'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     cpu: 4

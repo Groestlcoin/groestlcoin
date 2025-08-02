@@ -448,7 +448,7 @@ public:
     void removeConflicts(const CTransaction& tx) EXCLUSIVE_LOCKS_REQUIRED(cs);
     void removeForBlock(const std::vector<CTransactionRef>& vtx, unsigned int nBlockHeight) EXCLUSIVE_LOCKS_REQUIRED(cs);
 
-    bool CompareDepthAndScore(const GenTxid& hasha, const GenTxid& hashb) const;
+    bool CompareDepthAndScore(const Wtxid& hasha, const Wtxid& hashb) const;
     bool isSpent(const COutPoint& outpoint) const;
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
@@ -940,7 +940,7 @@ public:
      * m_temp_added and cannot be flushed to the back end. Only used for package validation. */
     void PackageAddTransaction(const CTransactionRef& tx);
     /** Get all coins in m_non_base_coins. */
-    std::unordered_set<COutPoint, SaltedOutpointHasher> GetNonBaseCoins() const { return m_non_base_coins; }
+    const std::unordered_set<COutPoint, SaltedOutpointHasher>& GetNonBaseCoins() const { return m_non_base_coins; }
     /** Clear m_temp_added and m_non_base_coins. */
     void Reset();
 };
