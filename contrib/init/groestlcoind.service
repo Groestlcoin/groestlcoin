@@ -25,8 +25,7 @@ ExecStart=/usr/bin/groestlcoind -pid=/run/groestlcoind/groestlcoind.pid \
                             -shutdownnotify='systemd-notify --stopping'
 
 # Make sure the config directory is readable by the service user
-PermissionsStartOnly=true
-ExecStartPre=/bin/chgrp groestlcoin /etc/groestlcoin
+ExecStartPre=!/bin/chgrp groestlcoin /etc/groestlcoin
 
 # Process management
 ####################
@@ -44,7 +43,6 @@ TimeoutStopSec=600
 
 # Run as groestlcoin:groestlcoin
 User=groestlcoin
-Group=groestlcoin
 
 # /run/groestlcoind
 RuntimeDirectory=groestlcoind

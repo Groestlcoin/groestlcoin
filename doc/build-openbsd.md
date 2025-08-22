@@ -13,6 +13,19 @@ Run the following as root to install the base dependencies for building.
 pkg_add git cmake boost libevent
 ```
 
+SQLite is required for the wallet:
+
+```bash
+pkg_add sqlite3
+```
+
+To build Groestlcoin Core without the wallet, use `-DENABLE_WALLET=OFF`.
+
+Cap'n Proto is needed for IPC functionality (see [multiprocess.md](multiprocess.md))
+and can be built from source: https://capnproto.org/install.html
+
+Compile with `-DENABLE_IPC=OFF` if you do not need IPC functionality.
+
 See [dependencies.md](dependencies.md) for a complete overview.
 
 ### 2. Clone Groestlcoin Repo
@@ -22,16 +35,6 @@ git clone https://github.com/Groestlcoin/groestlcoin.git
 ```
 
 ### 3. Install Optional Dependencies
-
-#### Wallet Dependencies
-
-It is not necessary to build wallet functionality to run either `groestlcoind` or `groestlcoin-qt`.
-SQLite is required to build the wallet.
-
-
-``` bash
-pkg_add sqlite3
-```
 
 #### GUI Dependencies
 ###### Qt6
@@ -77,8 +80,8 @@ pkg_add python py3-zmq  # Select the newest version of the python package if nec
 
 There are many ways to configure Groestlcoin Core, here are a few common examples:
 
-##### Descriptor Wallet and GUI:
-This enables descriptor wallet support and the GUI, assuming SQLite and Qt 6 are installed.
+##### Wallet and GUI:
+This enables wallet support and the GUI, assuming SQLite and Qt 6 are installed.
 
 ```bash
 cmake -B build -DBUILD_GUI=ON

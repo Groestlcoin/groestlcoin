@@ -82,19 +82,22 @@ add_library(groestlcoinkernel
   ../validation.cpp
   ../validationinterface.cpp
   ../versionbits.cpp
+  $<TARGET_OBJECTS:bitcoin_clientversion>
+  $<TARGET_OBJECTS:bitcoin_crypto>
+  $<TARGET_OBJECTS:leveldb>
+  $<TARGET_OBJECTS:crc32c>
 )
 target_link_libraries(groestlcoinkernel
   PRIVATE
     core_interface
-    bitcoin_clientversion
-    bitcoin_crypto
-    leveldb
-    secp256k1
+    secp256k1_objs
     $<$<PLATFORM_ID:Windows>:bcrypt>
     $<TARGET_NAME_IF_EXISTS:USDT::headers>
   PUBLIC
     Boost::headers
 )
+
+target_include_directories(groestlcoinkernel PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/leveldb/include>)
 
 # libgroestlcoinkernel requires default symbol visibility, explicitly
 # specify that here so that things still work even when user
@@ -109,34 +112,6 @@ set_target_properties(groestlcoinkernel PROPERTIES
 # Add a convenience libgroestlcoinkernel target as a synonym for groestlcoinkernel.
 add_custom_target(libgroestlcoinkernel)
 add_dependencies(libgroestlcoinkernel groestlcoinkernel)
-
-# When building the static library, install all static libraries the
-# groestlcoinkernel depends on.
-if(NOT BUILD_SHARED_LIBS)
-  # Recursively get all the static libraries a target depends on and put them in libs_out
-  function(get_target_static_link_libs target libs_out)
-    get_target_property(linked_libraries ${target} LINK_LIBRARIES)
-    foreach(dep ${linked_libraries})
-      if(TARGET ${dep})
-        add_dependencies(libgroestlcoinkernel ${dep})
-        get_target_property(dep_type ${dep} TYPE)
-        if(dep_type STREQUAL "STATIC_LIBRARY")
-          list(APPEND ${libs_out} ${dep})
-          get_target_static_link_libs(${dep} ${libs_out})
-        endif()
-      endif()
-    endforeach()
-    set(${libs_out} ${${libs_out}} PARENT_SCOPE)
-  endfunction()
-
-  set(all_kernel_static_link_libs "")
-  get_target_static_link_libs(groestlcoinkernel all_kernel_static_link_libs)
-
-  install(TARGETS ${all_kernel_static_link_libs} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libgroestlcoinkernel)
-  list(TRANSFORM all_kernel_static_link_libs PREPEND "-l")
-  # LIBS_PRIVATE is substituted in the pkg-config file.
-  list(JOIN all_kernel_static_link_libs " " LIBS_PRIVATE)
-endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/libgroestlcoinkernel.pc.in ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" COMPONENT libgroestlcoinkernel)

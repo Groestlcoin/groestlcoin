@@ -33,6 +33,7 @@
 #include <interfaces/ipc.h>
 #include <interfaces/mining.h>
 #include <interfaces/node.h>
+#include <ipc/exception.h>
 #include <kernel/caches.h>
 #include <kernel/context.h>
 #include <key.h>
@@ -298,6 +299,14 @@ void Shutdown(NodeContext& node)
     StopREST();
     StopRPC();
     StopHTTPServer();
+    for (auto& client : node.chain_clients) {
+        try {
+            client->stop();
+        } catch (const ipc::Exception& e) {
+            LogDebug(BCLog::IPC, "Chain client did not disconnect cleanly: %s", e.what());
+            client.reset();
+        }
+    }
     StopMapPort();
 
     // Because these depend on each-other, we make sure that neither can be
@@ -370,8 +379,11 @@ void Shutdown(NodeContext& node)
             }
         }
     }
-    for (const auto& client : node.chain_clients) {
-        client->stop();
+
+    // If any -ipcbind clients are still connected, disconnect them now so they
+    // do not block shutdown.
+    if (interfaces::Ipc* ipc = node.init->ipc()) {
+        ipc->disconnectIncoming();
     }
 
 #ifdef ENABLE_ZMQ
@@ -490,6 +502,8 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
     argsman.AddArg("-allowignoredconf", strprintf("For backwards compatibility, treat an unused %s file in the datadir as a warning, not an error.", BITCOIN_CONF_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-loadblock=<file>", "Imports blocks from external file on startup", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-maxmempool=<n>", strprintf("Keep the transaction memory pool below <n> megabytes (default: %u)", DEFAULT_MAX_MEMPOOL_SIZE_MB), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    // TODO: remove in v31.0
+    argsman.AddArg("-maxorphantx=<n>", strprintf("(Removed option, see release notes)"), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-mempoolexpiry=<n>", strprintf("Do not keep transactions in the mempool longer than <n> hours (default: %u)", DEFAULT_MEMPOOL_EXPIRY_HOURS), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-minimumchainwork=<hex>", strprintf("Minimum work assumed to exist on a valid chain in hex (default: %s, testnet3: %s, testnet4: %s, signet: %s)", defaultChainParams->GetConsensus().nMinimumChainWork.GetHex(), testnetChainParams->GetConsensus().nMinimumChainWork.GetHex(), testnet4ChainParams->GetConsensus().nMinimumChainWork.GetHex(), signetChainParams->GetConsensus().nMinimumChainWork.GetHex()), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::OPTIONS);
     argsman.AddArg("-par=<n>", strprintf("Set the number of script verification threads (0 = auto, up to %d, <0 = leave that many cores free, default: %d)",
@@ -658,7 +672,7 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
     argsman.AddArg("-whitelistrelay", strprintf("Add 'relay' permission to whitelisted peers with default permissions. This will accept relayed transactions even when not relaying transactions (default: %d)", DEFAULT_WHITELISTRELAY), ArgsManager::ALLOW_ANY, OptionsCategory::NODE_RELAY);
 
 
-    argsman.AddArg("-blockmaxweight=<n>", strprintf("Set maximum BIP141 block weight (default: %d)", DEFAULT_BLOCK_MAX_WEIGHT), ArgsManager::ALLOW_ANY, OptionsCategory::BLOCK_CREATION);
+    argsman.AddArg("-blockmaxweight=<n>", strprintf("Set maximum BIP141 block weight (default: %d)", DEFAULT_BLOCK_MAX_WEIGHT), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::BLOCK_CREATION);
     argsman.AddArg("-blockreservedweight=<n>", strprintf("Reserve space for the fixed-size block header plus the largest coinbase transaction the mining software may add to the block. (default: %d).", DEFAULT_BLOCK_RESERVED_WEIGHT), ArgsManager::ALLOW_ANY, OptionsCategory::BLOCK_CREATION);
     argsman.AddArg("-blockmintxfee=<amt>", strprintf("Set lowest fee rate (in %s/kvB) for transactions to be included in block creation. (default: %s)", CURRENCY_UNIT, FormatMoney(DEFAULT_BLOCK_MIN_TX_FEE)), ArgsManager::ALLOW_ANY, OptionsCategory::BLOCK_CREATION);
     argsman.AddArg("-blockversion=<n>", "Override block version to test forking scenarios", ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::BLOCK_CREATION);
@@ -891,6 +905,11 @@ bool AppInitParameterInteraction(const ArgsManager& args)
 
     if (args.IsArgSet("-datacarriersize") || args.IsArgSet("-datacarrier")) {
         InitWarning(_("Options '-datacarrier' or '-datacarriersize' are set but are marked as deprecated. They will be removed in a future version."));
+    }
+
+    // We no longer limit the orphanage based on number of transactions but keep the option to warn users who still have it in their config.
+    if (args.IsArgSet("-maxorphantx")) {
+        InitWarning(_("Option '-maxorphantx' is set but no longer has any effect (see release notes). Please remove it from your configuration."));
     }
 
     // Error if network-specific options (-addnode, -connect, etc) are
@@ -1393,10 +1412,14 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         }
     }, std::chrono::minutes{5});
 
-    LogInstance().SetRateLimiting(std::make_unique<BCLog::LogRateLimiter>(
-        [&scheduler](auto func, auto window) { scheduler.scheduleEvery(std::move(func), window); },
-        BCLog::RATELIMIT_MAX_BYTES,
-        1h));
+    if (args.GetBoolArg("-logratelimit", BCLog::DEFAULT_LOGRATELIMIT)) {
+        LogInstance().SetRateLimiting(BCLog::LogRateLimiter::Create(
+            [&scheduler](auto func, auto window) { scheduler.scheduleEvery(std::move(func), window); },
+            BCLog::RATELIMIT_MAX_BYTES,
+            BCLog::RATELIMIT_WINDOW));
+    } else {
+        LogInfo("Log rate limiting disabled");
+    }
 
     assert(!node.validation_signals);
     node.validation_signals = std::make_unique<ValidationSignals>(std::make_unique<SerialTaskRunner>(scheduler));
@@ -1858,6 +1881,26 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             ));
         }
     }
+
+#ifdef __APPLE__
+    auto check_and_warn_fs{[&](const fs::path& path, std::string_view desc) {
+        const auto path_desc{strprintf("%s (\"%s\")", desc, fs::PathToString(path))};
+        switch (GetFilesystemType(path)) {
+        case FSType::EXFAT:
+            InitWarning(strprintf(_("The %s path uses exFAT, which is known to have intermittent corruption problems on macOS. "
+                "Move this directory to a different filesystem to avoid data loss."), path_desc));
+            break;
+        case FSType::ERROR:
+            LogInfo("Failed to detect filesystem type for %s", path_desc);
+            break;
+        case FSType::OTHER:
+            break;
+        }
+    }};
+
+    check_and_warn_fs(args.GetDataDirNet(), "data directory");
+    check_and_warn_fs(args.GetBlocksDirPath(), "blocks directory");
+#endif
 
 #if HAVE_SYSTEM
     const std::string block_notify = args.GetArg("-blocknotify", "");

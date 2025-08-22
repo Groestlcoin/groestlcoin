@@ -9,6 +9,7 @@
 
 #include <common/system.h>
 #include <key_io.h>
+#include <primitives/transaction_identifier.h>
 #include <protocol.h>
 #include <script/script.h>
 #include <serialize.h>
@@ -16,7 +17,6 @@
 #include <util/bip32.h>
 #include <util/check.h>
 #include <util/fs.h>
-#include <util/transaction_identifier.h>
 #include <util/time.h>
 #include <util/translation.h>
 #include <wallet/migrate.h>
@@ -197,11 +197,6 @@ bool WalletBatch::IsEncrypted()
 bool WalletBatch::WriteOrderPosNext(int64_t nOrderPosNext)
 {
     return WriteIC(DBKeys::ORDERPOSNEXT, nOrderPosNext);
-}
-
-bool WalletBatch::WriteMinVersion(int nVersion)
-{
-    return WriteIC(DBKeys::MINVERSION, nVersion);
 }
 
 bool WalletBatch::WriteActiveScriptPubKeyMan(uint8_t type, const uint256& id, bool internal)
@@ -440,19 +435,6 @@ bool LoadHDChain(CWallet* pwallet, DataStream& ssValue, std::string& strErr)
         return false;
     }
     return true;
-}
-
-static DBErrors LoadMinVersion(CWallet* pwallet, DatabaseBatch& batch) EXCLUSIVE_LOCKS_REQUIRED(pwallet->cs_wallet)
-{
-    AssertLockHeld(pwallet->cs_wallet);
-    int nMinVersion = 0;
-    if (batch.Read(DBKeys::MINVERSION, nMinVersion)) {
-        pwallet->WalletLogPrintf("Wallet file version = %d\n", nMinVersion);
-        if (nMinVersion > FEATURE_LATEST)
-            return DBErrors::TOO_NEW;
-        pwallet->LoadMinVersion(nMinVersion);
-    }
-    return DBErrors::LOAD_OK;
 }
 
 static DBErrors LoadWalletFlags(CWallet* pwallet, DatabaseBatch& batch) EXCLUSIVE_LOCKS_REQUIRED(pwallet->cs_wallet)
@@ -791,7 +773,7 @@ static DBErrors LoadDescriptorWalletRecords(CWallet* pwallet, DatabaseBatch& bat
             value >> desc;
         } catch (const std::ios_base::failure& e) {
             strErr = strprintf("Error: Unrecognized descriptor found in wallet %s. ", pwallet->GetName());
-            strErr += (last_client > CLIENT_VERSION) ? "The wallet might had been created on a newer version. " :
+            strErr += (last_client > CLIENT_VERSION) ? "The wallet might have been created on a newer version. " :
                     "The database might be corrupted or the software version is not compatible with one of your wallet descriptors. ";
             strErr += "Please try running the latest software version";
             // Also include error details
@@ -1137,8 +1119,6 @@ DBErrors WalletBatch::LoadWallet(CWallet* pwallet)
     if (has_last_client) pwallet->WalletLogPrintf("Last client version = %d\n", last_client);
 
     try {
-        if ((result = LoadMinVersion(pwallet, *m_batch)) != DBErrors::LOAD_OK) return result;
-
         // Load wallet flags, so they are known when processing other records.
         // The FLAGS key is absent during wallet creation.
         if ((result = LoadWalletFlags(pwallet, *m_batch)) != DBErrors::LOAD_OK) return result;

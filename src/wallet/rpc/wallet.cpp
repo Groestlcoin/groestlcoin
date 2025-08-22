@@ -40,7 +40,7 @@ static RPCHelpMan getwalletinfo()
                     {
                         {
                         {RPCResult::Type::STR, "walletname", "the wallet name"},
-                        {RPCResult::Type::NUM, "walletversion", "the wallet version"},
+                        {RPCResult::Type::NUM, "walletversion", "(DEPRECATED) only related to unsupported legacy wallet, returns the latest version 169900 for backwards compatibility"},
                         {RPCResult::Type::STR, "format", "the database format (only sqlite)"},
                         {RPCResult::Type::NUM, "txcount", "the total number of transactions in the wallet"},
                         {RPCResult::Type::NUM, "keypoolsize", "how many new keys are pre-generated (only counts external keys)"},
@@ -82,16 +82,16 @@ static RPCHelpMan getwalletinfo()
 
     UniValue obj(UniValue::VOBJ);
 
+    const int latest_legacy_wallet_minversion{169900};
+
     size_t kpExternalSize = pwallet->KeypoolCountExternalKeys();
     obj.pushKV("walletname", pwallet->GetName());
-    obj.pushKV("walletversion", pwallet->GetVersion());
+    obj.pushKV("walletversion", latest_legacy_wallet_minversion);
     obj.pushKV("format", pwallet->GetDatabase().Format());
     obj.pushKV("txcount",       (int)pwallet->mapWallet.size());
     obj.pushKV("keypoolsize", (int64_t)kpExternalSize);
+    obj.pushKV("keypoolsize_hd_internal", pwallet->GetKeyPoolSize() - kpExternalSize);
 
-    if (pwallet->CanSupportFeature(FEATURE_HD_SPLIT)) {
-        obj.pushKV("keypoolsize_hd_internal",   (int64_t)(pwallet->GetKeyPoolSize() - kpExternalSize));
-    }
     if (pwallet->IsCrypted()) {
         obj.pushKV("unlocked_until", pwallet->nRelockTime);
     }
@@ -525,8 +525,6 @@ RPCHelpMan simulaterawtransaction()
 
     LOCK(wallet.cs_wallet);
 
-    isminefilter filter = ISMINE_SPENDABLE;
-
     const auto& txs = request.params[0].get_array();
     CAmount changes{0};
     std::map<COutPoint, CAmount> new_utxos; // UTXO:s that were made available in transaction array
@@ -559,7 +557,7 @@ RPCHelpMan simulaterawtransaction()
                 if (coins.at(outpoint).IsSpent()) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER, "One or more transaction inputs are missing or have been spent already");
                 }
-                changes -= wallet.GetDebit(txin, filter);
+                changes -= wallet.GetDebit(txin);
             }
             spent.insert(outpoint);
         }
@@ -572,7 +570,7 @@ RPCHelpMan simulaterawtransaction()
         const auto& hash = mtx.GetHash();
         for (size_t i = 0; i < mtx.vout.size(); ++i) {
             const auto& txout = mtx.vout[i];
-            bool is_mine = 0 < (wallet.IsMine(txout) & filter);
+            bool is_mine = wallet.IsMine(txout);
             changes += new_utxos[COutPoint(hash, i)] = is_mine ? txout.nValue : 0;
         }
     }

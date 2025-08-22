@@ -29,6 +29,14 @@
         <source>Delete the currently selected address from the list</source>
         <translation type="unfinished">samukuro adiresi ti o sese sayan kuro ninu akojo</translation>
     </message>
+    <message>
+        <source>Enter address or label to search</source>
+        <translation type="unfinished">Tẹ adirẹsi sii tàbí áámì làtí wáá</translation>
+    </message>
+    <message>
+        <source>Export the data in the current tab to a file</source>
+        <translation type="unfinished">Se òkèéé dátà ní tàábù lọwọlọwọ sí fáílì kán.</translation>
+    </message>
     </context>
 <context>
     <name>QObject</name>
@@ -229,6 +237,13 @@
     <message>
         <source>Date</source>
         <translation type="unfinished">Ojo</translation>
+    </message>
+    </context>
+<context>
+    <name>WalletView</name>
+    <message>
+        <source>Export the data in the current tab to a file</source>
+        <translation type="unfinished">Se òkèéé dátà ní tàábù lọwọlọwọ sí fáílì kán.</translation>
     </message>
     </context>
 </TS>

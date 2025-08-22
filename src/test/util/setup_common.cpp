@@ -40,6 +40,7 @@
 #include <test/util/coverage.h>
 #include <test/util/net.h>
 #include <test/util/random.h>
+#include <test/util/transaction_utils.h>
 #include <test/util/txmempool.h>
 #include <txdb.h>
 #include <txmempool.h>
@@ -115,6 +116,14 @@ BasicTestingSetup::BasicTestingSetup(const ChainType chainType, TestOpts opts)
     if (!EnableFuzzDeterminism()) {
         SeedRandomForTest(SeedRand::FIXED_SEED);
     }
+
+    // Reset globals
+    fDiscover = true;
+    fListen = true;
+    SetRPCWarmupStarting();
+    g_reachable_nets.Reset();
+    ClearLocal();
+
     m_node.shutdown_signal = &m_interrupt;
     m_node.shutdown_request = [this]{ return m_interrupt(); };
     m_node.args = &gArgs;
@@ -214,7 +223,10 @@ BasicTestingSetup::~BasicTestingSetup()
     } else {
         fs::remove_all(m_path_root);
     }
+    // Clear all arguments except for -datadir, which GUI tests currently rely
+    // on to be set even after the testing setup is destroyed.
     gArgs.ClearArgs();
+    gArgs.ForceSetArg("-datadir", fs::PathToString(m_path_root));
 }
 
 ChainTestingSetup::ChainTestingSetup(const ChainType chainType, TestOpts opts)
@@ -586,6 +598,9 @@ void TestChain100Setup::MockMempoolMinFee(const CFeeRate& target_feerate)
     CMutableTransaction mtx = CMutableTransaction();
     mtx.vin.emplace_back(COutPoint{Txid::FromUint256(m_rng.rand256()), 0});
     mtx.vout.emplace_back(1 * COIN, GetScriptForDestination(WitnessV0ScriptHash(CScript() << OP_TRUE)));
+    // Set a large size so that the fee evaluated at target_feerate (which is usually in sats/kvB) is an integer.
+    // Otherwise, GetMinFee() may end up slightly different from target_feerate.
+    BulkTransaction(mtx, 4000);
     const auto tx{MakeTransactionRef(mtx)};
     LockPoints lp;
     // The new mempool min feerate is equal to the removed package's feerate + incremental feerate.
@@ -628,4 +643,12 @@ std::ostream& operator<<(std::ostream& os, const uint160& num)
 std::ostream& operator<<(std::ostream& os, const uint256& num)
 {
     return os << num.ToString();
+}
+
+std::ostream& operator<<(std::ostream& os, const Txid& txid) {
+    return os << txid.ToString();
+}
+
+std::ostream& operator<<(std::ostream& os, const Wtxid& wtxid) {
+    return os << wtxid.ToString();
 }

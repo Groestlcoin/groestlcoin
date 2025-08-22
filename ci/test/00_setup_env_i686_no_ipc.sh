@@ -7,11 +7,11 @@
 export LC_ALL=C.UTF-8
 
 export HOST=i686-pc-linux-gnu
-export CONTAINER_NAME=ci_i686_multiprocess
+export CONTAINER_NAME=ci_i686_no_multiprocess
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:24.04"
 export CI_IMAGE_PLATFORM="linux/amd64"
 export PACKAGES="llvm clang g++-multilib"
-export DEP_OPTS="DEBUG=1 MULTIPROCESS=1"
+export DEP_OPTS="DEBUG=1 NO_IPC=1"
 export GOAL="install"
 export GROESTLCOIN_CONFIG="\
  -DCMAKE_BUILD_TYPE=Debug \
@@ -19,4 +19,3 @@ export GROESTLCOIN_CONFIG="\
  -DCMAKE_CXX_COMPILER='clang++;-m32' \
  -DAPPEND_CPPFLAGS='-DBOOST_MULTI_INDEX_ENABLE_SAFE_MODE' \
 "
-export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests

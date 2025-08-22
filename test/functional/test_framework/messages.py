@@ -81,6 +81,9 @@ MAX_OP_RETURN_RELAY = 100_000
 
 DEFAULT_MEMPOOL_EXPIRY_HOURS = 336  # hours
 
+TX_MIN_STANDARD_VERSION = 1
+TX_MAX_STANDARD_VERSION = 3
+
 MAGIC_BYTES = {
     "mainnet": b"\xf9\xbe\xb4\xd4",
     "testnet4": b"\x0b\x11\x09\x07",

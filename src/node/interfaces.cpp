@@ -559,17 +559,6 @@ public:
         const CBlockIndex* block{chainman().ActiveChain()[height]};
         return block && ((block->nStatus & BLOCK_HAVE_DATA) != 0) && block->nTx > 0;
     }
-    CBlockLocator getTipLocator() override
-    {
-        LOCK(::cs_main);
-        return chainman().ActiveChain().GetLocator();
-    }
-    CBlockLocator getActiveChainLocator(const uint256& block_hash) override
-    {
-        LOCK(::cs_main);
-        const CBlockIndex* index = chainman().m_blockman.LookupBlockIndex(block_hash);
-        return GetLocator(index);
-    }
     std::optional<int> findLocatorFork(const CBlockLocator& locator) override
     {
         LOCK(::cs_main);
@@ -673,11 +662,11 @@ public:
         LOCK(m_node.mempool->cs);
         return m_node.mempool->exists(txid);
     }
-    bool hasDescendantsInMempool(const uint256& txid) override
+    bool hasDescendantsInMempool(const Txid& txid) override
     {
         if (!m_node.mempool) return false;
         LOCK(m_node.mempool->cs);
-        const auto entry{m_node.mempool->GetEntry(Txid::FromUint256(txid))};
+        const auto entry{m_node.mempool->GetEntry(txid)};
         if (entry == nullptr) return false;
         return entry->GetCountWithDescendants() > 1;
     }
@@ -692,7 +681,7 @@ public:
         // that Chain clients do not need to know about.
         return TransactionError::OK == err;
     }
-    void getTransactionAncestry(const uint256& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize, CAmount* ancestorfees) override
+    void getTransactionAncestry(const Txid& txid, size_t& ancestors, size_t& descendants, size_t* ancestorsize, CAmount* ancestorfees) override
     {
         ancestors = descendants = 0;
         if (!m_node.mempool) return;

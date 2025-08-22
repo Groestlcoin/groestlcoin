@@ -54,11 +54,17 @@ Now, you can either build from self-compiled [depends](#dependencies) or install
 
     sudo apt-get install libevent-dev libboost-dev
 
-SQLite is required for the descriptor wallet:
+SQLite is required for the wallet:
 
     sudo apt install libsqlite3-dev
 
-To build Groestlcoin Core without wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+To build Groestlcoin Core without the wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+
+Cap'n Proto is needed for IPC functionality (see [multiprocess.md](multiprocess.md)):
+
+    sudo apt-get install libcapnp-dev capnproto
+
+Compile with `-DENABLE_IPC=OFF` if you do not need IPC functionality.
 
 ZMQ-enabled binaries are compiled with `-DWITH_ZMQ=ON` and require the following dependency:
 
@@ -67,11 +73,6 @@ ZMQ-enabled binaries are compiled with `-DWITH_ZMQ=ON` and require the following
 User-Space, Statically Defined Tracing (USDT) dependencies:
 
     sudo apt install systemtap-sdt-dev
-
-IPC-enabled binaries are compiled  with `-DENABLE_IPC=ON` and require the following dependencies.
-Skip if you do not need IPC functionality.
-
-    sudo apt-get install libcapnp-dev capnproto
 
 GUI dependencies:
 
@@ -105,11 +106,11 @@ Now, you can either build from self-compiled [depends](#dependencies) or install
 
     sudo dnf install libevent-devel boost-devel
 
-SQLite is required for the descriptor wallet:
+SQLite is required for the wallet:
 
     sudo dnf install sqlite-devel
 
-To build Groestlcoin Core without wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+To build Groestlcoin Core without the wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
 
 ZMQ-enabled binaries are compiled with `-DWITH_ZMQ=ON` and require the following dependency:
 
@@ -119,10 +120,11 @@ User-Space, Statically Defined Tracing (USDT) dependencies:
 
     sudo dnf install systemtap-sdt-devel
 
-IPC-enabled binaries are compiled with `-DENABLE_IPC=ON` and require the following dependency.
-Skip if you do not need IPC functionality.
+Cap'n Proto is needed for IPC functionality (see [multiprocess.md](multiprocess.md)):
 
-    sudo dnf install capnproto
+    sudo dnf install capnproto capnproto-devel
+
+Compile with `-DENABLE_IPC=OFF` if you do not need IPC functionality.
 
 GUI dependencies:
 
@@ -155,11 +157,17 @@ Now, you can either build from self-compiled [depends](#dependencies) or install
 
     apk add libevent-dev boost-dev
 
-SQLite is required for the descriptor wallet:
+SQLite is required for the wallet:
 
     apk add sqlite-dev
 
-To build Groestlcoin Core without wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+To build Groestlcoin Core without the wallet, see [*Disable-wallet mode*](#disable-wallet-mode)
+
+Cap'n Proto is needed for IPC functionality (see [multiprocess.md](multiprocess.md)):
+
+    apk add capnproto capnproto-dev
+
+Compile with `-DENABLE_IPC=OFF` if you do not need IPC functionality.
 
 ZMQ dependencies (provides ZMQ API):
 
@@ -203,7 +211,7 @@ Setup and Build Example: Arch Linux
 -----------------------------------
 This example lists the steps necessary to setup and build a command line only distribution of the latest changes on Arch Linux:
 
-    pacman --sync --needed cmake boost gcc git libevent make python sqlite
+    pacman --sync --needed capnproto cmake boost gcc git libevent make python sqlite
     git clone https://github.com/groestlcoin/groestlcoin.git
     cd groestlcoin/
     cmake -B build

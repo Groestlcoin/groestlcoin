@@ -186,8 +186,8 @@ void BaseIndex::Sync()
 {
     const CBlockIndex* pindex = m_best_block_index.load();
     if (!m_synced) {
-        std::chrono::steady_clock::time_point last_log_time{0s};
-        std::chrono::steady_clock::time_point last_locator_write_time{0s};
+        auto last_log_time{NodeClock::now()};
+        auto last_locator_write_time{last_log_time};
         while (true) {
             if (m_interrupt) {
                 LogInfo("%s: m_interrupt set; exiting ThreadSync", GetName());
@@ -229,14 +229,13 @@ void BaseIndex::Sync()
 
             if (!ProcessBlock(pindex)) return; // error logged internally
 
-            auto current_time{std::chrono::steady_clock::now()};
-            if (last_log_time + SYNC_LOG_INTERVAL < current_time) {
-                LogInfo("Syncing %s with block chain from height %d",
-                          GetName(), pindex->nHeight);
+            auto current_time{NodeClock::now()};
+            if (current_time - last_log_time >= SYNC_LOG_INTERVAL) {
+                LogInfo("Syncing %s with block chain from height %d", GetName(), pindex->nHeight);
                 last_log_time = current_time;
             }
 
-            if (last_locator_write_time + SYNC_LOCATOR_WRITE_INTERVAL < current_time) {
+            if (current_time - last_locator_write_time >= SYNC_LOCATOR_WRITE_INTERVAL) {
                 SetBestBlockIndex(pindex);
                 last_locator_write_time = current_time;
                 // No need to handle errors in Commit. See rationale above.
@@ -274,7 +273,6 @@ bool BaseIndex::Commit()
 
 bool BaseIndex::Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_tip)
 {
-    assert(current_tip == m_best_block_index);
     assert(current_tip->GetAncestor(new_tip->nHeight) == new_tip);
 
     CBlock block;
@@ -301,18 +299,13 @@ bool BaseIndex::Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_ti
         }
     }
 
-    // In the case of a reorg, ensure persisted block locator is not stale.
+    // Don't commit here - the committed index state must never be ahead of the
+    // flushed chainstate, otherwise unclean restarts would lead to index corruption.
     // Pruning has a minimum of 288 blocks-to-keep and getting the index
     // out of sync may be possible but a users fault.
     // In case we reorg beyond the pruned depth, ReadBlock would
     // throw and lead to a graceful shutdown
     SetBestBlockIndex(new_tip);
-    if (!Commit()) {
-        // If commit fails, revert the best block index to avoid corruption.
-        SetBestBlockIndex(current_tip);
-        return false;
-    }
-
     return true;
 }
 

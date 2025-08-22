@@ -12,7 +12,9 @@
 #include <node/types.h>
 #include <numeric>
 #include <policy/policy.h>
+#include <policy/truc_policy.h>
 #include <primitives/transaction.h>
+#include <primitives/transaction_identifier.h>
 #include <script/script.h>
 #include <script/signingprovider.h>
 #include <script/solver.h>
@@ -21,7 +23,6 @@
 #include <util/rbf.h>
 #include <util/trace.h>
 #include <util/translation.h>
-#include <util/transaction_identifier.h>
 #include <wallet/coincontrol.h>
 #include <wallet/fees.h>
 #include <wallet/receive.h>
@@ -282,6 +283,14 @@ util::Result<PreSelectedInputs> FetchSelectedInputs(const CWallet& wallet, const
             if (input_bytes == -1) {
                 input_bytes = CalculateMaximumSignedInputSize(txout, &wallet, &coin_control);
             }
+            const CWalletTx& parent_tx = txo->GetWalletTx();
+            if (wallet.GetTxDepthInMainChain(parent_tx) == 0) {
+                if (parent_tx.tx->version == TRUC_VERSION && coin_control.m_version != TRUC_VERSION) {
+                    return util::Error{strprintf(_("Can't spend unconfirmed version 3 pre-selected input with a version %d tx"), coin_control.m_version)};
+                } else if (coin_control.m_version == TRUC_VERSION && parent_tx.tx->version != TRUC_VERSION) {
+                    return util::Error{strprintf(_("Can't spend unconfirmed version %d pre-selected input with a version 3 tx"), parent_tx.tx->version)};
+                }
+            }
         } else {
             // The input is external. We did not find the tx in mapWallet.
             const auto out{coin_control.GetExternalOutput(outpoint)};
@@ -300,8 +309,8 @@ util::Result<PreSelectedInputs> FetchSelectedInputs(const CWallet& wallet, const
             return util::Error{strprintf(_("Not solvable pre-selected input %s"), outpoint.ToString())}; // Not solvable, can't estimate size for fee
         }
 
-        /* Set some defaults for depth, spendable, solvable, safe, time, and from_me as these don't matter for preset inputs since no selection is being done. */
-        COutput output(outpoint, txout, /*depth=*/ 0, input_bytes, /*spendable=*/ true, /*solvable=*/ true, /*safe=*/ true, /*time=*/ 0, /*from_me=*/ false, coin_selection_params.m_effective_feerate);
+        /* Set some defaults for depth, solvable, safe, time, and from_me as these don't matter for preset inputs since no selection is being done. */
+        COutput output(outpoint, txout, /*depth=*/0, input_bytes, /*solvable=*/true, /*safe=*/true, /*time=*/0, /*from_me=*/false, coin_selection_params.m_effective_feerate);
         output.ApplyBumpFee(map_of_bump_fees.at(output.outpoint));
         result.Insert(output, coin_selection_params.m_subtract_fee_outputs);
     }
@@ -316,6 +325,9 @@ CoinsResult AvailableCoins(const CWallet& wallet,
     AssertLockHeld(wallet.cs_wallet);
 
     CoinsResult result;
+    // track unconfirmed truc outputs separately if we are tracking trucness
+    std::vector<std::pair<OutputType, COutput>> unconfirmed_truc_coins;
+    std::unordered_map<Txid, CAmount, SaltedTxidHasher> truc_txid_by_value;
     // Either the WALLET_FLAG_AVOID_REUSE flag is not set (in which case we always allow), or we default to avoiding, and only in the case where
     // a coin control object is provided, and has the avoid address reuse flag set to false, do we allow already used addresses
     bool allow_used_addresses = !wallet.IsWalletFlagSet(WALLET_FLAG_AVOID_REUSE) || (coinControl && !coinControl->m_avoid_address_reuse);
@@ -327,7 +339,7 @@ CoinsResult AvailableCoins(const CWallet& wallet,
 
     std::set<Txid> trusted_parents;
     // Cache for whether each tx passes the tx level checks (first bool), and whether the transaction is "safe" (second bool)
-    std::unordered_map<uint256, std::pair<bool, bool>, SaltedTxidHasher> tx_safe_cache;
+    std::unordered_map<Txid, std::pair<bool, bool>, SaltedTxidHasher> tx_safe_cache;
     for (const auto& [outpoint, txo] : wallet.GetTXOs()) {
         const CWalletTx& wtx = txo.GetWalletTx();
         const CTxOut& output = txo.GetTxOut();
@@ -386,6 +398,17 @@ CoinsResult AvailableCoins(const CWallet& wallet,
                 safeTx = false;
             }
 
+            if (nDepth == 0 && params.check_version_trucness) {
+                if (coinControl->m_version == TRUC_VERSION) {
+                    if (wtx.tx->version != TRUC_VERSION) continue;
+                    // this unconfirmed v3 transaction already has a child
+                    if (wtx.truc_child_in_mempool.has_value()) continue;
+                } else {
+                    if (wtx.tx->version == TRUC_VERSION) continue;
+                    Assume(!wtx.truc_child_in_mempool.has_value());
+                }
+            }
+
             if (only_safe && !safeTx) {
                 continue;
             }
@@ -414,14 +437,11 @@ CoinsResult AvailableCoins(const CWallet& wallet,
         if (wallet.IsSpent(outpoint))
             continue;
 
-        isminetype mine = wallet.IsMine(output);
-        assert(mine != ISMINE_NO);
-
         if (!allow_used_addresses && wallet.IsSpentKey(output.scriptPubKey)) {
             continue;
         }
 
-        bool tx_from_me = CachedTxIsFromMe(wallet, wtx, ISMINE_ALL);
+        bool tx_from_me = CachedTxIsFromMe(wallet, wtx);
 
         std::unique_ptr<SigningProvider> provider = wallet.GetSolvingProvider(output.scriptPubKey);
 
@@ -429,10 +449,6 @@ CoinsResult AvailableCoins(const CWallet& wallet,
         // Because CalculateMaximumSignedInputSize infers a solvable descriptor to get the satisfaction size,
         // it is safe to assume that this input is solvable if input_bytes is greater than -1.
         bool solvable = input_bytes > -1;
-        bool spendable = (mine & ISMINE_SPENDABLE) != ISMINE_NO;
-
-        // Filter by spendable outputs only
-        if (!spendable && params.only_spendable) continue;
 
         // Obtain script type
         std::vector<std::vector<uint8_t>> script_solutions;
@@ -450,8 +466,15 @@ CoinsResult AvailableCoins(const CWallet& wallet,
             is_from_p2sh = true;
         }
 
-        result.Add(GetOutputType(type, is_from_p2sh),
-                   COutput(outpoint, output, nDepth, input_bytes, spendable, solvable, tx_safe, wtx.GetTxTime(), tx_from_me, feerate));
+        auto available_output_type = GetOutputType(type, is_from_p2sh);
+        auto available_output = COutput(outpoint, output, nDepth, input_bytes, solvable, tx_safe, wtx.GetTxTime(), tx_from_me, feerate);
+        if (wtx.tx->version == TRUC_VERSION && nDepth == 0 && params.check_version_trucness) {
+            unconfirmed_truc_coins.emplace_back(available_output_type, available_output);
+            auto [it, _] = truc_txid_by_value.try_emplace(wtx.tx->GetHash(), 0);
+            it->second += output.nValue;
+        } else {
+            result.Add(available_output_type, available_output);
+        }
 
         outpoints.push_back(outpoint);
 
@@ -468,6 +491,23 @@ CoinsResult AvailableCoins(const CWallet& wallet,
         }
     }
 
+    // Return all the coins from one TRUC transaction, that have the highest value.
+    // This could be improved in the future by encoding these restrictions in
+    // the coin selection itself so that we don't have to filter out
+    // other unconfirmed TRUC coins beforehand.
+    if (params.check_version_trucness && unconfirmed_truc_coins.size() > 0) {
+        auto highest_value_truc_tx = std::max_element(truc_txid_by_value.begin(), truc_txid_by_value.end(), [](const auto& tx1, const auto& tx2){
+                return tx1.second < tx2.second;
+                });
+
+        const Txid& truc_txid = highest_value_truc_tx->first;
+        for (const auto& [type, output] : unconfirmed_truc_coins) {
+            if (output.outpoint.hash == truc_txid) {
+                    result.Add(type, output);
+            }
+        }
+    }
+
     if (feerate.has_value()) {
         std::map<COutPoint, CAmount> map_of_bump_fees = wallet.chain().calculateIndividualBumpFees(outpoints, feerate.value());
 
@@ -479,12 +519,6 @@ CoinsResult AvailableCoins(const CWallet& wallet,
     }
 
     return result;
-}
-
-CoinsResult AvailableCoinsListUnspent(const CWallet& wallet, const CCoinControl* coinControl, CoinFilterParams params)
-{
-    params.only_spendable = false;
-    return AvailableCoins(wallet, coinControl, /*feerate=*/ std::nullopt, params);
 }
 
 const CTxOut& FindNonChangeParentOutput(const CWallet& wallet, const COutPoint& outpoint)
@@ -515,21 +549,18 @@ std::map<CTxDestination, std::vector<COutput>> ListCoins(const CWallet& wallet)
 
     CCoinControl coin_control;
     CoinFilterParams coins_params;
-    coins_params.only_spendable = false;
     coins_params.skip_locked = false;
     for (const COutput& coin : AvailableCoins(wallet, &coin_control, /*feerate=*/std::nullopt, coins_params).All()) {
         CTxDestination address;
-        if ((coin.spendable || (wallet.IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS) && coin.solvable))) {
-            if (!ExtractDestination(FindNonChangeParentOutput(wallet, coin.outpoint).scriptPubKey, address)) {
-                // For backwards compatibility, we convert P2PK output scripts into PKHash destinations
-                if (auto pk_dest = std::get_if<PubKeyDestination>(&address)) {
-                    address = PKHash(pk_dest->GetPubKey());
-                } else {
-                    continue;
-                }
+        if (!ExtractDestination(FindNonChangeParentOutput(wallet, coin.outpoint).scriptPubKey, address)) {
+            // For backwards compatibility, we convert P2PK output scripts into PKHash destinations
+            if (auto pk_dest = std::get_if<PubKeyDestination>(&address)) {
+                address = PKHash(pk_dest->GetPubKey());
+            } else {
+                continue;
             }
-            result[address].emplace_back(coin);
         }
+        result[address].emplace_back(coin);
     }
     return result;
 }
@@ -762,7 +793,7 @@ util::Result<SelectionResult> ChooseSelectionResult(interfaces::Chain& chain, co
         }
         std::optional<CAmount> combined_bump_fee = chain.calculateCombinedBumpFee(outpoints, coin_selection_params.m_effective_feerate);
         if (!combined_bump_fee.has_value()) {
-            return util::Error{_("Failed to calculate bump fees, because unconfirmed UTXOs depend on enormous cluster of unconfirmed transactions.")};
+            return util::Error{_("Failed to calculate bump fees, because unconfirmed UTXOs depend on an enormous cluster of unconfirmed transactions.")};
         }
         CAmount bump_fee_overestimate = summed_bump_fees - combined_bump_fee.value();
         if (bump_fee_overestimate) {
@@ -904,11 +935,17 @@ util::Result<SelectionResult> AutomaticCoinSelection(const CWallet& wallet, Coin
         // If no solution is found, return the first detailed error (if any).
         // future: add "error level" so the worst one can be picked instead.
         std::vector<util::Result<SelectionResult>> res_detailed_errors;
+        CoinSelectionParams updated_selection_params = coin_selection_params;
         for (const auto& select_filter : ordered_filters) {
             auto it = filtered_groups.find(select_filter.filter);
             if (it == filtered_groups.end()) continue;
+            if (updated_selection_params.m_version == TRUC_VERSION && (select_filter.filter.conf_mine == 0 || select_filter.filter.conf_theirs == 0)) {
+                if (updated_selection_params.m_max_tx_weight > (TRUC_CHILD_MAX_WEIGHT)) {
+                    updated_selection_params.m_max_tx_weight = TRUC_CHILD_MAX_WEIGHT;
+                }
+            }
             if (auto res{AttemptSelection(wallet.chain(), value_to_select, it->second,
-                                          coin_selection_params, select_filter.allow_mixed_output_types)}) {
+                                          updated_selection_params, select_filter.allow_mixed_output_types)}) {
                 return res; // result found
             } else {
                 // If any specific error message appears here, then something particularly wrong might have happened.
@@ -1019,14 +1056,13 @@ static util::Result<CreatedTransactionResult> CreateTransactionInternal(
     FastRandomContext rng_fast;
     CMutableTransaction txNew; // The resulting transaction that we make
 
-    if (coin_control.m_version) {
-        txNew.version = coin_control.m_version.value();
-    }
+    txNew.version = coin_control.m_version;
 
     CoinSelectionParams coin_selection_params{rng_fast}; // Parameters for coin selection, init with dummy
     coin_selection_params.m_avoid_partial_spends = coin_control.m_avoid_partial_spends;
     coin_selection_params.m_include_unsafe_inputs = coin_control.m_include_unsafe_inputs;
     coin_selection_params.m_max_tx_weight = coin_control.m_max_tx_weight.value_or(MAX_STANDARD_TX_WEIGHT);
+    coin_selection_params.m_version = coin_control.m_version;
     int minimum_tx_weight = MIN_STANDARD_TX_NONWITNESS_SIZE * WITNESS_SCALE_FACTOR;
     if (coin_selection_params.m_max_tx_weight.value() < minimum_tx_weight || coin_selection_params.m_max_tx_weight.value() > MAX_STANDARD_TX_WEIGHT) {
         return util::Error{strprintf(_("Maximum transaction weight must be between %d and %d"), minimum_tx_weight, MAX_STANDARD_TX_WEIGHT)};

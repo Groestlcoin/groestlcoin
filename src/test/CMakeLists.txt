@@ -64,6 +64,7 @@ add_executable(test_groestlcoin
   net_peer_eviction_tests.cpp
   net_tests.cpp
   netbase_tests.cpp
+  node_init_tests.cpp
   node_warnings_tests.cpp
   orphanage_tests.cpp
   pcp_tests.cpp
@@ -214,4 +215,4 @@ endfunction()
 
 add_all_test_targets()
 
-install_binary_component(test_groestlcoin)
+install_binary_component(test_groestlcoin INTERNAL)

@@ -15,3 +15,4 @@ export GROESTLCOIN_CONFIG="-DBUILD_GUI=ON -DWITH_ZMQ=ON -DREDUCE_EXPORTS=ON -DCM
 export CI_OS_NAME="macos"
 export NO_DEPENDS=1
 export OSX_SDK=""
+export BITCOIN_CMD="bitcoin -m" # Used in functional tests

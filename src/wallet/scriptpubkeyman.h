@@ -43,12 +43,10 @@ class WalletStorage
 {
 public:
     virtual ~WalletStorage() = default;
-    virtual std::string GetDisplayName() const = 0;
+    virtual std::string LogName() const = 0;
     virtual WalletDatabase& GetDatabase() const = 0;
     virtual bool IsWalletFlagSet(uint64_t) const = 0;
     virtual void UnsetBlankWalletFlag(WalletBatch&) = 0;
-    virtual bool CanSupportFeature(enum WalletFeature) const = 0;
-    virtual void SetMinVersion(enum WalletFeature, WalletBatch* = nullptr) = 0;
     //! Pass the encryption key to cb().
     virtual bool WithEncryptionKey(std::function<bool (const CKeyingMaterial&)> cb) const = 0;
     virtual bool HasEncryptionKeys() const = 0;
@@ -87,7 +85,7 @@ public:
     explicit ScriptPubKeyMan(WalletStorage& storage) : m_storage(storage) {}
     virtual ~ScriptPubKeyMan() = default;
     virtual util::Result<CTxDestination> GetNewDestination(const OutputType type) { return util::Error{Untranslated("Not supported")}; }
-    virtual isminetype IsMine(const CScript& script) const { return ISMINE_NO; }
+    virtual bool IsMine(const CScript& script) const { return false; }
 
     //! Check that the given decryption key is valid for this ScriptPubKeyMan, i.e. it decrypts all of the keys handled by it.
     virtual bool CheckDecryptionKey(const CKeyingMaterial& master_key) { return false; }
@@ -153,7 +151,7 @@ public:
     template <typename... Params>
     void WalletLogPrintf(util::ConstevalFormatString<sizeof...(Params)> wallet_fmt, const Params&... params) const
     {
-        LogInfo("%s %s", m_storage.GetDisplayName(), tfm::format(wallet_fmt, params...));
+        LogInfo("[%s] %s", m_storage.LogName(), tfm::format(wallet_fmt, params...));
     };
 
     /** Keypool has new keys */
@@ -199,7 +197,7 @@ private:
     // Used only in migration.
     std::unordered_set<CScript, SaltedSipHasher> GetCandidateScriptPubKeys() const;
 
-    isminetype IsMine(const CScript& script) const override;
+    bool IsMine(const CScript& script) const override;
     bool CanProvide(const CScript& script, SignatureData& sigdata) override;
 public:
     using ScriptPubKeyMan::ScriptPubKeyMan;
@@ -326,7 +324,7 @@ public:
     mutable RecursiveMutex cs_desc_man;
 
     util::Result<CTxDestination> GetNewDestination(const OutputType type) override;
-    isminetype IsMine(const CScript& script) const override;
+    bool IsMine(const CScript& script) const override;
 
     bool CheckDecryptionKey(const CKeyingMaterial& master_key) override;
     bool Encrypt(const CKeyingMaterial& master_key, WalletBatch* batch) override;

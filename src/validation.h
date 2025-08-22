@@ -27,6 +27,7 @@
 #include <txdb.h>
 #include <txmempool.h>
 #include <uint256.h>
+#include <util/byte_units.h>
 #include <util/check.h>
 #include <util/fs.h>
 #include <util/hasher.h>
@@ -35,6 +36,7 @@
 #include <util/translation.h>
 #include <versionbits.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <map>
@@ -503,6 +505,14 @@ enum class CoinsCacheSizeState
     OK = 0
 };
 
+constexpr int64_t LargeCoinsCacheThreshold(int64_t total_space) noexcept
+{
+    // No periodic flush needed if at least this much space is free
+    constexpr int64_t MAX_BLOCK_COINSDB_USAGE_BYTES{int64_t(10_MiB)};
+    return std::max((total_space * 9) / 10,
+                    total_space - MAX_BLOCK_COINSDB_USAGE_BYTES);
+}
+
 /**
  * Chainstate stores and provides an API to update our local knowledge of the
  * current best chain.
@@ -549,6 +559,8 @@ protected:
 
     //! Cached result of LookupBlockIndex(*m_from_snapshot_blockhash)
     mutable const CBlockIndex* m_cached_snapshot_base GUARDED_BY(::cs_main){nullptr};
+
+    std::atomic_bool m_prev_script_checks_logged{true};
 
 public:
     //! Reference to a BlockManager instance which itself is shared across all
@@ -787,7 +799,12 @@ public:
 
 protected:
     bool ActivateBestChainStep(BlockValidationState& state, CBlockIndex* pindexMostWork, const std::shared_ptr<const CBlock>& pblock, bool& fInvalidFound, ConnectTrace& connectTrace) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
-    bool ConnectTip(BlockValidationState& state, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions& disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
+    bool ConnectTip(
+        BlockValidationState& state,
+        CBlockIndex* pindexNew,
+        std::shared_ptr<const CBlock> block_to_connect,
+        ConnectTrace& connectTrace,
+        DisconnectedBlockTransactions& disconnectpool) EXCLUSIVE_LOCKS_REQUIRED(cs_main, m_mempool->cs);
 
     void InvalidBlockFound(CBlockIndex* pindex, const BlockValidationState& state) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     CBlockIndex* FindMostWorkChain() EXCLUSIVE_LOCKS_REQUIRED(cs_main);

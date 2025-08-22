@@ -121,8 +121,8 @@ class BIP66Test(BitcoinTestFramework):
                 'txid': spendtx_txid,
                 'wtxid': spendtx_wtxid,
                 'allowed': False,
-                'reject-reason': 'mandatory-script-verify-flag-failed (Non-canonical DER signature)',
-                'reject-details': 'mandatory-script-verify-flag-failed (Non-canonical DER signature), ' +
+                'reject-reason': 'mempool-script-verify-flag-failed (Non-canonical DER signature)',
+                'reject-details': 'mempool-script-verify-flag-failed (Non-canonical DER signature), ' +
                                   f"input 0 of {spendtx_txid} (wtxid {spendtx_wtxid}), spending {coin_txid}:0"
             }],
             self.nodes[0].testmempoolaccept(rawtxs=[spendtx.serialize().hex()], maxfeerate=0),
@@ -133,7 +133,7 @@ class BIP66Test(BitcoinTestFramework):
         block.hashMerkleRoot = block.calc_merkle_root()
         block.solve()
 
-        with self.nodes[0].assert_debug_log(expected_msgs=['Block validation error: mandatory-script-verify-flag-failed (Non-canonical DER signature)']):
+        with self.nodes[0].assert_debug_log(expected_msgs=['Block validation error: block-script-verify-flag-failed (Non-canonical DER signature)']):
             peer.send_and_ping(msg_block(block))
             assert_equal(int(self.nodes[0].getbestblockhash(), 16), tip)
             peer.sync_with_ping()

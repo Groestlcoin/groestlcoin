@@ -93,7 +93,7 @@ task:
     MAKEJOBS: "-j4"  # Avoid excessive memory use due to MSan
 
 task:
-  name: 'multiprocess, i686, DEBUG'
+  name: 'no IPC, i686, DEBUG'
   << : *GLOBAL_TASK_TEMPLATE
   container:
     cpu: 4
@@ -101,7 +101,7 @@ task:
     docker_arguments:
       CI_IMAGE_NAME_TAG: "mirror.gcr.io/ubuntu:24.04"
       CI_IMAGE_PLATFORM: "linux/amd64"
-      FILE_ENV: "./ci/test/00_setup_env_i686_multiprocess.sh"
+      FILE_ENV: "./ci/test/00_setup_env_i686_no_ipc.sh"
   env:
     << : *CIRRUS_EPHEMERAL_WORKER_TEMPLATE_ENV
 

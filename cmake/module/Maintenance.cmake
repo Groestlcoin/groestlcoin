@@ -23,7 +23,7 @@ function(add_maintenance_targets)
     return()
   endif()
 
-  foreach(target IN ITEMS groestlcoin groestlcoind groestlcoin-qt groestlcoin-cli groestlcoin-tx groestlcoin-util groestlcoin-wallet test_groestlcoin bench_groestlcoin)
+  foreach(target IN ITEMS groestlcoin groestlcoind groestlcoin-node groestlcoin-qt groestlcoin-gui groestlcoin-cli groestlcoin-tx groestlcoin-util groestlcoin-wallet test_groestlcoin bench_groestlcoin)
     if(TARGET ${target})
       list(APPEND executables $<TARGET_FILE:${target}>)
     endif()
