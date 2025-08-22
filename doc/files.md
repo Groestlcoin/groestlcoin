@@ -133,37 +133,37 @@ Subdirectory | File(s)           | Description
 
 ## Installed Files
 
-This table describes the files installed by Bitcoin Core across different platforms.
+This table describes the files installed by Groestlcoin Core across different platforms.
 
-| **Path**                                                   | **Description**                                                             |
-|------------------------------------------------------------|-----------------------------------------------------------------------------|
-| [README.md](README.md) or [readme.txt](README_windows.txt) | Project information and instructions                                        |
-| bitcoin.conf                                               | [Generated](../contrib/devtools/gen-bitcoin-conf.sh) configuration file     |
-| bin/bitcoin                                                | Command-line tool for interacting with Bitcoin. Calls other binaries below. |
-| bin/bitcoin-cli                                            | Tool for making node and wallet RPC calls.                                  |
-| bin/bitcoin-qt                                             | Bitcoin node and wallet GUI                                                 |
-| bin/bitcoin-tx                                             | Tool for creating and modifying transactions                                |
-| bin/bitcoin-util                                           | Miscellaneous utilities                                                     |
-| bin/bitcoin-wallet                                         | Bitcoin wallet tool                                                         |
-| bin/bitcoind                                               | Bitcoin node and wallet daemon                                              |
-| *lib/libbitcoinkernel.so*                                  | Shared library containing core consensus and validation code                |
-| *lib/pkgconfig/libbitcoinkernel.pc*                        | Pkg-config metadata for linking to `libbitcoinkernel`                       |
-| *libexec/bench_bitcoin*                                    | Benchmarking tool for measuring node performance                            |
-| *libexec/bitcoin-chainstate*                               | Tool to validate and connect blocks                                         |
-| libexec/bitcoin-gui                                        | IPC-enabled alternative to `bitcoin-qt`                                     |
-| libexec/bitcoin-node                                       | IPC-enabled alternative to `bitcoind`                                       |
-| libexec/test_bitcoin                                       | Unit test binary                                                            |
-| *libexec/test_bitcoin-qt*                                  | GUI-specific unit tests                                                     |
-| share/man/man1/                                            | Man pages for command-line tools like `bitcoin-cli`, `bitcoind`, and others |
-| share/rpcauth/                                             | Documentation and scripts for RPC authentication setup                      |
+| **Path**                                                   | **Description**                                                                     |
+|------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [README.md](README.md) or [readme.txt](README_windows.txt) | Project information and instructions                                                |
+| groestlcoin.conf                                           | [Generated](../contrib/devtools/gen-groestlcoin-conf.sh) configuration file         |
+| bin/groestlcoin                                            | Command-line tool for interacting with Groestlcoin. Calls other binaries below.     |
+| bin/groestlcoin-cli                                        | Tool for making node and wallet RPC calls.                                          |
+| bin/groestlcoin-qt                                         | groestlcoin node and wallet GUI                                                     |
+| bin/groestlcoin-tx                                         | Tool for creating and modifying transactions                                        |
+| bin/groestlcoin-util                                       | Miscellaneous utilities                                                             |
+| bin/groestlcoin-wallet                                     | Groestlcoin wallet tool                                                             |
+| bin/groestlcoind                                           | Groestlcoin node and wallet daemon                                                  |
+| *lib/libgroestlcoinkernel.so*                              | Shared library containing core consensus and validation code                        |
+| *lib/pkgconfig/libgroestlcoinkernel.pc*                    | Pkg-config metadata for linking to `libgroestlcoinkernel`                           |
+| *libexec/bench_groestlcoin*                                | Benchmarking tool for measuring node performance                                    |
+| *libexec/groestlcoin-chainstate*                           | Tool to validate and connect blocks                                                 |
+| libexec/groestlcoin-gui                                    | IPC-enabled alternative to `groestlcoin-qt`                                         |
+| libexec/groestlcoin-node                                   | IPC-enabled alternative to `groestlcoind`                                           |
+| libexec/test_groestlcoin                                   | Unit test binary                                                                    |
+| *libexec/test_groestlcoin-qt*                              | GUI-specific unit tests                                                             |
+| share/man/man1/                                            | Man pages for command-line tools like `groestlcoin-cli`, `groestlcoind`, and others |
+| share/rpcauth/                                             | Documentation and scripts for RPC authentication setup                              |
 
 ### Notes
 
 - *Italicized* files are only installed in source builds if relevant CMake options are enabled. They are not included in binary releases.
-- README and bitcoin.conf files are included in binary releases but not installed in source builds.
-- On Windows, binaries have a `.exe` suffix (e.g., `bitcoin-cli.exe`).
+- README and groestlcoin.conf files are included in binary releases but not installed in source builds.
+- On Windows, binaries have a `.exe` suffix (e.g., `groestlcoin-cli.exe`).
 
 ## Filesystem recommendations
 
 When choosing a filesystem for the data directory (`datadir`) or blocks directory (`blocksdir`) on **macOS**,the `exFAT` filesystem should be avoided.
-There have been multiple reports of database corruption and data loss when using this filesystem with Bitcoin Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.
+There have been multiple reports of database corruption and data loss when using this filesystem with Groestlcoin Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.

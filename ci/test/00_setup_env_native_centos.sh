@@ -18,4 +18,4 @@ export GROESTLCOIN_CONFIG="\
  -DREDUCE_EXPORTS=ON \
  -DCMAKE_BUILD_TYPE=Debug \
 "
-export BITCOIN_CMD="bitcoin -m" # Used in functional tests
+export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests
