@@ -11,8 +11,7 @@ export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:22.04"
 # Use minimum supported python3.10 and gcc-11, see doc/dependencies.md
 export PACKAGES="gcc-11 g++-11 python3-zmq"
 export DEP_OPTS="CC=gcc-11 CXX=g++-11"
-export RUN_UNIT_TESTS_SEQUENTIAL="false"
-export RUN_UNIT_TESTS="false"
+# export TEST_RUNNER_EXTRA="--previous-releases --coverage --extended --exclude feature_dbcrash"  # Run extended tests so that coverage does not fail, but exclude the very slow dbcrash
 export GOAL="install"
 export CI_LIMIT_STACK_SIZE=1
 export DOWNLOAD_PREVIOUS_RELEASES="true"

@@ -12,7 +12,7 @@ import random
 # Parameters:
 
 # Aim for still working fine at some point in the future. [datetime]
-TIME = datetime(2027, 10, 6)
+TIME = datetime(2028, 4, 2)
 
 # Expected block interval. [timedelta]
 BLOCK_INTERVAL = timedelta(seconds=60)
