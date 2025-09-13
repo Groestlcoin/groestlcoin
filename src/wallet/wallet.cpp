@@ -1634,7 +1634,11 @@ bool CWallet::IsMine(const COutPoint& outpoint) const
 
 bool CWallet::IsFromMe(const CTransaction& tx) const
 {
-    return (GetDebit(tx) > 0);
+    LOCK(cs_wallet);
+    for (const CTxIn& txin : tx.vin) {
+        if (GetTXO(txin.prevout)) return true;
+    }
+    return false;
 }
 
 CAmount CWallet::GetDebit(const CTransaction& tx) const
@@ -3687,9 +3691,7 @@ util::Result<std::reference_wrapper<DescriptorScriptPubKeyMan>> CWallet::AddWall
 {
     AssertLockHeld(cs_wallet);
 
-    if (!IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS)) {
-        return util::Error{_("Cannot add WalletDescriptor to a non-descriptor wallet")};
-    }
+    Assert(IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS));
 
     auto spk_man = GetDescriptorScriptPubKeyMan(desc);
     if (spk_man) {
