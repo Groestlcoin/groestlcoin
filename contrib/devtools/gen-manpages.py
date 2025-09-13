@@ -9,6 +9,7 @@ import tempfile
 import argparse
 
 BINARIES = [
+'bin/groestlcoin',
 'bin/groestlcoind',
 'bin/groestlcoin-cli',
 'bin/groestlcoin-tx',
