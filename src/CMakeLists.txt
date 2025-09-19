@@ -302,7 +302,7 @@ if(BUILD_BITCOIN_BIN)
   add_windows_resources(groestlcoin groestlcoin-res.rc)
   add_windows_application_manifest(groestlcoin)
   target_link_libraries(groestlcoin core_interface bitcoin_util)
-  install_binary_component(groestlcoin)
+  install_binary_component(groestlcoin HAS_MANPAGE)
 endif()
 
 # Groestlcoin Core groestlcoind.
