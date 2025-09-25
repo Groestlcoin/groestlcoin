@@ -125,7 +125,7 @@ Section -post SEC0001
     DeleteRegKey /IfEmpty HKCU "${REGKEY} (64-bit)"
 
     # Lingering since 77b2923f87131a407f7d4193c54db22375130403
-    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Bitcoin Core (testnet, 64-bit).lnk"
+    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Groestlcoin Core (testnet, 64-bit).lnk"
 SectionEnd
 
 # Macro for selecting uninstaller sections
