@@ -111,7 +111,7 @@ const std::string NET_MESSAGE_TYPE_OTHER = "*other*";
 
 static const uint64_t RANDOMIZER_ID_NETGROUP = 0x6c0edd8036ef4036ULL; // SHA256("netgroup")[0:8]
 static const uint64_t RANDOMIZER_ID_LOCALHOSTNONCE = 0xd93e69e2bbfa5735ULL; // SHA256("localhostnonce")[0:8]
-static const uint64_t RANDOMIZER_ID_ADDRCACHE = 0x1cf2e4ddd306dda9ULL; // SHA256("addrcache")[0:8]
+static const uint64_t RANDOMIZER_ID_NETWORKKEY = 0x0e8a2b136c592a7dULL; // SHA256("networkkey")[0:8]
 //
 // Global state variables
 //
@@ -376,7 +376,12 @@ static CService GetBindAddress(const Sock& sock)
     return addr_bind;
 }
 
-CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, ConnectionType conn_type, bool use_v2transport)
+CNode* CConnman::ConnectNode(CAddress addrConnect,
+                             const char* pszDest,
+                             bool fCountFailure,
+                             ConnectionType conn_type,
+                             bool use_v2transport,
+                             const std::optional<Proxy>& proxy_override)
 {
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
@@ -442,7 +447,13 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
 
     for (auto& target_addr: connect_to) {
         if (target_addr.IsValid()) {
-            const bool use_proxy{GetProxy(target_addr.GetNetwork(), proxy)};
+            bool use_proxy;
+            if (proxy_override.has_value()) {
+                use_proxy = true;
+                proxy = proxy_override.value();
+            } else {
+                use_proxy = GetProxy(target_addr.GetNetwork(), proxy);
+            }
             bool proxyConnectionFailed = false;
 
             if (target_addr.IsI2P() && use_proxy) {
@@ -509,6 +520,13 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
         if (!addr_bind.IsValid()) {
             addr_bind = GetBindAddress(*sock);
         }
+        uint64_t network_id = GetDeterministicRandomizer(RANDOMIZER_ID_NETWORKKEY)
+                            .Write(target_addr.GetNetClass())
+                            .Write(addr_bind.GetAddrBytes())
+                            // For outbound connections, the port of the bound address is randomly
+                            // assigned by the OS and would therefore not be useful for seeding.
+                            .Write(0)
+                            .Finalize();
         CNode* pnode = new CNode(id,
                                 std::move(sock),
                                 target_addr,
@@ -518,6 +536,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
                                 pszDest ? pszDest : "",
                                 conn_type,
                                 /*inbound_onion=*/false,
+                                network_id,
                                 CNodeOptions{
                                     .permission_flags = permission_flags,
                                     .i2p_sam_session = std::move(i2p_transient_session),
@@ -1811,6 +1830,11 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
     ServiceFlags local_services = GetLocalServices();
     const bool use_v2transport(local_services & NODE_P2P_V2);
 
+    uint64_t network_id = GetDeterministicRandomizer(RANDOMIZER_ID_NETWORKKEY)
+                        .Write(inbound_onion ? NET_ONION : addr.GetNetClass())
+                        .Write(addr_bind.GetAddrBytes())
+                        .Write(addr_bind.GetPort()) // inbound connections use bind port
+                        .Finalize();
     CNode* pnode = new CNode(id,
                              std::move(sock),
                              CAddress{addr, NODE_NONE},
@@ -1820,6 +1844,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                              /*addrNameIn=*/"",
                              ConnectionType::INBOUND,
                              inbound_onion,
+                             network_id,
                              CNodeOptions{
                                  .permission_flags = permission_flags,
                                  .prefer_evict = discouraged,
@@ -2861,7 +2886,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
             const bool count_failures{((int)outbound_ipv46_peer_netgroups.size() + outbound_privacy_network_peers) >= std::min(m_max_automatic_connections - 1, 2)};
             // Use BIP324 transport when both us and them have NODE_V2_P2P set.
             const bool use_v2transport(addrConnect.nServices & GetLocalServices() & NODE_P2P_V2);
-            OpenNetworkConnection(addrConnect, count_failures, std::move(grant), /*strDest=*/nullptr, conn_type, use_v2transport);
+            OpenNetworkConnection(addrConnect, count_failures, std::move(grant), /*pszDest=*/nullptr, conn_type, use_v2transport);
         }
     }
 }
@@ -2970,7 +2995,13 @@ void CConnman::ThreadOpenAddedConnections()
 }
 
 // if successful, this moves the passed grant to the constructed node
-void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CountingSemaphoreGrant<>&& grant_outbound, const char *pszDest, ConnectionType conn_type, bool use_v2transport)
+bool CConnman::OpenNetworkConnection(const CAddress& addrConnect,
+                                     bool fCountFailure,
+                                     CountingSemaphoreGrant<>&& grant_outbound,
+                                     const char* pszDest,
+                                     ConnectionType conn_type,
+                                     bool use_v2transport,
+                                     const std::optional<Proxy>& proxy_override)
 {
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
@@ -2979,24 +3010,24 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
     // Initiate outbound network connection
     //
     if (m_interrupt_net->interrupted()) {
-        return;
+        return false;
     }
     if (!fNetworkActive) {
-        return;
+        return false;
     }
     if (!pszDest) {
         bool banned_or_discouraged = m_banman && (m_banman->IsDiscouraged(addrConnect) || m_banman->IsBanned(addrConnect));
         if (IsLocal(addrConnect) || banned_or_discouraged || AlreadyConnectedToAddress(addrConnect)) {
-            return;
+            return false;
         }
     } else if (AlreadyConnectedToHost(pszDest)) {
-        return;
+        return false;
     }
 
-    CNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure, conn_type, use_v2transport);
+    CNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure, conn_type, use_v2transport, proxy_override);
 
     if (!pnode)
-        return;
+        return false;
     pnode->grantOutbound = std::move(grant_outbound);
 
     m_msgproc->InitializeNode(*pnode, m_local_services);
@@ -3014,6 +3045,8 @@ void CConnman::OpenNetworkConnection(const CAddress& addrConnect, bool fCountFai
         pnode->ConnectionTypeAsString().c_str(),
         pnode->ConnectedThroughNetwork(),
         GetNodeCount(ConnectionDirection::Out));
+
+    return true;
 }
 
 Mutex NetEventsInterface::g_msgproc_mutex;
@@ -3509,15 +3542,9 @@ std::vector<CAddress> CConnman::GetAddressesUnsafe(size_t max_addresses, size_t 
 std::vector<CAddress> CConnman::GetAddresses(CNode& requestor, size_t max_addresses, size_t max_pct)
 {
     auto local_socket_bytes = requestor.addrBind.GetAddrBytes();
-    uint64_t cache_id = GetDeterministicRandomizer(RANDOMIZER_ID_ADDRCACHE)
-        .Write(requestor.ConnectedThroughNetwork())
-        .Write(local_socket_bytes)
-        // For outbound connections, the port of the bound address is randomly
-        // assigned by the OS and would therefore not be useful for seeding.
-        .Write(requestor.IsInboundConn() ? requestor.addrBind.GetPort() : 0)
-        .Finalize();
+    uint64_t network_id = requestor.m_network_key;
     const auto current_time = GetTime<std::chrono::microseconds>();
-    auto r = m_addr_response_caches.emplace(cache_id, CachedAddrResponse{});
+    auto r = m_addr_response_caches.emplace(network_id, CachedAddrResponse{});
     CachedAddrResponse& cache_entry = r.first->second;
     if (cache_entry.m_cache_entry_expiration < current_time) { // If emplace() added new one it has expiration 0.
         cache_entry.m_addrs_response_cache = GetAddressesUnsafe(max_addresses, max_pct, /*network=*/std::nullopt);
@@ -3796,6 +3823,7 @@ CNode::CNode(NodeId idIn,
              const std::string& addrNameIn,
              ConnectionType conn_type_in,
              bool inbound_onion,
+             uint64_t network_key,
              CNodeOptions&& node_opts)
     : m_transport{MakeTransport(idIn, node_opts.use_v2transport, conn_type_in == ConnectionType::INBOUND)},
       m_permission_flags{node_opts.permission_flags},
@@ -3808,6 +3836,7 @@ CNode::CNode(NodeId idIn,
       m_inbound_onion{inbound_onion},
       m_prefer_evict{node_opts.prefer_evict},
       nKeyedNetGroup{nKeyedNetGroupIn},
+      m_network_key{network_key},
       m_conn_type{conn_type_in},
       id{idIn},
       nLocalHostNonce{nLocalHostNonceIn},
