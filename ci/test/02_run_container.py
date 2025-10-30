@@ -49,7 +49,7 @@ def main():
     run(["cat", env_file])
 
     if not os.getenv("DANGER_RUN_CI_ON_HOST"):
-        CI_IMAGE_LABEL = "bitcoin-ci-test"
+        CI_IMAGE_LABEL = "groestlcoin-ci-test"
 
         # Use buildx unconditionally
         # Using buildx is required to properly load the correct driver, for use with registry caching. Neither build, nor BUILDKIT=1 currently do this properly
