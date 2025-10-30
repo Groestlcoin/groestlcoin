@@ -14,6 +14,8 @@ add_executable(test_groestlcoin-qt
   ../../init/groestlcoin-qt.cpp
 )
 
+add_windows_application_manifest(test_groestlcoin-qt)
+
 target_link_libraries(test_groestlcoin-qt
   core_interface
   bitcoinqt

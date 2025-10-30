@@ -14,6 +14,7 @@
 #include <ios>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <type_traits>
 #include <utility>
@@ -33,6 +34,10 @@ class path : public std::filesystem::path
 {
 public:
     using std::filesystem::path::path;
+
+    // Convenience method for accessing standard path type without needing a cast.
+    std::filesystem::path& std_path() { return *this; }
+    const std::filesystem::path& std_path() const { return *this; }
 
     // Allow path objects arguments for compatibility.
     path(std::filesystem::path path) : std::filesystem::path::path(std::move(path)) {}
@@ -54,6 +59,12 @@ public:
     // Disallow std::string conversion method to avoid locale-dependent encoding on windows.
     std::string string() const = delete;
 
+    // Disallow implicit string conversion to ensure code is portable.
+    // `string_type` may be `string` or `wstring` depending on the platform, so
+    // using this conversion could result in code that compiles on unix but
+    // fails to compile on windows, or vice versa.
+    operator string_type() const = delete;
+
     /**
      * Return a UTF-8 representation of the path as a std::string, for
      * compatibility with code using std::string. For code using the newer
@@ -65,14 +76,9 @@ public:
         const std::u8string& utf8_str{std::filesystem::path::u8string()};
         return std::string{utf8_str.begin(), utf8_str.end()};
     }
-
-    // Required for path overloads in <fstream>.
-    // See https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=96e0367ead5d8dcac3bec2865582e76e2fbab190
-    path& make_preferred() { std::filesystem::path::make_preferred(); return *this; }
-    path filename() const { return std::filesystem::path::filename(); }
 };
 
-static inline path u8path(const std::string& utf8_str)
+static inline path u8path(std::string_view utf8_str)
 {
     return std::filesystem::path(std::u8string{utf8_str.begin(), utf8_str.end()});
 }

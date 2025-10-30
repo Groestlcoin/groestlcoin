@@ -43,6 +43,7 @@ add_executable(test_groestlcoin
   descriptor_tests.cpp
   disconnected_transactions.cpp
   feefrac_tests.cpp
+  feerounder_tests.cpp
   flatfile_tests.cpp
   fs_tests.cpp
   getarg_tests.cpp
@@ -72,7 +73,6 @@ add_executable(test_groestlcoin
   pcp_tests.cpp
   peerman_tests.cpp
   pmt_tests.cpp
-  policy_fee_tests.cpp
   policyestimator_tests.cpp
   pool_tests.cpp
   pow_tests.cpp
@@ -119,6 +119,7 @@ add_executable(test_groestlcoin
   txvalidation_tests.cpp
   txvalidationcache_tests.cpp
   uint256_tests.cpp
+  util_check_tests.cpp
   util_string_tests.cpp
   util_tests.cpp
   util_threadnames_tests.cpp

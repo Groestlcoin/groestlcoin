@@ -246,8 +246,8 @@ add_library(bitcoin_node STATIC EXCLUDE_FROM_ALL
   node/warnings.cpp
   noui.cpp
   policy/ephemeral_policy.cpp
-  policy/fees.cpp
-  policy/fees_args.cpp
+  policy/fees/block_policy_estimator.cpp
+  policy/fees/block_policy_estimator_args.cpp
   policy/packages.cpp
   policy/rbf.cpp
   policy/settings.cpp
@@ -419,6 +419,7 @@ if(BUILD_UTIL_CHAINSTATE)
   add_executable(groestlcoin-chainstate
     groestlcoin-chainstate.cpp
   )
+  add_windows_application_manifest(bitcoin-chainstate)
   # TODO: The `SKIP_BUILD_RPATH` property setting can be deleted
   #       in the future after reordering Guix script commands to
   #       perform binary checks after the installation step.
