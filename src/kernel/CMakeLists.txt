@@ -99,19 +99,14 @@ target_link_libraries(groestlcoinkernel
 
 target_include_directories(groestlcoinkernel PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/leveldb/include>)
 
-# libgroestlcoinkernel requires default symbol visibility, explicitly
-# specify that here so that things still work even when user
-# configures with -DREDUCE_EXPORTS=ON
-#
-# Note this is a quick hack that will be removed as we
-# incrementally define what to export from the library.
-set_target_properties(groestlcoinkernel PROPERTIES
-  CXX_VISIBILITY_PRESET default
-)
-
 # Add a convenience libgroestlcoinkernel target as a synonym for groestlcoinkernel.
 add_custom_target(libgroestlcoinkernel)
 add_dependencies(libgroestlcoinkernel groestlcoinkernel)
+
+get_target_property(bitcoinkernel_type groestlcoinkernel TYPE)
+if(bitcoinkernel_type STREQUAL "STATIC_LIBRARY")
+  target_compile_definitions(groestlcoinkernel PUBLIC BITCOINKERNEL_STATIC)
+endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/libgroestlcoinkernel.pc.in ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/libgroestlcoinkernel.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" COMPONENT libgroestlcoinkernel)
@@ -127,3 +122,5 @@ install(TARGETS groestlcoinkernel
     DESTINATION ${CMAKE_INSTALL_LIBDIR}
     COMPONENT libgroestlcoinkernel
 )
+
+install(FILES groestlcoinkernel.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT libgroestlcoinkernel)

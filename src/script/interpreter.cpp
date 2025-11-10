@@ -1257,8 +1257,12 @@ private:
     const CScript& scriptCode; //!< output script being consumed
     const unsigned int nIn;    //!< input index of txTo being signed
     const bool fAnyoneCanPay;  //!< whether the hashtype has the SIGHASH_ANYONECANPAY flag set
+    // Temporary workaround for a clang-tidy bug fixed in version 22.
+    // See: https://github.com/llvm/llvm-project/issues/160394.
+    // NOLINTBEGIN(modernize-use-default-member-init)
     const bool fHashSingle;    //!< whether the hashtype is SIGHASH_SINGLE
     const bool fHashNone;      //!< whether the hashtype is SIGHASH_NONE
+    // NOLINTEND(modernize-use-default-member-init)
 
 public:
     CTransactionSignatureSerializer(const T& txToIn, const CScript& scriptCodeIn, unsigned int nInIn, int nHashTypeIn) :
@@ -2135,10 +2139,8 @@ size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& wi
     return 0;
 }
 
-size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, script_verify_flags flags)
+size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness& witness, script_verify_flags flags)
 {
-    static const CScriptWitness witnessEmpty;
-
     if ((flags & SCRIPT_VERIFY_WITNESS) == 0) {
         return 0;
     }
@@ -2147,7 +2149,7 @@ size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey,
     int witnessversion;
     std::vector<unsigned char> witnessprogram;
     if (scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
-        return WitnessSigOps(witnessversion, witnessprogram, witness ? *witness : witnessEmpty);
+        return WitnessSigOps(witnessversion, witnessprogram, witness);
     }
 
     if (scriptPubKey.IsPayToScriptHash() && scriptSig.IsPushOnly()) {
@@ -2159,7 +2161,7 @@ size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey,
         }
         CScript subscript(data.begin(), data.end());
         if (subscript.IsWitnessProgram(witnessversion, witnessprogram)) {
-            return WitnessSigOps(witnessversion, witnessprogram, witness ? *witness : witnessEmpty);
+            return WitnessSigOps(witnessversion, witnessprogram, witness);
         }
     }
 
