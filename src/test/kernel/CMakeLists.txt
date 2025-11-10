@@ -5,7 +5,7 @@ add_executable(test_kernel
 target_link_libraries(test_kernel
   PRIVATE
     core_interface
-    bitcoinkernel
+    groestlcoinkernel
     Boost::headers
 )
 
