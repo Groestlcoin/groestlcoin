@@ -5,7 +5,7 @@
 #ifndef BITCOIN_KERNEL_BITCOINKERNEL_WRAPPER_H
 #define BITCOIN_KERNEL_BITCOINKERNEL_WRAPPER_H
 
-#include <kernel/bitcoinkernel.h>
+#include <kernel/groestlcoinkernel.h>
 
 #include <array>
 #include <exception>
