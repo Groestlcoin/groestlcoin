@@ -4,7 +4,7 @@
 
 #define BITCOINKERNEL_BUILD
 
-#include <kernel/bitcoinkernel.h>
+#include <kernel/groestlcoinkernel.h>
 
 #include <chain.h>
 #include <coins.h>

@@ -1,4 +1,4 @@
-#include <kernel/bitcoinkernel_wrapper.h>
+#include <kernel/groestlcoinkernel_wrapper.h>
 
 #include <cassert>
 #include <charconv>

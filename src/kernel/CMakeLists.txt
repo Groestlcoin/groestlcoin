@@ -103,8 +103,8 @@ target_include_directories(groestlcoinkernel PRIVATE $<BUILD_INTERFACE:${PROJECT
 add_custom_target(libgroestlcoinkernel)
 add_dependencies(libgroestlcoinkernel groestlcoinkernel)
 
-get_target_property(bitcoinkernel_type groestlcoinkernel TYPE)
-if(bitcoinkernel_type STREQUAL "STATIC_LIBRARY")
+get_target_property(groestlcoinkernel_type groestlcoinkernel TYPE)
+if(groestlcoinkernel_type STREQUAL "STATIC_LIBRARY")
   target_compile_definitions(groestlcoinkernel PUBLIC BITCOINKERNEL_STATIC)
 endif()
 
