@@ -239,7 +239,7 @@ for normal IPv4/IPv6 communication, use:
   services created automatically (as in section 2) always have only one port
   open.
 - Operating a node that listens on multiple networks (e.g. IPv4 and Tor) can help
-  strengthen the Bitcoin network, as nodes in this configuration (i.e. bridge nodes) increase
+  strengthen the Groestlcoin network, as nodes in this configuration (i.e. bridge nodes) increase
   the cost and complexity of launching eclipse and partition attacks. However, under certain
   conditions, an adversary that can connect to your node on multiple networks may be
   able to correlate those identities by observing shared runtime characteristics. It
