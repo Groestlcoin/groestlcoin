@@ -334,7 +334,7 @@ class WalletTest(BitcoinTestFramework):
 
         self.log.info("Test sendmany raises if an invalid conf_target or estimate_mode is passed")
         for target, mode in product([-1, 0, 1009], ["economical", "conservative"]):
-            assert_raises_rpc_error(-8, "Invalid conf_target, must be between 1 and 1008",  # max value of 1008 per src/policy/fees.h
+            assert_raises_rpc_error(-8, "Invalid conf_target, must be between 1 and 1008",  # max value of 1008 per src/policy/fees/block_policy_estimator.h
                 self.nodes[2].sendmany, amounts={address: 1}, conf_target=target, estimate_mode=mode)
         for target, mode in product([-1, 0], ["btc/kb", "sat/b"]):
             assert_raises_rpc_error(-8, 'Invalid estimate_mode parameter, must be one of: "unset", "economical", "conservative"',
@@ -540,13 +540,16 @@ class WalletTest(BitcoinTestFramework):
         destination = self.nodes[1].getnewaddress()
         txid = self.nodes[0].sendtoaddress(destination, 0.123)
         tx = self.nodes[0].gettransaction(txid=txid, verbose=True)['decoded']
-        output_addresses = [vout['scriptPubKey']['address'] for vout in tx["vout"]]
-        assert len(output_addresses) > 1
-        for address in output_addresses:
+        assert len(tx["vout"]) > 1
+        for vout in tx["vout"]:
+            address = vout['scriptPubKey']['address']
             ischange = self.nodes[0].getaddressinfo(address)['ischange']
             assert_equal(ischange, address != destination)
             if ischange:
                 change = address
+                assert vout["ischange"]
+            else:
+                assert "ischange" not in vout
         self.nodes[0].setlabel(change, 'foobar')
         assert_equal(self.nodes[0].getaddressinfo(change)['ischange'], False)
 

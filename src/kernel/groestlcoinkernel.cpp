@@ -497,6 +497,9 @@ struct btck_Txid: Handle<btck_Txid, Txid> {};
 
 btck_Transaction* btck_transaction_create(const void* raw_transaction, size_t raw_transaction_len)
 {
+    if (raw_transaction == nullptr && raw_transaction_len != 0) {
+        return nullptr;
+    }
     try {
         DataStream stream{std::span{reinterpret_cast<const std::byte*>(raw_transaction), raw_transaction_len}};
         return btck_Transaction::create(std::make_shared<const CTransaction>(deserialize, TX_WITH_WITNESS, stream));
@@ -556,6 +559,9 @@ void btck_transaction_destroy(btck_Transaction* transaction)
 
 btck_ScriptPubkey* btck_script_pubkey_create(const void* script_pubkey, size_t script_pubkey_len)
 {
+    if (script_pubkey == nullptr && script_pubkey_len != 0) {
+        return nullptr;
+    }
     auto data = std::span{reinterpret_cast<const uint8_t*>(script_pubkey), script_pubkey_len};
     return btck_ScriptPubkey::create(data.begin(), data.end());
 }
@@ -1033,6 +1039,9 @@ int btck_chainstate_manager_import_blocks(btck_ChainstateManager* chainman, cons
 
 btck_Block* btck_block_create(const void* raw_block, size_t raw_block_length)
 {
+    if (raw_block == nullptr && raw_block_length != 0) {
+        return nullptr;
+    }
     auto block{std::make_shared<CBlock>()};
 
     DataStream stream{std::span{reinterpret_cast<const std::byte*>(raw_block), raw_block_length}};
@@ -1230,22 +1239,10 @@ const btck_Chain* btck_chainstate_manager_get_active_chain(const btck_Chainstate
     return btck_Chain::ref(&WITH_LOCK(btck_ChainstateManager::get(chainman).m_chainman->GetMutex(), return btck_ChainstateManager::get(chainman).m_chainman->ActiveChain()));
 }
 
-const btck_BlockTreeEntry* btck_chain_get_tip(const btck_Chain* chain)
-{
-    LOCK(::cs_main);
-    return btck_BlockTreeEntry::ref(btck_Chain::get(chain).Tip());
-}
-
 int btck_chain_get_height(const btck_Chain* chain)
 {
     LOCK(::cs_main);
     return btck_Chain::get(chain).Height();
-}
-
-const btck_BlockTreeEntry* btck_chain_get_genesis(const btck_Chain* chain)
-{
-    LOCK(::cs_main);
-    return btck_BlockTreeEntry::ref(btck_Chain::get(chain).Genesis());
 }
 
 const btck_BlockTreeEntry* btck_chain_get_by_height(const btck_Chain* chain, int height)

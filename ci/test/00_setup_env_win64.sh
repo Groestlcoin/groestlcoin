@@ -14,4 +14,5 @@ export RUN_UNIT_TESTS=false
 export RUN_FUNCTIONAL_TESTS=false
 export GOAL="deploy"
 export GROESTLCOIN_CONFIG="-DREDUCE_EXPORTS=ON -DBUILD_GUI_TESTS=OFF -DBUILD_KERNEL_LIB=ON -DBUILD_KERNEL_TEST=ON \
--DCMAKE_CXX_FLAGS='-Wno-error=maybe-uninitialized'"
+  -DCMAKE_CXX_FLAGS='-Wno-error=maybe-uninitialized' \
+"

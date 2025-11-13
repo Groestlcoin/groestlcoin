@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <format>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -395,6 +394,12 @@ BOOST_AUTO_TEST_CASE(btck_transaction_tests)
     auto tx2{Transaction{tx_data_2}};
     CheckHandle(tx, tx2);
 
+    auto invalid_data = hex_string_to_byte_vec("012300");
+    BOOST_CHECK_THROW(Transaction{invalid_data}, std::runtime_error);
+    auto empty_data = hex_string_to_byte_vec("");
+    BOOST_CHECK_THROW(Transaction{empty_data}, std::runtime_error);
+    BOOST_CHECK_THROW(Transaction{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
+
     BOOST_CHECK_EQUAL(tx.CountOutputs(), 2);
     BOOST_CHECK_EQUAL(tx.CountInputs(), 1);
     auto broken_tx_data{std::span<std::byte>{tx_data.begin(), tx_data.begin() + 10}};
@@ -469,6 +474,8 @@ BOOST_AUTO_TEST_CASE(btck_script_pubkey)
     ScriptPubkey script{script_data};
     ScriptPubkey script2{script_data_2};
     CheckHandle(script, script2);
+
+    BOOST_CHECK_THROW(ScriptPubkey{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
 }
 
 BOOST_AUTO_TEST_CASE(btck_transaction_output)
@@ -581,6 +588,11 @@ BOOST_AUTO_TEST_CASE(btck_block)
     CheckHandle(block, block_100);
     Block block_tx{hex_string_to_byte_vec(REGTEST_BLOCK_DATA[205])};
     CheckRange(block_tx.Transactions(), block_tx.CountTransactions());
+    auto invalid_data = hex_string_to_byte_vec("012300");
+    BOOST_CHECK_THROW(Block{invalid_data}, std::runtime_error);
+    auto empty_data = hex_string_to_byte_vec("");
+    BOOST_CHECK_THROW(Block{empty_data}, std::runtime_error);
+    BOOST_CHECK_THROW(Block{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
 }
 
 Context create_context(std::shared_ptr<TestKernelNotifications> notifications, ChainType chain_type, std::shared_ptr<TestValidationInterface> validation_interface = nullptr)
@@ -664,7 +676,7 @@ void chainman_reindex_test(TestDirectory& test_directory)
     // Sanity check some block retrievals
     auto chain{chainman->GetChain()};
     BOOST_CHECK_THROW(chain.GetByHeight(1000), std::runtime_error);
-    auto genesis_index{chain.Genesis()};
+    auto genesis_index{chain.Entries().front()};
     BOOST_CHECK(!genesis_index.GetPrevious());
     auto genesis_block_raw{chainman->ReadBlock(genesis_index).value().ToBytes()};
     auto first_index{chain.GetByHeight(0)};
@@ -676,7 +688,7 @@ void chainman_reindex_test(TestDirectory& test_directory)
     auto next_index{chain.GetByHeight(first_index.GetHeight() + 1)};
     BOOST_CHECK(chain.Contains(next_index));
     auto next_block_data{chainman->ReadBlock(next_index).value().ToBytes()};
-    auto tip_index{chain.Tip()};
+    auto tip_index{chain.Entries().back()};
     auto tip_block_data{chainman->ReadBlock(tip_index).value().ToBytes()};
     auto second_index{chain.GetByHeight(1)};
     auto second_block{chainman->ReadBlock(second_index).value()};
@@ -713,17 +725,6 @@ void chainman_mainnet_validation_test(TestDirectory& test_directory)
     auto context{create_context(notifications, ChainType::MAINNET, validation_interface)};
     auto chainman{create_chainman(test_directory, false, false, false, false, context)};
 
-    {
-        // Process an invalid block
-        auto raw_block = hex_string_to_byte_vec("012300");
-        BOOST_CHECK_THROW(Block{raw_block}, std::runtime_error);
-    }
-    {
-        // Process an empty block
-        auto raw_block = hex_string_to_byte_vec("");
-        BOOST_CHECK_THROW(Block{raw_block}, std::runtime_error);
-    }
-
     // mainnet block 1
     auto raw_block = hex_string_to_byte_vec("010000006fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000982051fd1e4ba744bbbe680e1fee14677ba1a3c3540bf7b1cdb606e857233e0e61bc6649ffff001d01e362990101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0704ffff001d0104ffffffff0100f2052a0100000043410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac00000000");
     Block block{raw_block};
@@ -755,7 +756,7 @@ void chainman_mainnet_validation_test(TestDirectory& test_directory)
 
     auto chain{chainman->GetChain()};
     BOOST_CHECK_EQUAL(chain.Height(), 1);
-    auto tip{chain.Tip()};
+    auto tip{chain.Entries().back()};
     auto read_block{chainman->ReadBlock(tip)};
     BOOST_REQUIRE(read_block);
     check_equal(read_block.value().ToBytes(), raw_block);
@@ -851,7 +852,7 @@ BOOST_AUTO_TEST_CASE(btck_chainman_regtest_tests)
     }
 
     auto chain = chainman->GetChain();
-    auto tip = chain.Tip();
+    auto tip = chain.Entries().back();
     auto read_block = chainman->ReadBlock(tip).value();
     check_equal(read_block.ToBytes(), hex_string_to_byte_vec(REGTEST_BLOCK_DATA[REGTEST_BLOCK_DATA.size() - 1]));
 
