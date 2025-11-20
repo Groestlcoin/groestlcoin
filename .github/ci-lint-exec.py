@@ -38,7 +38,7 @@ def main():
     extra_env = []
     if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
         extra_env = ["--env", "LINT_CI_IS_PR=1"]
-    if os.environ["GITHUB_EVENT_NAME"] != "pull_request" and os.environ["GITHUB_REPOSITORY"] == "bitcoin/bitcoin":
+    if os.environ["GITHUB_EVENT_NAME"] != "pull_request" and os.environ["GITHUB_REPOSITORY"] == "groestlcoin/groestlcoin":
         extra_env = ["--env", "LINT_CI_SANITY_CHECK_COMMIT_SIG=1"]
 
     run([
@@ -46,7 +46,7 @@ def main():
         "run",
         "--rm",
         *extra_env,
-        f"--volume={os.getcwd()}:/bitcoin",
+        f"--volume={os.getcwd()}:/groestlcoin",
         CONTAINER_NAME,
     ])
 
