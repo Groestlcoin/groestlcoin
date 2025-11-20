@@ -398,7 +398,6 @@ BOOST_AUTO_TEST_CASE(btck_transaction_tests)
     BOOST_CHECK_THROW(Transaction{invalid_data}, std::runtime_error);
     auto empty_data = hex_string_to_byte_vec("");
     BOOST_CHECK_THROW(Transaction{empty_data}, std::runtime_error);
-    BOOST_CHECK_THROW(Transaction{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
 
     BOOST_CHECK_EQUAL(tx.CountOutputs(), 2);
     BOOST_CHECK_EQUAL(tx.CountInputs(), 1);
@@ -475,7 +474,9 @@ BOOST_AUTO_TEST_CASE(btck_script_pubkey)
     ScriptPubkey script2{script_data_2};
     CheckHandle(script, script2);
 
-    BOOST_CHECK_THROW(ScriptPubkey{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
+    std::span<std::byte> empty_data{};
+    ScriptPubkey empty_script{empty_data};
+    CheckHandle(script, empty_script);
 }
 
 BOOST_AUTO_TEST_CASE(btck_transaction_output)
@@ -592,7 +593,6 @@ BOOST_AUTO_TEST_CASE(btck_block)
     BOOST_CHECK_THROW(Block{invalid_data}, std::runtime_error);
     auto empty_data = hex_string_to_byte_vec("");
     BOOST_CHECK_THROW(Block{empty_data}, std::runtime_error);
-    BOOST_CHECK_THROW(Block{std::span<std::byte>(static_cast<std::byte*>(nullptr), 2)}, std::runtime_error);
 }
 
 Context create_context(std::shared_ptr<TestKernelNotifications> notifications, ChainType chain_type, std::shared_ptr<TestValidationInterface> validation_interface = nullptr)
@@ -624,6 +624,20 @@ BOOST_AUTO_TEST_CASE(btck_chainman_tests)
         Context context{options};
         ChainstateManagerOptions chainman_opts{context, test_directory.m_directory.string(), (test_directory.m_directory / "blocks").string()};
         ChainMan chainman{context, chainman_opts};
+    }
+    { // null or empty data_directory or blocks_directory are not allowed
+        Context context{};
+        auto valid_dir{test_directory.m_directory.string()};
+        std::vector<std::pair<std::string_view, std::string_view>> illegal_cases{
+            {"", valid_dir},
+            {valid_dir, {nullptr, 0}},
+            {"", ""},
+            {{nullptr, 0}, {nullptr, 0}},
+        };
+        for (auto& [data_dir, blocks_dir] : illegal_cases) {
+            BOOST_CHECK_THROW(ChainstateManagerOptions(context, data_dir, blocks_dir),
+                              std::runtime_error);
+        };
     }
 
     auto notifications{std::make_shared<TestKernelNotifications>()};

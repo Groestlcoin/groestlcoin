@@ -15,5 +15,7 @@ export NO_DEPENDS=1
 export GOAL="install"
 # TODO enable GUI
 export GROESTLCOIN_CONFIG="\
- -DWITH_ZMQ=ON -DBUILD_GUI=OFF \
+  --preset=dev-mode \
+ -DBUILD_GUI=OFF \
+ -DWITH_USDT=OFF \
 "
