@@ -6,7 +6,7 @@
 
 export LC_ALL=C.UTF-8
 
-set -ex
+set -o errexit -o pipefail -o xtrace
 
 # The source root dir, usually from git, usually read-only.
 # The ci system copies this folder.
@@ -22,9 +22,6 @@ export DEPENDS_DIR=${DEPENDS_DIR:-$BASE_ROOT_DIR/depends}
 # A folder for the ci system to put temporary files (build result, datadirs for tests, ...)
 # This folder only exists on the ci guest.
 export BASE_SCRATCH_DIR=${BASE_SCRATCH_DIR:-$BASE_ROOT_DIR/ci/scratch}
-# A folder for the ci system to put executables.
-# This folder only exists on the ci guest.
-export BINS_SCRATCH_DIR="${BASE_SCRATCH_DIR}/bins/"
 
 echo "Setting specific values in env"
 if [ -n "${FILE_ENV}" ]; then
@@ -36,8 +33,6 @@ fi
 echo "Fallback to default values in env (if not yet set)"
 # The number of parallel jobs to pass down to make
 export MAKEJOBS=${MAKEJOBS:--j$(if command -v nproc > /dev/null 2>&1; then nproc; else sysctl -n hw.logicalcpu; fi)}
-# Whether to prefer BusyBox over GNU utilities
-export USE_BUSY_BOX=${USE_BUSY_BOX:-false}
 
 # Randomize test order.
 # See https://www.boost.org/doc/libs/1_71_0/libs/test/doc/html/boost_test/utf_reference/rt_param_reference/random.html

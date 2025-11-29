@@ -136,13 +136,25 @@ jobs:
           key: ${{ github.job }}-${{ matrix.job-type }}-ccache-${{ github.run_id }}
 
   windows-cross:
-    name: 'Windows-cross to x86_64'
+    name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
     needs: runners
     runs-on: ${{ needs.runners.outputs.provider == 'cirrus' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-sm' || 'ubuntu-24.04' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
 
+    strategy:
+      fail-fast: false
+      matrix:
+        crt: [msvcrt, ucrt]
+        include:
+          - crt: msvcrt
+            file-env: './ci/test/00_setup_env_win64_msvcrt.sh'
+            artifact-name: 'x86_64-w64-mingw32-executables'
+          - crt: ucrt
+            file-env: './ci/test/00_setup_env_win64.sh'
+            artifact-name: 'x86_64-w64-mingw32ucrt-executables'
+
     env:
-      FILE_ENV: './ci/test/00_setup_env_win64.sh'
+      FILE_ENV: ${{ matrix.file-env }}
       DANGER_CI_ON_HOST_FOLDERS: 1
 
     steps:
@@ -171,7 +183,7 @@ jobs:
       - name: Upload built executables
         uses: actions/upload-artifact@v4
         with:
-          name: x86_64-w64-mingw32-executables-${{ github.run_id }}
+          name: ${{ matrix.artifact-name }}-${{ github.run_id }}
           path: |
             ${{ env.BASE_BUILD_DIR }}/bin/*.dll
             ${{ env.BASE_BUILD_DIR }}/bin/*.exe
@@ -271,6 +283,10 @@ jobs:
         uses: ./.github/actions/configure-docker
         with:
           cache-provider: ${{ matrix.provider || needs.runners.outputs.provider }}
+
+      - name: Clear unnecessary files
+        if: ${{ needs.runners.outputs.provider == 'gha' && true || false }} # Only needed on GHA runners
+        uses: ./.github/actions/clear-files
 
       - name: Enable bpfcc script
         if: ${{ env.CONTAINER_NAME == 'ci_native_asan' }}
