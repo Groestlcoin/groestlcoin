@@ -105,7 +105,7 @@ option(BUILD_UTIL "Build groestlcoin-util executable." ${BUILD_TESTS})
 
 option(BUILD_UTIL_CHAINSTATE "Build experimental groestlcoin-chainstate executable." OFF)
 option(BUILD_KERNEL_LIB "Build experimental groestlcoinkernel library." ${BUILD_UTIL_CHAINSTATE})
-option(BUILD_KERNEL_TEST "Build tests for the experimental groestlcoinkernel library." ${BUILD_KERNEL_LIB})
+cmake_dependent_option(BUILD_KERNEL_TEST "Build tests for the experimental groestlcoinkernel library." ON "BUILD_KERNEL_LIB" OFF)
 
 option(ENABLE_WALLET "Enable wallet." ON)
 if(ENABLE_WALLET)
