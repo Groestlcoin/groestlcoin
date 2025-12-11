@@ -135,7 +135,10 @@ def download_from_url(url, archive):
         if response.status != 200:
             raise RuntimeError(f"HTTP request failed with status code: {response.status}")
 
-        total_size = int(response.getheader('Content-Length', 0))
+        sock_info = response.fp.raw._sock.getpeername()
+        print(f"Connected to {sock_info[0]}")
+
+        total_size = int(response.getheader("Content-Length"))
         progress_bytes = 0
 
         with open(archive, 'wb') as file:
@@ -146,6 +149,9 @@ def download_from_url(url, archive):
                 file.write(chunk)
                 progress_bytes += len(chunk)
                 progress_hook(progress_bytes, total_size)
+
+        if progress_bytes < total_size:
+            raise RuntimeError(f"Download incomplete: expected {total_size} bytes, got {progress_bytes} bytes")
 
     print('\n', flush=True, end="") # Flush to avoid error output on the same line.
 

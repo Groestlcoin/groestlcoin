@@ -66,6 +66,7 @@ add_library(groestlcoinkernel
   ../uint256.cpp
   ../util/chaintype.cpp
   ../util/check.cpp
+  ../util/expected.cpp
   ../util/feefrac.cpp
   ../util/fs.cpp
   ../util/fs_helpers.cpp
