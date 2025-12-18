@@ -30,7 +30,7 @@ defaults:
 
 jobs:
   runners:
-    name: 'determine runners'
+    name: '[meta] determine runners'
     runs-on: ubuntu-latest
     outputs:
       provider: ${{ steps.runners.outputs.provider }}
@@ -81,7 +81,7 @@ jobs:
 
       - &CHECKOUT
         name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Ensure the latest merged pull request state is used, even on re-runs.
           ref: &CHECKOUT_REF_TMPL ${{ github.event_name == 'pull_request' && github.ref || '' }}
@@ -137,7 +137,7 @@ jobs:
 
   windows-cross:
     name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
-    needs: runners
+    needs: [runners, record-frozen-commit]
     runs-on: ${{ needs.runners.outputs.provider == 'cirrus' && 'ghcr.io/cirruslabs/ubuntu-runner-amd64:24.04-sm' || 'ubuntu-24.04' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
 
@@ -160,7 +160,10 @@ jobs:
     steps:
       - *ANNOTATION_PR_NUMBER
 
-      - *CHECKOUT
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.record-frozen-commit.outputs.commit }}
 
       - name: Configure environment
         uses: ./.github/actions/configure-environment

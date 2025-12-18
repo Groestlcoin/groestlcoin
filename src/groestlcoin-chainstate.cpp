@@ -1,3 +1,16 @@
+// Copyright (c) 2022-present The Bitcoin Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+//
+// The groestlcoin-chainstate executable serves to surface the dependencies required
+// by a program wishing to use Groestlcoin Core's consensus engine as it is right
+// now.
+//
+// DEVELOPER NOTE: Since this is a "demo-only", experimental, etc. executable,
+//                 it may diverge from Groestlcoin Core's coding style.
+//
+// It is part of the libgroestlcoinkernel project.
+
 #include <kernel/groestlcoinkernel_wrapper.h>
 
 #include <cassert>
