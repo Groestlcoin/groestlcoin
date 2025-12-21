@@ -25,7 +25,7 @@ jobs:
             libcapnp-dev capnproto libzmq3-dev systemtap-sdt-dev \
             qt6-base-dev qt6-tools-dev qt6-l10n-tools qt6-tools-dev-tools \
             libgl-dev qt6-wayland libqrencode-dev \
-            help2man
+            help2man xvfb
 
       - name: Configure (CMake, GUI)
         run: |
@@ -44,7 +44,7 @@ jobs:
       - name: Generate manpages into doc/man/
         run: |
           # gen-manpages uses help2man and runs the built binaries with -help
-          BUILDDIR="$PWD/build" python3 contrib/devtools/gen-manpages.py
+          xvfb-run -a env BUILDDIR="$PWD/build" python3 contrib/devtools/gen-manpages.py
           test -d doc/man
           ls -lah doc/man
 
