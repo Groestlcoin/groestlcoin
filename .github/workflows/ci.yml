@@ -135,6 +135,20 @@ jobs:
           # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
           key: ${{ github.job }}-${{ matrix.job-type }}-ccache-${{ github.run_id }}
 
+  record-frozen-commit:
+    # Record frozen commit, so that the native tests on cross-builds can run on
+    # the exact same commit id of the build.
+    name: '[meta] record frozen commit'
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.record-commit.outputs.commit }}
+    steps:
+      - *ANNOTATION_PR_NUMBER
+      - *CHECKOUT
+      - name: Record commit
+        id: record-commit
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"  
+
   windows-cross:
     name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
     needs: [runners, record-frozen-commit]
