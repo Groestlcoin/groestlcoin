@@ -1,6 +1,8 @@
 name: Generate manpages
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:

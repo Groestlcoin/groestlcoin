@@ -1,6 +1,8 @@
 name: Generate groestlcoin.conf
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
