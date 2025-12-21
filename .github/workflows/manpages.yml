@@ -34,9 +34,17 @@ jobs:
             -DBUILD_GUI=ON \
             -DBUILD_TESTS=OFF
 
-      - name: Build
+      - name: Build required targets (fail if missing)
         run: |
-          cmake --build build -j "$(nproc)"
+          # Build the exact binaries you care about.
+          # If any target doesn't exist / can't build, this step will fail.
+          cmake --build build -j "$(nproc)" --target \
+            groestlcoind \
+            groestlcoin-cli \
+            groestlcoin-tx \
+            groestlcoin-util \
+            groestlcoin-wallet \
+            groestlcoin-qt
 
       - name: Generate manpages into doc/man/
         run: |
