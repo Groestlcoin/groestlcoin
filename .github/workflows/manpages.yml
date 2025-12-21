@@ -32,6 +32,9 @@ jobs:
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_GUI=ON \
+            -DBUILD_TX=ON \
+            -DBUILD_UTIL=ON \
+            -DBUILD_WALLET_TOOL=ON \
             -DBUILD_TESTS=OFF
 
       - name: Build
