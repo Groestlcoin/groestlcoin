@@ -1,0 +1,76 @@
+name: Build Groestlcoin Core (current branch)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        gui: [on, off]
+
+    steps:
+      - name: Checkout source (current branch)
+        uses: actions/checkout@v4
+        with:
+          repository: Groestlcoin/groestlcoin
+          fetch-depth: 1
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkgconf python3 \
+            libevent-dev libboost-dev libsqlite3-dev \
+            libcapnp-dev capnproto libzmq3-dev systemtap-sdt-dev \
+            qt6-base-dev qt6-tools-dev qt6-l10n-tools qt6-tools-dev-tools \
+            libgl-dev qt6-wayland libqrencode-dev
+
+      - name: Configure (CMake)
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_GUI=${{ matrix.gui }} \
+            -DBUILD_TESTS=OFF
+
+      - name: Build
+        run: |
+          cmake --build build -j "$(nproc)"
+
+      - name: Collect binaries
+        run: |
+          mkdir -p out
+
+          # CLI / daemon
+          for bin in groestlcoind groestlcoin-cli groestlcoin-tx groestlcoin-util; do
+            if [ -f build/src/$bin ]; then
+              cp -v build/src/$bin out/
+            fi
+          done
+
+          # Qt GUI
+          if [ -f build/src/qt/groestlcoin-qt ]; then
+            cp -v build/src/qt/groestlcoin-qt out/
+          fi
+
+          # Build metadata
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "branch=$(git branch --show-current)"
+            echo "gui=${{ matrix.gui }}"
+            cmake --version | head -n 1
+          } > out/build-info.txt
+
+          ls -lah out
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: groestlcoin-current-ubuntu-${{ matrix.gui }}
+          path: out/*
+          if-no-files-found: error
