@@ -1,4 +1,4 @@
-name: Generate groestlcoin.conf
+name: Generate manpages
 
 on:
   workflow_dispatch:
@@ -14,35 +14,38 @@ jobs:
           repository: Groestlcoin/groestlcoin
           fetch-depth: 1
 
-      - name: Install build dependencies (no GUI)
+      - name: Install build dependencies (GUI)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake pkgconf python3 \
             libevent-dev libboost-dev libsqlite3-dev \
-            libcapnp-dev capnproto libzmq3-dev systemtap-sdt-dev
+            libcapnp-dev capnproto libzmq3-dev systemtap-sdt-dev \
+            qt6-base-dev qt6-tools-dev qt6-l10n-tools qt6-tools-dev-tools \
+            libgl-dev qt6-wayland libqrencode-dev \
+            help2man
 
-      - name: Configure (CMake, no GUI)
+      - name: Configure (CMake, GUI)
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_GUI=OFF \
+            -DBUILD_GUI=ON \
             -DBUILD_TESTS=OFF
 
       - name: Build
         run: |
           cmake --build build -j "$(nproc)"
 
-      - name: Generate share/examples/groestlcoin.conf
+      - name: Generate manpages into doc/man/
         run: |
-          # devtools script expects BUILDDIR to point at the build dir
-          BUILDDIR="$PWD/build" contrib/devtools/gen-groestlcoin-conf.sh
-          test -f share/examples/groestlcoin.conf
-          ls -lah share/examples/groestlcoin.conf
+          # gen-manpages uses help2man and runs the built binaries with -help
+          BUILDDIR="$PWD/build" python3 contrib/devtools/gen-manpages.py
+          test -d doc/man
+          ls -lah doc/man
 
-      - name: Upload groestlcoin.conf artifact
+      - name: Upload doc/man artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: groestlcoin-conf
-          path: share/examples/groestlcoin.conf
+          name: groestlcoin-manpages
+          path: doc/man/**
           if-no-files-found: error
