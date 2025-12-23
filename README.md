@@ -40,7 +40,7 @@ Updated to Bitcoin reference wallet 28.0.0 on September 2024
 
 Updated to Bitcoin reference wallet 29.0.0 on April 2025
 
-Updated to Bitcoin reference wallet 30.0.0 on December 2025
+Updated to Bitcoin reference wallet 30.1.0 on December 2025
 
 Groestlcoin Core Wallet
 
