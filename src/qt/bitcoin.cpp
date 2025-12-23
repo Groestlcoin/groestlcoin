@@ -292,8 +292,10 @@ void BitcoinApplication::setupPlatformStyle()
     assert(platformStyle);
 
     auto pal = palette();
-    pal.setColor(QPalette::Window, Qt::white);
-    setPalette(pal);
+    if (pal.color(QPalette::WindowText) == Qt::black) {
+        pal.setColor(QPalette::Window, Qt::white);
+        setPalette(pal);
+    }
 }
 
 BitcoinApplication::~BitcoinApplication()
@@ -615,10 +617,10 @@ int GuiMain(int argc, char* argv[])
             return EXIT_FAILURE;
         }
         if (invalid_token) {
-            InitError(Untranslated(strprintf("Command line contains unexpected token '%s', see bitcoin-qt -h for a list of options.", argv[i])));
+            InitError(Untranslated(strprintf("Command line contains unexpected token '%s', see groestlcoin-qt -h for a list of options.", argv[i])));
             QMessageBox::critical(nullptr, CLIENT_NAME,
                                   // message cannot be translated because translations have not been initialized
-                                  QString::fromStdString("Command line contains unexpected token '%1', see bitcoin-qt -h for a list of options.").arg(QString::fromStdString(argv[i])));
+                                  QString::fromStdString("Command line contains unexpected token '%1', see groestlcoin-qt -h for a list of options.").arg(QString::fromStdString(argv[i])));
             return EXIT_FAILURE;
         }
     }
