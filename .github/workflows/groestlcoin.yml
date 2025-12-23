@@ -75,7 +75,7 @@ jobs:
             check-symbols: false
             dep-opts: ""
             config-opts: ""
-            goal: deploy
+            goal: build
             sdk: 15.0-15A240d
           - name: macos-arm-64-bit
             host: arm64-apple-darwin
@@ -85,7 +85,7 @@ jobs:
             check-symbols: false
             dep-opts: ""
             config-opts: ""
-            goal: deploy
+            goal: build
             sdk: 15.0-15A240d
           - name: linux-arm-32-bit
             host: arm-linux-gnueabihf
