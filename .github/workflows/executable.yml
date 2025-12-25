@@ -1,0 +1,84 @@
+name: Ensure shell scripts are executable
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "ci/**/*.sh"
+      - "contrib/windeploy/detached-sig-create.sh"
+      - "contrib/macdeploy/detached-sig-create.sh"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  chmod_x:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute branch vars
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          # sanitize for branch name usage
+          echo "safe_base=${GITHUB_REF_NAME//\//-}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure +x on shell scripts
+        id: chmod
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t files < <(
+            {
+              find ci -type f -name "*.sh" -print
+              echo "contrib/windeploy/detached-sig-create.sh"
+              echo "contrib/macdeploy/detached-sig-create.sh"
+            } | awk 'NF' | sort -u
+          )
+
+          changed=0
+
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "WARNING: File not found: $f"
+              continue
+            fi
+
+            if [ -x "$f" ]; then
+              echo "OK: executable: $f"
+            else
+              echo "FIX: adding +x: $f"
+              chmod +x "$f"
+              changed=1
+            fi
+          done
+
+          echo "changed=$([ "$changed" -eq 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request (into same branch)
+        if: steps.chmod.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          base: "${{ steps.vars.outputs.base }}"   # PR targets the same branch this ran on
+          commit-message: "ci: ensure shell scripts are executable (+x)"
+          title: "ci: ensure shell scripts are executable (+x)"
+          body: |
+            This PR ensures all CI shell scripts and the detached signature helper scripts
+            are marked as executable (chmod +x):
+
+            - ci/**/*.sh
+            - contrib/windeploy/detached-sig-create.sh
+            - contrib/macdeploy/detached-sig-create.sh
+
+            Generated automatically by GitHub Actions.
+          branch: "automation/chmod-shell-scripts-${{ steps.vars.outputs.safe_base }}"
+          delete-branch: true
+          labels: "ci"
