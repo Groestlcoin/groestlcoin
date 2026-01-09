@@ -147,7 +147,7 @@ jobs:
       - *CHECKOUT
       - name: Record commit
         id: record-commit
-        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"  
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   windows-cross:
     name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
