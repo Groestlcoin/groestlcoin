@@ -1,4 +1,4 @@
-Groestlcoin Core version v30.0 is now available from:
+Groestlcoin Core version v30.2 is now available from:
 
   <https://www.groestlcoin.org/groestlcoin-core-wallet/>
 
