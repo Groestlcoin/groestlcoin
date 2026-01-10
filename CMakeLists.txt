@@ -28,11 +28,11 @@ get_directory_property(precious_variables CACHE_VARIABLES)
 #=============================
 set(CLIENT_NAME "Groestlcoin Core")
 set(CLIENT_VERSION_MAJOR 30)
-set(CLIENT_VERSION_MINOR 1)
+set(CLIENT_VERSION_MINOR 2)
 set(CLIENT_VERSION_BUILD 0)
 set(CLIENT_VERSION_RC 0)
 set(CLIENT_VERSION_IS_RELEASE "true")
-set(COPYRIGHT_YEAR "2025")
+set(COPYRIGHT_YEAR "2026")
 
 # During the enabling of the CXX and CXXOBJ languages, we modify
 # CMake's compiler/linker invocation strings by appending the content
