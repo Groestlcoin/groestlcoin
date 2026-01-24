@@ -3,12 +3,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <groestlcoin.h>
-#include <arith_uint256.h>
-#include <chain.h>
-#include <consensus/params.h>
-#include <crypto/sha256.h>
-
 #include <kernel/chainparams.h>
 
 #include <chainparamsseeds.h>
@@ -32,6 +26,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <initializer_list>
 #include <iterator>
 #include <map>
 #include <span>
@@ -39,7 +34,6 @@
 
 using namespace util::hex_literals;
 
-#include <assert.h>
 #include <memory>
 
 // Workaround MSVC bug triggering C7595 when calling consteval constructors in
