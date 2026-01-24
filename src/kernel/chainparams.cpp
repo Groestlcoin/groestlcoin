@@ -15,6 +15,7 @@
 #include <consensus/amount.h>
 #include <consensus/merkle.h>
 #include <consensus/params.h>
+#include <crypto/hex_base.h>
 #include <hash.h>
 #include <kernel/messagestartchars.h>
 #include <logging.h>
@@ -27,10 +28,14 @@
 #include <util/strencodings.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
+#include <iterator>
+#include <map>
+#include <span>
+#include <utility>
 
 using namespace util::hex_literals;
 

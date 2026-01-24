@@ -24,6 +24,7 @@ performance-*,
 -performance-no-int-to-ptr,
 -performance-noexcept-move-constructor,
 -performance-unnecessary-value-param,
+readability-avoid-const-params-in-decls,
 readability-const-return-type,
 readability-container-contains,
 readability-redundant-declaration,
@@ -40,3 +41,5 @@ CheckOptions:
    value: false
  - key: bugprone-unused-return-value.CheckedReturnTypes
    value: '^::std::error_code$;^::std::error_condition$;^::std::errc$;^::std::expected$;^::util::Result$;^::util::Expected$'
+ - key: bugprone-unused-return-value.AllowCastToVoid
+   value: true  # Can be removed with C++26 once the _ placeholder exists.

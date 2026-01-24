@@ -124,7 +124,7 @@ void PushParentDescriptors(const CWallet& wallet, const CScript& script_pubkey, 
     entry.pushKV("parent_descs", std::move(parent_descs));
 }
 
-void HandleWalletError(const std::shared_ptr<CWallet> wallet, DatabaseStatus& status, bilingual_str& error)
+void HandleWalletError(const std::shared_ptr<CWallet>& wallet, DatabaseStatus& status, bilingual_str& error)
 {
     if (!wallet) {
         // Map bad format to not found, since bad format is returned when the
@@ -142,8 +142,12 @@ void HandleWalletError(const std::shared_ptr<CWallet> wallet, DatabaseStatus& st
             case DatabaseStatus::FAILED_ALREADY_EXISTS:
                 code = RPC_WALLET_ALREADY_EXISTS;
                 break;
+            case DatabaseStatus::FAILED_NEW_UNNAMED:
             case DatabaseStatus::FAILED_INVALID_BACKUP_FILE:
                 code = RPC_INVALID_PARAMETER;
+                break;
+            case DatabaseStatus::FAILED_ENCRYPT:
+                code = RPC_WALLET_ENCRYPTION_FAILED;
                 break;
             default: // RPC_WALLET_ERROR is returned for all other cases.
                 break;

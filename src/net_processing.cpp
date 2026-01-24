@@ -552,7 +552,7 @@ public:
     };
     void UnitTestMisbehaving(NodeId peer_id) override EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex) { Misbehaving(*Assert(GetPeerRef(peer_id)), ""); };
     void ProcessMessage(CNode& pfrom, const std::string& msg_type, DataStream& vRecv,
-                        const std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc) override
+                        std::chrono::microseconds time_received, const std::atomic<bool>& interruptMsgProc) override
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_most_recent_block_mutex, !m_headers_presync_mutex, g_msgproc_mutex, !m_tx_download_mutex);
     void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds) override;
     ServiceFlags GetDesirableServiceFlags(ServiceFlags services) const override;
@@ -2570,17 +2570,19 @@ uint32_t PeerManagerImpl::GetFetchFlags(const Peer& peer) const
 void PeerManagerImpl::SendBlockTransactions(CNode& pfrom, Peer& peer, const CBlock& block, const BlockTransactionsRequest& req)
 {
     BlockTransactions resp(req);
-    unsigned int tx_requested_size = 0;
     for (size_t i = 0; i < req.indexes.size(); i++) {
         if (req.indexes[i] >= block.vtx.size()) {
             Misbehaving(peer, "getblocktxn with out-of-bounds tx indices");
             return;
         }
         resp.txn[i] = block.vtx[req.indexes[i]];
-        tx_requested_size += resp.txn[i]->GetTotalSize();
     }
 
-    LogDebug(BCLog::CMPCTBLOCK, "Peer %d sent us a GETBLOCKTXN for block %s, sending a BLOCKTXN with %u txns. (%u bytes)\n", pfrom.GetId(), block.GetHash().ToString(), resp.txn.size(), tx_requested_size);
+    if (LogAcceptCategory(BCLog::CMPCTBLOCK, BCLog::Level::Debug)) {
+        uint32_t tx_requested_size{0};
+        for (const auto& tx : resp.txn) tx_requested_size += tx->ComputeTotalSize();
+        LogDebug(BCLog::CMPCTBLOCK, "Peer %d sent us a GETBLOCKTXN for block %s, sending a BLOCKTXN with %u txns. (%u bytes)\n", pfrom.GetId(), block.GetHash().ToString(), resp.txn.size(), tx_requested_size);
+    }
     MakeAndPushMessage(pfrom, NetMsgType::BLOCKTXN, resp);
 }
 
@@ -5521,11 +5523,13 @@ void PeerManagerImpl::MaybeSendAddr(CNode& node, Peer& peer, std::chrono::micros
                 // Send the initial self-announcement in its own message. This makes sure
                 // rate-limiting with limited start-tokens doesn't ignore it if the first
                 // message ends up containing multiple addresses.
-                std::vector<CAddress> self_announcement {local_addr};
-                if (peer.m_wants_addrv2) {
-                    MakeAndPushMessage(node, NetMsgType::ADDRV2, CAddress::V2_NETWORK(self_announcement));
-                } else {
-                    MakeAndPushMessage(node, NetMsgType::ADDR, CAddress::V1_NETWORK(self_announcement));
+                if (IsAddrCompatible(peer, local_addr)) {
+                    std::vector<CAddress> self_announcement{local_addr};
+                    if (peer.m_wants_addrv2) {
+                        MakeAndPushMessage(node, NetMsgType::ADDRV2, CAddress::V2_NETWORK(self_announcement));
+                    } else {
+                        MakeAndPushMessage(node, NetMsgType::ADDR, CAddress::V1_NETWORK(self_announcement));
+                    }
                 }
             } else {
                 // All later self-announcements are sent together with the other addresses.
