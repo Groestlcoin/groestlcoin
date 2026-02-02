@@ -38,7 +38,7 @@ def get_worktree_mounts(repo_root):
 def main():
     repo_root = Path(__file__).resolve().parent.parent
     is_ci = os.environ.get("GITHUB_ACTIONS") == "true"
-    container = "bitcoin-linter"
+    container = "groestlcoin-linter"
 
     build_cmd = [
         "docker",
@@ -68,7 +68,7 @@ def main():
             "run",
             "--rm",
             *extra_env,
-            f"--volume={repo_root}:/bitcoin",
+            f"--volume={repo_root}:/groestlcoin",
             *get_worktree_mounts(repo_root),
             *([] if is_ci else ["-it"]),
             container,

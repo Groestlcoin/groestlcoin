@@ -76,7 +76,7 @@ jobs:
             dep-opts: ""
             config-opts: ""
             goal: build
-            sdk: 15.0-15A240d
+            sdk: 26.1.1-17B100
           - name: macos-arm-64-bit
             host: arm64-apple-darwin
             os: ubuntu-24.04
