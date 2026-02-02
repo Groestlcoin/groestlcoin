@@ -2413,8 +2413,15 @@ util::Result<void> CWallet::RemoveTxs(WalletBatch& batch, std::vector<Txid>& txs
         for (const auto& it : erased_txs) {
             const Txid hash{it->first};
             wtxOrdered.erase(it->second.m_it_wtxOrdered);
-            for (const auto& txin : it->second.tx->vin)
-                mapTxSpends.erase(txin.prevout);
+            for (const auto& txin : it->second.tx->vin) {
+                auto range = mapTxSpends.equal_range(txin.prevout);
+                for (auto iter = range.first; iter != range.second; ++iter) {
+                    if (iter->second == hash) {
+                        mapTxSpends.erase(iter);
+                        break;
+                    }
+                }
+            }
             for (unsigned int i = 0; i < it->second.tx->vout.size(); ++i) {
                 m_txos.erase(COutPoint(hash, i));
             }
@@ -3543,7 +3550,9 @@ void CWallet::ConnectScriptPubKeyManNotifiers()
 {
     for (const auto& spk_man : GetActiveScriptPubKeyMans()) {
         spk_man->NotifyCanGetAddressesChanged.connect(NotifyCanGetAddressesChanged);
-        spk_man->NotifyFirstKeyTimeChanged.connect(std::bind(&CWallet::MaybeUpdateBirthTime, this, std::placeholders::_2));
+        spk_man->NotifyFirstKeyTimeChanged.connect([this](const ScriptPubKeyMan*, int64_t time) {
+            MaybeUpdateBirthTime(time);
+        });
     }
 }
 
@@ -4169,7 +4178,7 @@ bool DoMigration(CWallet& wallet, WalletContext& context, bilingual_str& error, 
                 // Parse the descriptor
                 FlatSigningProvider keys;
                 std::string parse_err;
-                std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /* require_checksum */ true);
+                std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /*require_checksum=*/ true);
                 assert(descs.size() == 1); // It shouldn't be possible to have the LegacyScriptPubKeyMan make an invalid descriptor or a multipath descriptors
                 assert(!descs.at(0)->IsRange()); // It shouldn't be possible to have LegacyScriptPubKeyMan make a ranged watchonly descriptor
 
@@ -4208,7 +4217,7 @@ bool DoMigration(CWallet& wallet, WalletContext& context, bilingual_str& error, 
                 // Parse the descriptor
                 FlatSigningProvider keys;
                 std::string parse_err;
-                std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /* require_checksum */ true);
+                std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /*require_checksum=*/ true);
                 assert(descs.size() == 1); // It shouldn't be possible to have the LegacyScriptPubKeyMan make an invalid descriptor or a multipath descriptors
                 assert(!descs.at(0)->IsRange()); // It shouldn't be possible to have LegacyScriptPubKeyMan make a ranged watchonly descriptor
 

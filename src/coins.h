@@ -6,6 +6,7 @@
 #ifndef BITCOIN_COINS_H
 #define BITCOIN_COINS_H
 
+#include <attributes.h>
 #include <compressor.h>
 #include <core_memusage.h>
 #include <memusage.h>
@@ -102,7 +103,6 @@ using CoinsCachePair = std::pair<const COutPoint, CCoinsCacheEntry>;
  * - unspent, FRESH, DIRTY (e.g. a new coin created in the cache)
  * - unspent, not FRESH, DIRTY (e.g. a coin changed in the cache during a reorg)
  * - unspent, not FRESH, not DIRTY (e.g. an unspent coin fetched from the parent cache)
- * - spent, FRESH, not DIRTY (e.g. a spent coin fetched from the parent cache)
  * - spent, not FRESH, DIRTY (e.g. a coin is spent and spentness needs to be flushed to the parent)
  */
 struct CCoinsCacheEntry
@@ -117,12 +117,6 @@ private:
      * the parent cache for batch writing. This is a performance optimization
      * compared to giving all entries in the cache to the parent and having the
      * parent scan for only modified entries.
-     *
-     * FRESH-but-not-DIRTY coins can not occur in practice, since that would
-     * mean a spent coin exists in the parent CCoinsView and not in the child
-     * CCoinsViewCache. Nevertheless, if a spent coin is retrieved from the
-     * parent cache, the FRESH-but-not-DIRTY coin will be tracked by the linked
-     * list and deleted when Sync or Flush is called on the CCoinsViewCache.
      */
     CoinsCachePair* m_prev{nullptr};
     CoinsCachePair* m_next{nullptr};
@@ -376,6 +370,12 @@ protected:
     /* Cached dynamic memory usage for the inner Coin objects. */
     mutable size_t cachedCoinsUsage{0};
 
+    /**
+     * Discard all modifications made to this cache without flushing to the base view.
+     * This can be used to efficiently reuse a cache instance across multiple operations.
+     */
+    void Reset() noexcept;
+
 public:
     CCoinsViewCache(CCoinsView *baseIn, bool deterministic = false);
 
@@ -439,10 +439,10 @@ public:
      * Push the modifications applied to this cache to its base and wipe local state.
      * Failure to call this method or Sync() before destruction will cause the changes
      * to be forgotten.
-     * If will_reuse_cache is false, the cache will retain the same memory footprint
+     * If reallocate_cache is false, the cache will retain the same memory footprint
      * after flushing and should be destroyed to deallocate.
      */
-    void Flush(bool will_reuse_cache = true);
+    void Flush(bool reallocate_cache = true);
 
     /**
      * Push the modifications applied to this cache to its base while retaining
@@ -476,6 +476,25 @@ public:
 
     //! Run an internal sanity check on the cache data structure. */
     void SanityCheck() const;
+
+    class ResetGuard
+    {
+    private:
+        friend CCoinsViewCache;
+        CCoinsViewCache& m_cache;
+        explicit ResetGuard(CCoinsViewCache& cache LIFETIMEBOUND) noexcept : m_cache{cache} {}
+
+    public:
+        ResetGuard(const ResetGuard&) = delete;
+        ResetGuard& operator=(const ResetGuard&) = delete;
+        ResetGuard(ResetGuard&&) = delete;
+        ResetGuard& operator=(ResetGuard&&) = delete;
+
+        ~ResetGuard() { m_cache.Reset(); }
+    };
+
+    //! Create a scoped guard that will call `Reset()` on this cache when it goes out of scope.
+    [[nodiscard]] ResetGuard CreateResetGuard() noexcept { return ResetGuard{*this}; }
 
 private:
     /**

@@ -96,6 +96,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
@@ -1377,7 +1378,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
     options.coins_error_cb = [] {
         uiInterface.ThreadSafeMessageBox(
             _("Error reading from database, shutting down."),
-            "", CClientUIInterface::MSG_ERROR);
+            CClientUIInterface::MSG_ERROR);
     };
     uiInterface.InitMessage(_("Loading block index…"));
     auto catch_exceptions = [](auto&& f) -> ChainstateLoadResult {
@@ -1559,9 +1560,9 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     ApplyArgsManOptions(args, peerman_opts);
 
     {
-
-        // Read asmap file if configured
-        std::vector<bool> asmap;
+        // Read asmap file if configured and initialize
+        // Netgroupman with or without it
+        assert(!node.netgroupman);
         if (args.IsArgSet("-asmap") && !args.IsArgNegated("-asmap")) {
             fs::path asmap_path = args.GetPathArg("-asmap");
             if (asmap_path.empty()) {
@@ -1575,20 +1576,18 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                 InitError(strprintf(_("Could not find asmap file %s"), fs::quoted(fs::PathToString(asmap_path))));
                 return false;
             }
-            asmap = DecodeAsmap(asmap_path);
+            std::vector<std::byte> asmap{DecodeAsmap(asmap_path)};
             if (asmap.size() == 0) {
                 InitError(strprintf(_("Could not parse asmap file %s"), fs::quoted(fs::PathToString(asmap_path))));
                 return false;
             }
-            const uint256 asmap_version = (HashWriter{} << asmap).GetHash();
+            const uint256 asmap_version = AsmapVersion(asmap);
+            node.netgroupman = std::make_unique<NetGroupManager>(NetGroupManager::WithLoadedAsmap(std::move(asmap)));
             LogInfo("Using asmap version %s for IP bucketing", asmap_version.ToString());
         } else {
+            node.netgroupman = std::make_unique<NetGroupManager>(NetGroupManager::NoAsmap());
             LogInfo("Using /16 prefix for IP bucketing");
         }
-
-        // Initialize netgroup manager
-        assert(!node.netgroupman);
-        node.netgroupman = std::make_unique<NetGroupManager>(std::move(asmap));
 
         // Initialize addrman
         assert(!node.addrman);
@@ -1819,7 +1818,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             uiInterface.ThreadSafeQuestion(
             error + Untranslated(".\n\n") + _("Do you want to rebuild the databases now?"),
             error.original + ".\nPlease restart with -reindex or -reindex-chainstate to recover.",
-            "", CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT)};
+            CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT)};
         if (!do_retry) {
             return false;
         }
@@ -1978,6 +1977,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         ScheduleBatchPriority();
         // Import blocks and ActivateBestChain()
         ImportBlocks(chainman, vImportFiles);
+        WITH_LOCK(::cs_main, chainman.UpdateIBDStatus());
         if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
             LogInfo("Stopping after block import");
             if (!(Assert(node.shutdown_request))()) {

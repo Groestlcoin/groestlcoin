@@ -23,6 +23,8 @@ import time
 import urllib.request
 import zipfile
 
+TAR = os.getenv('TAR', 'tar')
+
 SHA256_SUMS = {
     "e83406ebf473c7d69da02d2f09539a710cb82b090116ff8f9b63e35a41608577": {"tag": "v2.17.2", "archive": "groestlcoin-2.17.2-aarch64-linux-gnu.tar.gz"},
     "5db693a615ce60e817af16cdcae51c4ac03e31f9588ed63447a57c343e1e4c7c": {"tag": "v2.17.2", "archive": "groestlcoin-2.17.2-arm-linux-gnueabihf.tar.gz"},
@@ -226,7 +228,7 @@ def download_binary(tag, args) -> int:
             print(f"Zip extraction failed: {e}", file=sys.stderr)
             return 1
     else:
-        ret = subprocess.run(['tar', '-zxf', archive, '-C', tag,
+        ret = subprocess.run([TAR, '-zxf', archive, '-C', tag,
                               '--strip-components=1',
                               'groestlcoin-{tag}'.format(tag=tag[1:])]).returncode
         if ret != 0:

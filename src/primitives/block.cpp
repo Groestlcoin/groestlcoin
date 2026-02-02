@@ -9,6 +9,10 @@
 #include <groestlcoin.h>
 #include <tinyformat.h>
 
+#include <memory>
+#include <span>
+#include <sstream>
+
 uint256 CBlockHeader::GetHash() const
 {
     return (XCoin::GroestlHashWriter{} << *this).GetHash(); // GRS

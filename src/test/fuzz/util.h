@@ -65,11 +65,6 @@ template<typename B = uint8_t>
     return ret;
 }
 
-[[nodiscard]] inline std::vector<bool> ConsumeRandomLengthBitVector(FuzzedDataProvider& fuzzed_data_provider, const std::optional<size_t>& max_length = std::nullopt) noexcept
-{
-    return BytesToBits(ConsumeRandomLengthByteVector(fuzzed_data_provider, max_length));
-}
-
 [[nodiscard]] inline DataStream ConsumeDataStream(FuzzedDataProvider& fuzzed_data_provider, const std::optional<size_t>& max_length = std::nullopt) noexcept
 {
     return DataStream{ConsumeRandomLengthByteVector(fuzzed_data_provider, max_length)};
@@ -144,7 +139,8 @@ template <typename WeakEnumType, size_t size>
 
 [[nodiscard]] CAmount ConsumeMoney(FuzzedDataProvider& fuzzed_data_provider, const std::optional<CAmount>& max = std::nullopt) noexcept;
 
-[[nodiscard]] int64_t ConsumeTime(FuzzedDataProvider& fuzzed_data_provider, const std::optional<int64_t>& min = std::nullopt, const std::optional<int64_t>& max = std::nullopt) noexcept;
+[[nodiscard]] NodeSeconds ConsumeTime(FuzzedDataProvider& fuzzed_data_provider, const std::optional<int64_t>& min = std::nullopt, const std::optional<int64_t>& max = std::nullopt) noexcept;
+[[nodiscard]] std::chrono::seconds ConsumeDuration(FuzzedDataProvider& fuzzed_data_provider, std::chrono::seconds min, std::chrono::seconds max) noexcept;
 
 [[nodiscard]] CMutableTransaction ConsumeTransaction(FuzzedDataProvider& fuzzed_data_provider, const std::optional<std::vector<Txid>>& prevout_txids, int max_num_in = 10, int max_num_out = 10) noexcept;
 

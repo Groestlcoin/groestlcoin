@@ -457,12 +457,13 @@ enum DisconnectResult
 class ConnectTrace;
 
 /** @see Chainstate::FlushStateToDisk */
-inline constexpr std::array FlushStateModeNames{"NONE", "IF_NEEDED", "PERIODIC", "ALWAYS"};
+inline constexpr std::array FlushStateModeNames{"NONE", "IF_NEEDED", "PERIODIC", "FORCE_FLUSH", "FORCE_SYNC"};
 enum class FlushStateMode: uint8_t {
     NONE,
     IF_NEEDED,
     PERIODIC,
-    ALWAYS
+    FORCE_FLUSH,
+    FORCE_SYNC,
 };
 
 /**
@@ -487,6 +488,10 @@ public:
     //! This is the top layer of the cache hierarchy - it keeps as many coins in memory as
     //! can fit per the dbcache setting.
     std::unique_ptr<CCoinsViewCache> m_cacheview GUARDED_BY(cs_main);
+
+    //! Temporary CCoinsViewCache layered on top of m_cacheview and passed to ConnectBlock().
+    //! Reset between calls and flushed only on success, so invalid blocks don't pollute the underlying cache.
+    std::unique_ptr<CCoinsViewCache> m_connect_block_view GUARDED_BY(cs_main);
 
     //! This constructor initializes CCoinsViewDB and CCoinsViewErrorCatcher instances, but it
     //! *does not* create a CCoinsViewCache instance by default. This is done separately because the
@@ -735,8 +740,8 @@ public:
         FlushStateMode mode,
         int nManualPruneHeight = 0);
 
-    //! Unconditionally flush all changes to disk.
-    void ForceFlushStateToDisk();
+    //! Flush all changes to disk.
+    void ForceFlushStateToDisk(bool wipe_cache = true);
 
     //! Prune blockfiles from the disk if necessary and then flush chainstate changes
     //! if we pruned.
@@ -1030,13 +1035,13 @@ public:
     ValidationCache m_validation_cache;
 
     /**
-     * Whether initial block download has ended and IsInitialBlockDownload
-     * should return false from now on.
+     * Whether initial block download (IBD) is ongoing.
      *
-     * Mutable because we need to be able to mark IsInitialBlockDownload()
-     * const, which latches this for caching purposes.
+     * This value is used for lock-free IBD checks, and latches from true to
+     * false once block loading has finished and the current chain tip has
+     * enough work and is recent.
      */
-    mutable std::atomic<bool> m_cached_finished_ibd{false};
+    std::atomic_bool m_cached_is_ibd{true};
 
     /**
      * Every received block is assigned a unique and increasing identifier, so we
@@ -1157,6 +1162,19 @@ public:
     CBlockIndex* ActiveTip() const EXCLUSIVE_LOCKS_REQUIRED(GetMutex()) { return ActiveChain().Tip(); }
     //! @}
 
+    /**
+     * Update and possibly latch the IBD status.
+     *
+     * If block loading has finished and the current chain tip has enough work
+     * and is recent, set `m_cached_is_ibd` to false. This function never sets
+     * the flag back to true.
+     *
+     * This should be called after operations that may affect IBD exit
+     * conditions (e.g. after updating the active chain tip, or after
+     * `ImportBlocks()` finishes).
+     */
+    void UpdateIBDStatus() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+
     node::BlockMap& BlockIndex() EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
     {
         AssertLockHeld(::cs_main);
@@ -1169,7 +1187,7 @@ public:
     mutable VersionBitsCache m_versionbitscache;
 
     /** Check whether we are doing an initial block download (synchronizing from disk or network) */
-    bool IsInitialBlockDownload() const;
+    bool IsInitialBlockDownload() const noexcept;
 
     /** Guess verification progress (as a fraction between 0.0=genesis and 1.0=current tip). */
     double GuessVerificationProgress(const CBlockIndex* pindex) const EXCLUSIVE_LOCKS_REQUIRED(GetMutex());

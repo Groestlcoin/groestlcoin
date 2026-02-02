@@ -277,14 +277,14 @@ BOOST_AUTO_TEST_CASE(bnb_search_test)
         add_coin(available_coins, *wallet, 1 * CENT, coin_selection_params_bnb.m_effective_feerate, 6 * 24, false, 0, true);
 
         CAmount selection_target = 16 * CENT;
-        const auto& no_res = SelectCoinsBnB(GroupCoins(available_coins.All(), /*subtract_fee_outputs*/true),
+        const auto& no_res = SelectCoinsBnB(GroupCoins(available_coins.All(), /*subtract_fee_outputs=*/true),
                                             selection_target, /*cost_of_change=*/0, MAX_STANDARD_TX_WEIGHT);
         BOOST_REQUIRE(!no_res);
         BOOST_CHECK(util::ErrorString(no_res).original.find("The inputs size exceeds the maximum weight") != std::string::npos);
 
         // Now add same coin value with a good size and check that it gets selected
         add_coin(available_coins, *wallet, 5 * CENT, coin_selection_params_bnb.m_effective_feerate, 6 * 24, false, 0, true);
-        const auto& res = SelectCoinsBnB(GroupCoins(available_coins.All(), /*subtract_fee_outputs*/true), selection_target, /*cost_of_change=*/0);
+        const auto& res = SelectCoinsBnB(GroupCoins(available_coins.All(), /*subtract_fee_outputs=*/true), selection_target, /*cost_of_change=*/0);
 
         expected_result.Clear();
         add_coin(8 * CENT, 2, expected_result);
@@ -1148,6 +1148,41 @@ BOOST_AUTO_TEST_CASE(coin_grinder_tests)
         // Demonstrate how following improvements reduce iteration count and catch any regressions in the future.
         size_t expected_attempts = 7;
         BOOST_CHECK_MESSAGE(res->GetSelectionsEvaluated() == expected_attempts, strprintf("Expected %i attempts, but got %i", expected_attempts, res->GetSelectionsEvaluated()));
+    }
+
+    {
+        // #################################################################################################################
+        // 8) Test input set that has a solution will not find a solution before reaching the attempt limit
+        // #################################################################################################################
+        CAmount target = 8 * COIN;
+        int max_selection_weight = 3200; // WU
+        dummy_params.m_min_change_target = 0;
+        const auto& result_a = CoinGrinder(target, dummy_params, m_node, max_selection_weight, [&](CWallet& wallet) {
+            CoinsResult doppelgangers;
+            for (int i = 0; i < 18; ++i) {
+                add_coin(doppelgangers, wallet, CAmount(1 * COIN + i), CFeeRate(0), 144, false, 0, true, 96 + i);
+            }
+            return doppelgangers;
+        });
+        BOOST_CHECK(result_a);
+        SelectionResult expected_result(CAmount(0), SelectionAlgorithm::CG);
+        for (int i = 0; i < 8; ++i) {
+          add_coin(1 * COIN + i, 0, expected_result);
+        }
+        BOOST_CHECK(EquivalentResult(expected_result, *result_a));
+        // Demonstrate a solution is found before the attempts limit is reached.
+        size_t expected_attempts = 87'525;
+        BOOST_CHECK_MESSAGE(result_a->GetSelectionsEvaluated() == expected_attempts, strprintf("Expected %i attempts, but got %i", expected_attempts, result_a->GetSelectionsEvaluated()));
+
+        // Adding one more doppelganger causes the attempt limit to be reached before finding a solution.
+        const auto& result_b = CoinGrinder(target, dummy_params, m_node, max_selection_weight, [&](CWallet& wallet) {
+            CoinsResult doppelgangers;
+            for (int i = 0; i < 19; ++i) {
+                add_coin(doppelgangers, wallet, CAmount(1 * COIN + i), CFeeRate(0), 144, false, 0, true, 96 + i);
+            }
+            return doppelgangers;
+        });
+        BOOST_CHECK(!result_b);
     }
 }
 

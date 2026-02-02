@@ -7,6 +7,7 @@
 #include <consensus/consensus.h>
 #include <logging.h>
 #include <random.h>
+#include <uint256.h>
 #include <util/trace.h>
 
 TRACEPOINT_SEMAPHORE(utxocache, add);
@@ -55,10 +56,7 @@ CCoinsMap::iterator CCoinsViewCache::FetchCoin(const COutPoint &outpoint) const 
         if (auto coin{base->GetCoin(outpoint)}) {
             ret->second.coin = std::move(*coin);
             cachedCoinsUsage += ret->second.coin.DynamicMemoryUsage();
-            if (ret->second.coin.IsSpent()) { // TODO GetCoin cannot return spent coins
-                // The parent only has an empty entry for this outpoint; we can consider our version as fresh.
-                CCoinsCacheEntry::SetFresh(*ret, m_sentinel);
-            }
+            Assert(!ret->second.coin.IsSpent());
         } else {
             cacheCoins.erase(ret);
             return cacheCoins.end();
@@ -250,15 +248,15 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
             }
         }
     }
-    hashBlock = hashBlockIn;
+    SetBestBlock(hashBlockIn);
 }
 
-void CCoinsViewCache::Flush(bool will_reuse_cache)
+void CCoinsViewCache::Flush(bool reallocate_cache)
 {
     auto cursor{CoinsViewCacheCursor(m_sentinel, cacheCoins, /*will_erase=*/true)};
     base->BatchWrite(cursor, hashBlock);
     cacheCoins.clear();
-    if (will_reuse_cache) {
+    if (reallocate_cache) {
         ReallocateCache();
     }
     cachedCoinsUsage = 0;
@@ -274,10 +272,17 @@ void CCoinsViewCache::Sync()
     }
 }
 
+void CCoinsViewCache::Reset() noexcept
+{
+    cacheCoins.clear();
+    cachedCoinsUsage = 0;
+    SetBestBlock(uint256::ZERO);
+}
+
 void CCoinsViewCache::Uncache(const COutPoint& hash)
 {
     CCoinsMap::iterator it = cacheCoins.find(hash);
-    if (it != cacheCoins.end() && !it->second.IsDirty() && !it->second.IsFresh()) {
+    if (it != cacheCoins.end() && !it->second.IsDirty()) {
         cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
         TRACEPOINT(utxocache, uncache,
                hash.hash.data(),
@@ -318,20 +323,19 @@ void CCoinsViewCache::ReallocateCache()
 void CCoinsViewCache::SanityCheck() const
 {
     size_t recomputed_usage = 0;
-    size_t count_flagged = 0;
+    size_t count_dirty = 0;
     for (const auto& [_, entry] : cacheCoins) {
-        unsigned attr = 0;
-        if (entry.IsDirty()) attr |= 1;
-        if (entry.IsFresh()) attr |= 2;
-        if (entry.coin.IsSpent()) attr |= 4;
-        // Only 5 combinations are possible.
-        assert(attr != 2 && attr != 4 && attr != 7);
+        if (entry.coin.IsSpent()) {
+            assert(entry.IsDirty() && !entry.IsFresh()); // A spent coin must be dirty and cannot be fresh
+        } else {
+            assert(entry.IsDirty() || !entry.IsFresh()); // An unspent coin must not be fresh if not dirty
+        }
 
         // Recompute cachedCoinsUsage.
         recomputed_usage += entry.coin.DynamicMemoryUsage();
 
         // Count the number of entries we expect in the linked list.
-        if (entry.IsDirty() || entry.IsFresh()) ++count_flagged;
+        if (entry.IsDirty()) ++count_dirty;
     }
     // Iterate over the linked list of flagged entries.
     size_t count_linked = 0;
@@ -340,11 +344,11 @@ void CCoinsViewCache::SanityCheck() const
         assert(it->second.Next()->second.Prev() == it);
         assert(it->second.Prev()->second.Next() == it);
         // Verify they are actually flagged.
-        assert(it->second.IsDirty() || it->second.IsFresh());
+        assert(it->second.IsDirty());
         // Count the number of entries actually in the list.
         ++count_linked;
     }
-    assert(count_linked == count_flagged);
+    assert(count_linked == count_dirty);
     assert(recomputed_usage == cachedCoinsUsage);
 }
 

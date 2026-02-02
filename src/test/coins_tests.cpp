@@ -48,11 +48,7 @@ public:
 
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override
     {
-        if (auto it{map_.find(outpoint)}; it != map_.end()) {
-            if (!it->second.IsSpent() || m_rng.randbool()) {
-                return it->second; // TODO spent coins shouldn't be returned
-            }
-        }
+        if (auto it{map_.find(outpoint)}; it != map_.end() && !it->second.IsSpent()) return it->second;
         return std::nullopt;
     }
 
@@ -1118,6 +1114,49 @@ BOOST_AUTO_TEST_CASE(ccoins_emplace_duplicate_keeps_usage_balanced)
     cache.SelfTest();
 
     BOOST_CHECK(cache.AccessCoin(outpoint) == coin1);
+}
+
+BOOST_AUTO_TEST_CASE(ccoins_reset_guard)
+{
+    CCoinsViewTest root{m_rng};
+    CCoinsViewCache root_cache{&root};
+    uint256 base_best_block{m_rng.rand256()};
+    root_cache.SetBestBlock(base_best_block);
+    root_cache.Flush();
+
+    CCoinsViewCache cache{&root};
+
+    const COutPoint outpoint{Txid::FromUint256(m_rng.rand256()), m_rng.rand32()};
+
+    const Coin coin{CTxOut{m_rng.randrange(10), CScript{} << m_rng.randbytes(CScriptBase::STATIC_SIZE + 1)}, 1, false};
+    cache.EmplaceCoinInternalDANGER(COutPoint{outpoint}, Coin{coin});
+
+    uint256 cache_best_block{m_rng.rand256()};
+    cache.SetBestBlock(cache_best_block);
+
+    {
+        const auto reset_guard{cache.CreateResetGuard()};
+        BOOST_CHECK(cache.AccessCoin(outpoint) == coin);
+        BOOST_CHECK(!cache.AccessCoin(outpoint).IsSpent());
+        BOOST_CHECK_EQUAL(cache.GetCacheSize(), 1);
+        BOOST_CHECK_EQUAL(cache.GetBestBlock(), cache_best_block);
+        BOOST_CHECK(!root_cache.HaveCoinInCache(outpoint));
+    }
+
+    BOOST_CHECK(cache.AccessCoin(outpoint).IsSpent());
+    BOOST_CHECK_EQUAL(cache.GetCacheSize(), 0);
+    BOOST_CHECK_EQUAL(cache.GetBestBlock(), base_best_block);
+    BOOST_CHECK(!root_cache.HaveCoinInCache(outpoint));
+
+    // Using a reset guard again is idempotent
+    {
+        const auto reset_guard{cache.CreateResetGuard()};
+    }
+
+    BOOST_CHECK(cache.AccessCoin(outpoint).IsSpent());
+    BOOST_CHECK_EQUAL(cache.GetCacheSize(), 0);
+    BOOST_CHECK_EQUAL(cache.GetBestBlock(), base_best_block);
+    BOOST_CHECK(!root_cache.HaveCoinInCache(outpoint));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
