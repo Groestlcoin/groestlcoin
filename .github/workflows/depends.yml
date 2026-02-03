@@ -86,7 +86,7 @@ jobs:
             dep-opts: ""
             config-opts: ""
             goal: build
-            sdk: 15.0-15A240d
+            sdk: 26.1.1-17B100
           - name: linux-arm-32-bit
             host: arm-linux-gnueabihf
             os: ubuntu-24.04
