@@ -177,8 +177,8 @@ jobs:
         run: |
           mkdir -p ./depends/sdk-sources
           mkdir -p ./depends/SDKs
-          curl --location --fail $SDK_URL/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar.gz -o depends/sdk-sources/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar.gz
-          tar -C depends/SDKs -xf depends/sdk-sources/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar.gz
+          curl --location --fail $SDK_URL/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar -o depends/sdk-sources/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar
+          tar -C depends/SDKs -xf depends/sdk-sources/Xcode-${{ matrix.sdk }}-extracted-SDK-with-libcxx-headers.tar
 
       - name: Dependency cache
         uses: actions/cache@v4
