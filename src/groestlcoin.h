@@ -14,39 +14,39 @@ namespace XCoin {
 
 class ConstBuf {
 public:
-	const unsigned char *P;
-	size_t Size;
+    const unsigned char *P;
+    size_t Size;
 
-	ConstBuf(const std::span<const unsigned char> p) {
-		if (p.begin() == p.end()) {
-			P = 0;
-			Size = 0;
-		} else {
-			P = (unsigned char*)(p.data());
+    ConstBuf(const std::span<const unsigned char> p) {
+        if (p.begin() == p.end()) {
+            P = 0;
+            Size = 0;
+        } else {
+            P = (unsigned char*)(p.data());
             Size = p.size();
-		}
-	}
+        }
+    }
 
-	template <typename T>
-	ConstBuf(const T pb, const T pe) {
-		if (pb == pe) {
-			P = 0;
-			Size = 0;
-		} else {
-			P = (unsigned char*)(&pb[0]);
-			Size = (pe-pb) * sizeof(pb[0]);
-		}
-	}
+    template <typename T>
+    ConstBuf(const T pb, const T pe) {
+        if (pb == pe) {
+            P = 0;
+            Size = 0;
+        } else {
+            P = (unsigned char*)(&pb[0]);
+            Size = (pe-pb) * sizeof(pb[0]);
+        }
+    }
 
-	ConstBuf(const std::vector<unsigned char>& vch) {
-		if (vch.empty()) {
-			P = 0;
-			Size = 0;
-		} else {
-			P = &vch[0];
-			Size = vch.size();
-		}
-	}
+    ConstBuf(const std::vector<unsigned char>& vch) {
+        if (vch.empty()) {
+            P = 0;
+            Size = 0;
+        } else {
+            P = &vch[0];
+            Size = vch.size();
+        }
+    }
 };
 
 
@@ -61,15 +61,15 @@ inline uint256 HashForAddress(const ConstBuf& cbuf) { return HashGroestl(cbuf); 
 
 class GroestlHasher {
 private:
-	void *ctx;
+    void *ctx;
 public:
-	void Finalize(std::span<unsigned char> output);
-	GroestlHasher& Write(const unsigned char *data, size_t len);
-	GroestlHasher& Write(std::span<const unsigned char> input);
-	GroestlHasher();
-	GroestlHasher(GroestlHasher&& x);
-	~GroestlHasher();
-	GroestlHasher& operator=(GroestlHasher&& x);
+    void Finalize(std::span<unsigned char> output);
+    GroestlHasher& Write(const unsigned char *data, size_t len);
+    GroestlHasher& Write(std::span<const unsigned char> input);
+    GroestlHasher();
+    GroestlHasher(GroestlHasher&& x);
+    ~GroestlHasher();
+    GroestlHasher& operator=(GroestlHasher&& x);
 };
 
 /** A writer stream (for serialization) that computes a 256-bit hash. */
@@ -90,8 +90,8 @@ public:
      */
     uint256 GetHash() {
         uint256 result;
-	ctx.Finalize(result);
-	return result;
+    ctx.Finalize(result);
+    return result;
     }
 
      /**
@@ -106,7 +106,7 @@ public:
      GroestlHashWriter& operator<<(const T& obj)
      {
           ::Serialize(*this, obj);
-	  return *this;
+      return *this;
      }
 };
 

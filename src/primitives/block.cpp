@@ -4,11 +4,8 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <primitives/block.h>
-
-#include <hash.h>
 #include <groestlcoin.h>
 #include <tinyformat.h>
-
 #include <memory>
 #include <span>
 #include <sstream>
