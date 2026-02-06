@@ -44,34 +44,6 @@ echo "=== BEGIN env ==="
 env
 echo "=== END env ==="
 
-# Don't apply patches in the iwyu job, because it relies on the `git diff`
-# command to detect IWYU errors. It is safe to skip this patch in the iwyu job
-# because it doesn't run a UB detector.
-if [[ "${RUN_IWYU}" != true ]]; then
-  # compact->outputs[i].file_size is uninitialized memory, so reading it is UB.
-  # The statistic bytes_written is only used for logging, which is disabled in
-  # CI, so as a temporary minimal fix to work around UB and CI failures, leave
-  # bytes_written unmodified.
-  # See https://github.com/bitcoin/bitcoin/pull/28359#issuecomment-1698694748
-  # Tee patch to stdout to make it clear CI is testing modified code.
-  tee >(patch -p1) <<'EOF'
---- a/src/leveldb/db/db_impl.cc
-+++ b/src/leveldb/db/db_impl.cc
-@@ -1028,9 +1028,6 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
-       stats.bytes_read += compact->compaction->input(which, i)->file_size;
-     }
-   }
--  for (size_t i = 0; i < compact->outputs.size(); i++) {
--    stats.bytes_written += compact->outputs[i].file_size;
--  }
-
-   mutex_.Lock();
-   stats_[compact->compaction->level() + 1].Add(stats);
-EOF
-fi
-
-
-
 # Make sure default datadir does not exist and is never read by creating a dummy file
 if [ "$CI_OS_NAME" == "macos" ]; then
   echo > "${HOME}/Library/Application Support/Groestlcoin"
@@ -91,16 +63,12 @@ if [ "$DOWNLOAD_PREVIOUS_RELEASES" = "true" ]; then
   test/get_previous_releases.py --target-dir "$PREVIOUS_RELEASES_DIR"
 fi
 
-GROESTLCOIN_CONFIG_ALL="-DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF"
+GROESTLCOIN_CONFIG_ALL="-DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DBUILD_BENCH=ON -DBUILD_FUZZ_BINARY=ON"
 if [ -z "$NO_DEPENDS" ]; then
   GROESTLCOIN_CONFIG_ALL="${GROESTLCOIN_CONFIG_ALL} -DCMAKE_TOOLCHAIN_FILE=$DEPENDS_DIR/$HOST/toolchain.cmake"
 fi
-if [ -z "$NO_WERROR" ]; then
-  GROESTLCOIN_CONFIG_ALL="${GROESTLCOIN_CONFIG_ALL} -DWERROR=OFF"
-fi
 
 ccache --zero-stats
-PRINT_CCACHE_STATISTICS="ccache --version | head -n 1 && ccache --show-stats"
 
 # Folder where the build is done.
 BASE_BUILD_DIR=${BASE_BUILD_DIR:-$BASE_SCRATCH_DIR/build-$HOST}
@@ -131,7 +99,7 @@ cmake --build "${BASE_BUILD_DIR}" "$MAKEJOBS" --target $GOAL || (
   false
 )
 
-bash -c "${PRINT_CCACHE_STATISTICS}"
+ccache --version | head -n 1 && ccache --show-stats --verbose
 hit_rate=$(ccache --show-stats | grep "Hits:" | head -1 | sed 's/.*(\(.*\)%).*/\1/')
 if [ "${hit_rate%.*}" -lt 75 ]; then
   echo "::notice title=low ccache hitrate::Ccache hit-rate in $CONTAINER_NAME was $hit_rate%"
