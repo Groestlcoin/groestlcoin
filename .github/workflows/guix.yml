@@ -180,23 +180,10 @@ jobs:
         env:
           HOSTS: ${{ matrix.host }}
           JOBS: "2"
-          SUBSTITUTE_URLS: "https://berlin.guix.gnu.org https://bordeaux.guix.gnu.org https://ci.guix.gnu.org"
+          SUBSTITUTE_URLS: "https://bordeaux-singapore-mirror.cbaines.net https://bordeaux-us-east-mirror.cbaines.net https://mirror.sjtu.edu.cn/guix https://mirror.yandex.ru/guix https://berlin.guix.gnu.org https://bordeaux.guix.gnu.org https://ci.guix.gnu.org"
+
         run: |
           set -euxo pipefail
-
-          dump_logs () {
-            echo "=== Dumping latest python-certvalidator checkout log (if present) ==="
-            latest="$(sudo ls -1t /var/log/guix/drvs/*/*python-certvalidator*checkout*.drv.gz 2>/dev/null | head -n1 || true)"
-            if [ -n "${latest}" ]; then
-              echo "Log file: ${latest}"
-              sudo zcat "${latest}" | tail -n 200 || true
-            else
-              echo "No python-certvalidator checkout drv.gz found."
-            fi
-
-            echo "=== guix gc --list-failures ==="
-            guix gc --list-failures || true
-          }
 
           max=5
           n=1
@@ -205,8 +192,6 @@ jobs:
             if ./contrib/guix/guix-build; then
               break
             fi
-
-            dump_logs
 
             if [ "${n}" -ge "${max}" ]; then
               echo "Guix build failed after ${max} attempts."
