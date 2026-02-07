@@ -20,33 +20,33 @@ static const int64_t nPremine = 240640 * COIN;
 int64_t static GetBlockSubsidy(int nHeight){
 
 
-	if (nHeight == 0)
+     if (nHeight == 0)
     {
         return nGenesisBlockRewardCoin;
     }
 
-	if (nHeight == 1)
+     if (nHeight == 1)
     {
         return nPremine;
-		/*
-		optimized standalone cpu miner 	60*512=30720
-		standalone gpu miner 		120*512=61440
-		first pool			70*512 =35840
-		block-explorer		 	60*512 =30720
-		mac wallet binary    		30*512 =15360
-		linux wallet binary  		30*512 =15360
-		web-site			100*512	=51200
-		total				=240640
-		*/
+          /*
+          optimized standalone cpu miner      60*512=30720
+          standalone gpu miner           120*512=61440
+          first pool               70*512 =35840
+          block-explorer                60*512 =30720
+          mac wallet binary              30*512 =15360
+          linux wallet binary            30*512 =15360
+          web-site               100*512     =51200
+          total                    =240640
+          */
     }
 
-	int64_t nSubsidy = 512 * COIN;
+     int64_t nSubsidy = 512 * COIN;
 
     // Subsidy is reduced by 6% every 10080 blocks, which will occur approximately every 1 week
     int exponent=(nHeight / 10080);
     for(int i=0;i<exponent;i++){
         nSubsidy=nSubsidy*47;
-		nSubsidy=nSubsidy/50;
+          nSubsidy=nSubsidy/50;
     }
     if(nSubsidy<minimumSubsidy){nSubsidy=minimumSubsidy;}
     return nSubsidy;
@@ -54,37 +54,37 @@ int64_t static GetBlockSubsidy(int nHeight){
 
 int64_t static GetBlockSubsidy120000(int nHeight)
 {
-	// Subsidy is reduced by 10% every day (1440 blocks)
-	int64_t nSubsidy = 250 * COIN;
-	int exponent = ((nHeight - 120000) / 1440);
-	for(int i=0; i<exponent; i++)
-		nSubsidy = (nSubsidy * 45) / 50;
+     // Subsidy is reduced by 10% every day (1440 blocks)
+     int64_t nSubsidy = 250 * COIN;
+     int exponent = ((nHeight - 120000) / 1440);
+     for(int i=0; i<exponent; i++)
+          nSubsidy = (nSubsidy * 45) / 50;
 
-	return nSubsidy;
+     return nSubsidy;
 }
 
 int64_t static GetBlockSubsidy150000(int nHeight)
 {
-	static int heightOfMinSubsidy = INT_MAX;
-	if (nHeight < heightOfMinSubsidy) {
-		// Subsidy is reduced by 1% every week (10080 blocks)
-		int64_t nSubsidy = 25 * COIN;
-		int exponent = ((nHeight - 150000) / 10080);
-		for (int i = 0; i < exponent; i++)
-			nSubsidy = (nSubsidy * 99) / 100;
+     static int heightOfMinSubsidy = INT_MAX;
+     if (nHeight < heightOfMinSubsidy) {
+          // Subsidy is reduced by 1% every week (10080 blocks)
+          int64_t nSubsidy = 25 * COIN;
+          int exponent = ((nHeight - 150000) / 10080);
+          for (int i = 0; i < exponent; i++)
+               nSubsidy = (nSubsidy * 99) / 100;
 
-		if (nSubsidy >= minimumSubsidy)
-			return nSubsidy;
-		heightOfMinSubsidy = (min)(heightOfMinSubsidy, nHeight);
-	}
-	return minimumSubsidy;
+          if (nSubsidy >= minimumSubsidy)
+               return nSubsidy;
+          heightOfMinSubsidy = (min)(heightOfMinSubsidy, nHeight);
+     }
+     return minimumSubsidy;
 }
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
-	return nHeight >= 150000 ? GetBlockSubsidy150000(nHeight)
-		: nHeight >= 120000 ? GetBlockSubsidy120000(nHeight)
-		: GetBlockSubsidy(nHeight);
+     return nHeight >= 150000 ? GetBlockSubsidy150000(nHeight)
+          : nHeight >= 120000 ? GetBlockSubsidy120000(nHeight)
+          : GetBlockSubsidy(nHeight);
 }
 
 //
@@ -114,7 +114,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
         return bnPowLimit.GetCompact();
-	}
+     }
 
     for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
         if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
@@ -230,15 +230,15 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params) {
     if (params.fPowAllowMinDifficultyBlocks)  {
 
-		 // Special difficulty rule for testnet:
-		 // If the new block's timestamp is more than 2* 10 minutes
-		 // then allow mining of a min-difficulty block.
+           // Special difficulty rule for testnet:
+           // If the new block's timestamp is more than 2* 10 minutes
+           // then allow mining of a min-difficulty block.
 
-		if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing*2)
-			return UintToArith256(params.powLimit).GetCompact();
+          if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing*2)
+               return UintToArith256(params.powLimit).GetCompact();
     }
 
-	if (pindexLast->nHeight >= (100000 - 1))
-		return DarkGravityWave3(pindexLast, pblock, params);
+     if (pindexLast->nHeight >= (100000 - 1))
+          return DarkGravityWave3(pindexLast, pblock, params);
     return DarkGravityWave(pindexLast, pblock, params);
 }
