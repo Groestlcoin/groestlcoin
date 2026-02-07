@@ -23,75 +23,75 @@ uint256 HashGroestl(const ConstBuf& cbuf) {
     sph_groestl512 (&ctx_gr[0], cbuf.P ? cbuf.P : pblank, cbuf.Size);
     sph_groestl512_close(&ctx_gr[0], static_cast<void*>(&hash[0]));
 
-	sph_groestl512_init(&ctx_gr[1]);
-	sph_groestl512(&ctx_gr[1],static_cast<const void*>(&hash[0]), 64);
-	sph_groestl512_close(&ctx_gr[1],static_cast<void*>(&hash[2]));
+    sph_groestl512_init(&ctx_gr[1]);
+    sph_groestl512(&ctx_gr[1],static_cast<const void*>(&hash[0]), 64);
+    sph_groestl512_close(&ctx_gr[1],static_cast<void*>(&hash[2]));
 
     return hash[2];
 }
 
 uint256 HashFromTx(const ConstBuf& cbuf) {
-	CSHA256 sha;
-	sha.Write(cbuf.P, cbuf.Size);
-	uint256 r;
-	sha.Finalize((unsigned char*)&r);
-	return r;
+    CSHA256 sha;
+    sha.Write(cbuf.P, cbuf.Size);
+    uint256 r;
+    sha.Finalize((unsigned char*)&r);
+    return r;
 }
 
 uint256 HashForSignature(const ConstBuf& cbuf) {
-	CSHA256 sha;
-	sha.Write(cbuf.P, cbuf.Size);
-	uint256 r;
-	sha.Finalize((unsigned char*)&r);
-	return r;
+    CSHA256 sha;
+    sha.Write(cbuf.P, cbuf.Size);
+    uint256 r;
+    sha.Finalize((unsigned char*)&r);
+    return r;
 }
 
 void GroestlHasher::Finalize(std::span<unsigned char> output) {
-	auto c = (sph_groestl512_context*)ctx;
-	uint256 hash[4];
-	sph_groestl512_close(c, static_cast<void*>(&hash[0]));
+    auto c = (sph_groestl512_context*)ctx;
+    uint256 hash[4];
+    sph_groestl512_close(c, static_cast<void*>(&hash[0]));
 
-	sph_groestl512_context  c2;
-	sph_groestl512_init(&c2);
-	sph_groestl512(&c2, static_cast<const void*>(&hash[0]), 64);
-	sph_groestl512_close(&c2, static_cast<void*>(&hash[2]));
-	memcpy(output.data(), static_cast<void*>(&hash[2]), 32);
+    sph_groestl512_context  c2;
+    sph_groestl512_init(&c2);
+    sph_groestl512(&c2, static_cast<const void*>(&hash[0]), 64);
+    sph_groestl512_close(&c2, static_cast<void*>(&hash[2]));
+    memcpy(output.data(), static_cast<void*>(&hash[2]), 32);
 }
 
 GroestlHasher& GroestlHasher::Write(const unsigned char *data, size_t len) {
-	auto c = (sph_groestl512_context*)ctx;
-	sph_groestl512(c, data, len);
-	return *this;
+    auto c = (sph_groestl512_context*)ctx;
+    sph_groestl512(c, data, len);
+    return *this;
 }
 
 GroestlHasher& GroestlHasher::Write(std::span<const unsigned char> input) {
-	auto c = (sph_groestl512_context*)ctx;
-	sph_groestl512(c, input.data(), input.size());
+    auto c = (sph_groestl512_context*)ctx;
+    sph_groestl512(c, input.data(), input.size());
     return *this;
 }
 
 GroestlHasher::GroestlHasher() {
-	auto c = new sph_groestl512_context;
-	ctx = c;
-	sph_groestl512_init(c);
+    auto c = new sph_groestl512_context;
+    ctx = c;
+    sph_groestl512_init(c);
 }
 
 GroestlHasher::GroestlHasher(GroestlHasher&& x)
-	:	ctx(x.ctx)
+    :    ctx(x.ctx)
 {
-	x.ctx = 0;
+    x.ctx = 0;
 }
 
 GroestlHasher::~GroestlHasher() {
-	delete (sph_groestl512_context*)ctx;
+    delete (sph_groestl512_context*)ctx;
 }
 
 GroestlHasher& GroestlHasher::operator=(GroestlHasher&& x)
 {
-	delete (sph_groestl512_context*)ctx;
-	ctx = x.ctx;
-	x.ctx = 0;
-	return *this;
+    delete (sph_groestl512_context*)ctx;
+    ctx = x.ctx;
+    x.ctx = 0;
+    return *this;
 }
 
 } // XCoin::
