@@ -61,7 +61,7 @@
 #include <QWindow>
 
 struct TranslationTable {
-	const wchar_t *From, *To;
+    const wchar_t *From, *To;
 };
 
 static std::vector<TranslationTable> g_translationTable = {
@@ -93,28 +93,28 @@ static std::vector<TranslationTable> g_translationTable = {
 
 static class GroestlcoinTranslatorInit {
 public:
-	struct QTranslationTable {
-		QString From, To;
-	};
+    struct QTranslationTable {
+        QString From, To;
+    };
 
-	std::vector<QTranslationTable> m_translationTable;
+    std::vector<QTranslationTable> m_translationTable;
 
-	GroestlcoinTranslatorInit()
-	{
-		for (const auto& t : g_translationTable) {
-			QTranslationTable x = { QString::fromWCharArray(t.From), QString::fromWCharArray(t.To) };
-			m_translationTable.push_back(x);
-		}
-	}
+    GroestlcoinTranslatorInit()
+    {
+        for (const auto& t : g_translationTable) {
+            QTranslationTable x = { QString::fromWCharArray(t.From), QString::fromWCharArray(t.To) };
+            m_translationTable.push_back(x);
+        }
+    }
 } g_GroestlcoinTranslatorInit;
 
 class GroestlcoinTranslator : public QTranslator
 {
     bool m_isBase;
 public:
-	QString translate(const char *context, const char *sourceText, const char *disambiguation = Q_NULLPTR, int n = -1) const override
-	{
-		auto s = QTranslator::translate(context, sourceText, disambiguation, n);
+    QString translate(const char *context, const char *sourceText, const char *disambiguation = Q_NULLPTR, int n = -1) const override
+    {
+        auto s = QTranslator::translate(context, sourceText, disambiguation, n);
         if (strstr(sourceText, "coin")
             || strstr(sourceText, "COIN")
             || strstr(sourceText, "sat"))
@@ -124,8 +124,8 @@ public:
             for (const auto& t : g_GroestlcoinTranslatorInit.m_translationTable)
                 s.replace(t.From, t.To);
         }
-		return s;
-	}
+        return s;
+    }
 
     GroestlcoinTranslator(bool isBase)
         : m_isBase(isBase)
@@ -497,7 +497,7 @@ void BitcoinApplication::initializeResult(bool success, interfaces::BlockAndHead
 
 #ifdef ENABLE_WALLET
     // Now that initialization/startup is done, process any command-line
-		// groestlcoin: URIs or payment requests:
+        // groestlcoin: URIs or payment requests:
     if (paymentServer) {
         connect(paymentServer, &PaymentServer::receivedPaymentRequest, window, &BitcoinGUI::handlePaymentRequest);
         connect(window, &BitcoinGUI::receivedURI, paymentServer, &PaymentServer::handleURIOrFile);
