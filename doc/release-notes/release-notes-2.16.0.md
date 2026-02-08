@@ -86,22 +86,22 @@ shows where each field has been moved to:
 
 |`getinfo` field   | Moved to                                  |
 |------------------|-------------------------------------------|
-`"version"`	   | `getnetworkinfo()["version"]`
+`"version"`       | `getnetworkinfo()["version"]`
 `"protocolversion"`| `getnetworkinfo()["protocolversion"]`
 `"walletversion"`  | `getwalletinfo()["walletversion"]`
-`"balance"`	   | `getwalletinfo()["balance"]`
-`"blocks"`	   | `getblockchaininfo()["blocks"]`
-`"timeoffset"`	   | `getnetworkinfo()["timeoffset"]`
-`"connections"`	   | `getnetworkinfo()["connections"]`
-`"proxy"`	   | `getnetworkinfo()["networks"][0]["proxy"]`
-`"difficulty"`	   | `getblockchaininfo()["difficulty"]`
-`"testnet"`	   | `getblockchaininfo()["chain"] == "test"`
+`"balance"`       | `getwalletinfo()["balance"]`
+`"blocks"`       | `getblockchaininfo()["blocks"]`
+`"timeoffset"`       | `getnetworkinfo()["timeoffset"]`
+`"connections"`       | `getnetworkinfo()["connections"]`
+`"proxy"`       | `getnetworkinfo()["networks"][0]["proxy"]`
+`"difficulty"`       | `getblockchaininfo()["difficulty"]`
+`"testnet"`       | `getblockchaininfo()["chain"] == "test"`
 `"keypoololdest"`  | `getwalletinfo()["keypoololdest"]`
-`"keypoolsize"`	   | `getwalletinfo()["keypoolsize"]`
+`"keypoolsize"`       | `getwalletinfo()["keypoolsize"]`
 `"unlocked_until"` | `getwalletinfo()["unlocked_until"]`
-`"paytxfee"`	   | `getwalletinfo()["paytxfee"]`
-`"relayfee"`	   | `getnetworkinfo()["relayfee"]`
-`"errors"`	   | `getnetworkinfo()["warnings"]`
+`"paytxfee"`       | `getwalletinfo()["paytxfee"]`
+`"relayfee"`       | `getnetworkinfo()["relayfee"]`
+`"errors"`       | `getnetworkinfo()["warnings"]`
 
 ZMQ On Windows
 --------------

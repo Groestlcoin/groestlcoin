@@ -3,9 +3,9 @@
 # backward compatibility for existing gentoo layout
 #
 if [ -d "/var/lib/groestlcoin/.groestlcoin" ]; then
-	GROESTLCOIND_DEFAULT_DATADIR="/var/lib/groestlcoin/.groestlcoin"
+    GROESTLCOIND_DEFAULT_DATADIR="/var/lib/groestlcoin/.groestlcoin"
 else
-	GROESTLCOIND_DEFAULT_DATADIR="/var/lib/groestlcoind"
+    GROESTLCOIND_DEFAULT_DATADIR="/var/lib/groestlcoind"
 fi
 
 GROESTLCOIND_CONFIGFILE=${GROESTLCOIND_CONFIGFILE:-/etc/groestlcoin/groestlcoin.conf}
@@ -23,14 +23,14 @@ description="Groestlcoin cryptocurrency P2P network daemon"
 
 command="/usr/bin/groestlcoind"
 command_args="-pid=\"${GROESTLCOIND_PIDFILE}\" \
-		-conf=\"${GROESTLCOIND_CONFIGFILE}\" \
-		-datadir=\"${GROESTLCOIND_DATADIR}\" \
-		-daemon \
-		${GROESTLCOIND_OPTS}"
+        -conf=\"${GROESTLCOIND_CONFIGFILE}\" \
+        -datadir=\"${GROESTLCOIND_DATADIR}\" \
+        -daemon \
+        ${GROESTLCOIND_OPTS}"
 
 required_files="${GROESTLCOIND_CONFIGFILE}"
 start_stop_daemon_args="-u ${GROESTLCOIND_USER} \
-			-N ${GROESTLCOIND_NICE} -w 2000"
+            -N ${GROESTLCOIND_NICE} -w 2000"
 pidfile="${GROESTLCOIND_PIDFILE}"
 
 # The retry schedule to use when stopping the daemon. Could be either
@@ -39,7 +39,7 @@ pidfile="${GROESTLCOIND_PIDFILE}"
 retry="${GROESTLCOIND_SIGTERM_TIMEOUT}"
 
 depend() {
-	need localmount net
+    need localmount net
 }
 
 # verify
@@ -47,47 +47,47 @@ depend() {
 # 2) that a directory for the pid exists and is writable
 # 3) ownership and permissions on the config file
 start_pre() {
-	checkpath \
-	-d \
-	--mode 0750 \
-	--owner "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
-	"${GROESTLCOIND_DATADIR}"
+    checkpath \
+    -d \
+    --mode 0750 \
+    --owner "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
+    "${GROESTLCOIND_DATADIR}"
 
-	checkpath \
-	-d \
-	--mode 0755 \
-	--owner "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
-	"${GROESTLCOIND_PIDDIR}"
+    checkpath \
+    -d \
+    --mode 0755 \
+    --owner "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
+    "${GROESTLCOIND_PIDDIR}"
 
-	checkpath -f \
-	-o "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
-	-m 0660 \
-	"${GROESTLCOIND_CONFIGFILE}"
+    checkpath -f \
+    -o "${GROESTLCOIND_USER}:${GROESTLCOIND_GROUP}" \
+    -m 0660 \
+    "${GROESTLCOIND_CONFIGFILE}"
 
-	checkconfig || return 1
+    checkconfig || return 1
 }
 
 checkconfig()
 {
-	if grep -qs '^rpcuser=' "${GROESTLCOIND_CONFIGFILE}" && \
-		! grep -qs '^rpcpassword=' "${GROESTLCOIND_CONFIGFILE}" ; then
-		eerror ""
-		eerror "ERROR: You must set a secure rpcpassword to run GROESTLCOIND."
-		eerror "The setting must appear in ${GROESTLCOIND_CONFIGFILE}"
-		eerror ""
-		eerror "This password is security critical to securing wallets "
-		eerror "and must not be the same as the rpcuser setting."
-		eerror "You can generate a suitable random password using the following "
-		eerror "command from the shell:"
-		eerror ""
-		eerror "bash -c 'tr -dc a-zA-Z0-9 < /dev/urandom | head -c32 && echo'"
-		eerror ""
-		eerror "It is recommended that you also set alertnotify so you are "
-		eerror "notified of problems:"
-		eerror ""
-		eerror "ie: alertnotify=echo %%s | mail -s \"Groestlcoin Alert\"" \
-			"admin@foo.com"
-		eerror ""
-		return 1
-	fi
+    if grep -qs '^rpcuser=' "${GROESTLCOIND_CONFIGFILE}" && \
+        ! grep -qs '^rpcpassword=' "${GROESTLCOIND_CONFIGFILE}" ; then
+        eerror ""
+        eerror "ERROR: You must set a secure rpcpassword to run GROESTLCOIND."
+        eerror "The setting must appear in ${GROESTLCOIND_CONFIGFILE}"
+        eerror ""
+        eerror "This password is security critical to securing wallets "
+        eerror "and must not be the same as the rpcuser setting."
+        eerror "You can generate a suitable random password using the following "
+        eerror "command from the shell:"
+        eerror ""
+        eerror "bash -c 'tr -dc a-zA-Z0-9 < /dev/urandom | head -c32 && echo'"
+        eerror ""
+        eerror "It is recommended that you also set alertnotify so you are "
+        eerror "notified of problems:"
+        eerror ""
+        eerror "ie: alertnotify=echo %%s | mail -s \"Groestlcoin Alert\"" \
+            "admin@foo.com"
+        eerror ""
+        return 1
+    fi
 }

@@ -412,8 +412,8 @@ void RPCExecutor::request(const QString &command, const QString& wallet_name)
             Q_EMIT reply(RPCConsole::CMD_ERROR, QString("Parse error: unbalanced ' or \""));
             return;
         }
-		if (result == "null")	//!!!P
-			result = "";
+        if (result == "null")    //!!!P
+            result = "";
         Q_EMIT reply(RPCConsole::CMD_REPLY, QString::fromStdString(result));
     }
     catch (UniValue& objError)

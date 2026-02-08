@@ -20,7 +20,7 @@ _groestlcoin_tx() {
             _filedir
             return 0
             ;;
-        *=*)	# prevent attempts to complete other arguments
+        *=*)    # prevent attempts to complete other arguments
             return 0
             ;;
     esac

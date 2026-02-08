@@ -166,7 +166,7 @@ public:
     //! Get the 256-bit hash of this public key.
     uint256 GetHash() const
     {
-       return XCoin::HashGroestl(XCoin::ConstBuf(std::span{vch}.first(size())));	// GRS
+       return XCoin::HashGroestl(XCoin::ConstBuf(std::span{vch}.first(size()))); // GRS
        // return Hash(std::span{vch}.first(size()));
     }
 

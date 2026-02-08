@@ -101,7 +101,7 @@ _groestlcoin_cli() {
             _filedir -d
             return 0
             ;;
-        -*=*)	# prevent nonsense completions
+        -*=*)    # prevent nonsense completions
             return 0
             ;;
         *)

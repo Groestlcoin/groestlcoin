@@ -90,9 +90,9 @@ div.bsql {
 <h4>Benchmark Source Code</h4>
 <p>We wrote benchmark tools for SQLite and Kyoto TreeDB based on LevelDB's <span class="code">db_bench</span>. The code for each of the benchmarks resides here:</p>
 <ul>
-	<li> <b>LevelDB:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench.cc">benchmarks/db_bench.cc</a>.</li>
-	<li> <b>SQLite:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench_sqlite3.cc">benchmarks/db_bench_sqlite3.cc</a>.</li>
-	<li> <b>Kyoto TreeDB:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench_tree_db.cc">benchmarks/db_bench_tree_db.cc</a>.</li>
+    <li> <b>LevelDB:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench.cc">benchmarks/db_bench.cc</a>.</li>
+    <li> <b>SQLite:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench_sqlite3.cc">benchmarks/db_bench_sqlite3.cc</a>.</li>
+    <li> <b>Kyoto TreeDB:</b> <a href="https://github.com/google/leveldb/blob/master/benchmarks/db_bench_tree_db.cc">benchmarks/db_bench_tree_db.cc</a>.</li>
 </ul>
 
 <h4>Custom Build Specifications</h4>
@@ -107,18 +107,18 @@ div.bsql {
 databases.  Following sections show how performance changes as various
 parameters are varied.  For the baseline:</p>
 <ul>
-	<li> Each database is allowed 4 MB of cache memory.</li>
+    <li> Each database is allowed 4 MB of cache memory.</li>
         <li> Databases are opened in <em>asynchronous</em> write mode.
              (LevelDB's sync option, TreeDB's OAUTOSYNC option, and
              SQLite3's synchronous options are all turned off).  I.e.,
              every write is pushed to the operating system, but the
              benchmark does not wait for the write to reach the disk.</li>
-	<li> Keys are 16 bytes each.</li>
+    <li> Keys are 16 bytes each.</li>
         <li> Value are 100 bytes each (with enough redundancy so that
              a simple compressor shrinks them to 50% of their original
              size).</li>
-	<li> Sequential reads/writes traverse the key space in increasing order.</li>
-	<li> Random reads/writes traverse the key space in random order.</li>
+    <li> Sequential reads/writes traverse the key space in increasing order.</li>
+    <li> Random reads/writes traverse the key space in random order.</li>
 </ul>
 
 <h3>A. Sequential Reads</h3>

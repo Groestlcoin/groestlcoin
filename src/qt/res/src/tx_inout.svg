@@ -2,14 +2,14 @@
 <!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg version="1.1" id="Ebene_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 width="1200px" height="1200px" viewBox="0 0 1200 1200" enable-background="new 0 0 1200 1200" xml:space="preserve">
+     width="1200px" height="1200px" viewBox="0 0 1200 1200" enable-background="new 0 0 1200 1200" xml:space="preserve">
 <linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="35.0005" y1="50.0005" x2="965.0005" y2="980.0005">
-	<stop  offset="0" style="stop-color:#34AEC5"/>
-	<stop  offset="1" style="stop-color:#377E95"/>
+    <stop  offset="0" style="stop-color:#34AEC5"/>
+    <stop  offset="1" style="stop-color:#377E95"/>
 </linearGradient>
 <path fill="url(#SVGID_1_)" d="M735,975c-125,0-225-100-225-225c0-30-20-50-50-50s-50,20-50,50c0,180,145,325,325,325
-	s325-145,325-325S915,425,735,425c-30,0-50,20-50,50s20,50,50,50c125,0,225,100,225,225S860,975,735,975z M295,625
-	c-30,0-50-20-50-50s20-50,50-50h160l-85-85L165,235c-20-20-20-50,0-70c10-10,20-15,35-15s25,5,35,15l205,205l85,85V290
-	c0-30,20-50,50-50s50,20,50,50v335H295 M375,40c30,0,50,20,50,50s-20,50-50,50H215l85,85l205,205c20,20,20,50,0,70
-	c-10,10-20,15-35,15s-25-5-35-15L230,295l-85-85v160c0,30-20,50-50,50s-50-20-50-50V40H375"/>
+    s325-145,325-325S915,425,735,425c-30,0-50,20-50,50s20,50,50,50c125,0,225,100,225,225S860,975,735,975z M295,625
+    c-30,0-50-20-50-50s20-50,50-50h160l-85-85L165,235c-20-20-20-50,0-70c10-10,20-15,35-15s25,5,35,15l205,205l85,85V290
+    c0-30,20-50,50-50s50,20,50,50v335H295 M375,40c30,0,50,20,50,50s-20,50-50,50H215l85,85l205,205c20,20,20,50,0,70
+    c-10,10-20,15-35,15s-25-5-35-15L230,295l-85-85v160c0,30-20,50-50,50s-50-20-50-50V40H375"/>
 </svg>

@@ -74,7 +74,7 @@ SplashScreen::SplashScreen(const NetworkStyle* networkStyle)
 
     // GRS  pixPaint.drawPixmap(rectIcon, icon);
     // load the bitmap for writing some text over it
-    QPixmap pixmapSplash(gArgs.GetBoolArg("-testnet", false) ? ":/images/splash_testnet" : ":/images/splash");	// GRS
+    QPixmap pixmapSplash(gArgs.GetBoolArg("-testnet", false) ? ":/images/splash_testnet" : ":/images/splash"); // GRS
     pixPaint.drawPixmap(rectIcon, pixmapSplash); // GRS
 
     // check font size and drawing with
