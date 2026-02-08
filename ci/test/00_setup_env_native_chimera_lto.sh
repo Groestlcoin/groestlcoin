@@ -15,7 +15,7 @@ export CI_BASE_PACKAGES="ccache chimerautils chimerautils-extra clang cmake curl
 export PIP_PACKAGES="--break-system-packages pyzmq pycapnp"
 export DEP_OPTS="build_CC=clang build_CXX=clang++ build_TAR=gtar AR=llvm-ar CC=clang CXX=clang++ NM=llvm-nm RANLIB=llvm-ranlib STRIP=llvm-strip NO_QT=1"
 export GOAL="install"
-export BITCOIN_CONFIG="\
+export GROESTLCOIN_CONFIG="\
  --preset=dev-mode \
  -DBUILD_GUI=OFF \
  -DREDUCE_EXPORTS=ON \
