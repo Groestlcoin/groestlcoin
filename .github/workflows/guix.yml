@@ -43,7 +43,7 @@ jobs:
             build-essential pkg-config python3 \
             netbase
 
-      - name: Install Guix 1.4.0 (retry 5x)
+      - name: Install Guix (retry 5x)
         run: |
           set -euxo pipefail
 
@@ -59,7 +59,7 @@ jobs:
 
               rm -f guix-install.sh
               wget -q --tries=3 --timeout=30 \
-                https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh?h=v1.4.0 \
+                https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh \
                 -O guix-install.sh
 
               chmod +x guix-install.sh
