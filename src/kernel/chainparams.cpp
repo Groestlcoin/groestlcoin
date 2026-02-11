@@ -36,15 +36,6 @@ using namespace util::hex_literals;
 
 #include <memory>
 
-// Workaround MSVC bug triggering C7595 when calling consteval constructors in
-// initializer lists.
-// https://developercommunity.visualstudio.com/t/Bogus-C7595-error-on-valid-C20-code/10906093
-#if defined(_MSC_VER)
-auto consteval_ctor(auto&& input) { return input; }
-#else
-#define consteval_ctor(input) (input)
-#endif
-
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
     CMutableTransaction txNew;
