@@ -33,6 +33,7 @@ add_executable(test_groestlcoin
   coins_tests.cpp
   coinscachepair_tests.cpp
   coinstatsindex_tests.cpp
+  coinsviewoverlay_tests.cpp
   common_url_tests.cpp
   compress_tests.cpp
   crypto_tests.cpp
@@ -115,6 +116,7 @@ add_executable(test_groestlcoin
   txdownload_tests.cpp
   txgraph_tests.cpp
   txindex_tests.cpp
+  txospenderindex_tests.cpp
   txpackage_tests.cpp
   txreconciliation_tests.cpp
   txrequest_tests.cpp

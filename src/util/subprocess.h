@@ -738,6 +738,7 @@ private:
   Popen* popen_ = nullptr;
 };
 
+#ifndef __USING_WINDOWS__
 /*!
  * A helper class to Popen.
  * This takes care of all the fork-exec logic
@@ -759,6 +760,7 @@ private:
   Popen* parent_ = nullptr;
   int err_wr_pipe_ = -1;
 };
+#endif
 
 // Fwd Decl.
 class Streams;
@@ -920,8 +922,6 @@ private:
  * API's provided by the class:
  * Popen({"cmd"}, output{..}, error{..}, ....)
  *    Command provided as a sequence.
- * Popen("cmd arg1", output{..}, error{..}, ....)
- *    Command provided in a single string.
  * wait()             - Wait for the child to exit.
  * retcode()          - The return code of the exited child.
  * send(...)          - Send input to the input channel of the child.
@@ -932,20 +932,9 @@ class Popen
 {
 public:
   friend struct detail::ArgumentDeducer;
+#ifndef __USING_WINDOWS__
   friend class detail::Child;
-
-  template <typename... Args>
-  Popen(const std::string& cmd_args, Args&& ...args):
-    args_(cmd_args)
-  {
-    vargs_ = util::split(cmd_args);
-    init_args(std::forward<Args>(args)...);
-
-    // Setup the communication channels of the Popen class
-    stream_.setup_comm_channels();
-
-    execute_process();
-  }
+#endif
 
   template <typename... Args>
   Popen(std::initializer_list<const char*> cmd_args, Args&& ...args)
@@ -1024,18 +1013,16 @@ private:
 #ifdef __USING_WINDOWS__
   HANDLE process_handle_;
   std::future<void> cleanup_future_;
+#else
+  // Pid of the child process
+  int child_pid_ = -1;
 #endif
 
   std::string exe_name_;
 
-  // Command in string format
-  std::string args_;
   // Command provided as sequence
   std::vector<std::string> vargs_;
   std::vector<char*> cargv_;
-
-  // Pid of the child process
-  int child_pid_ = -1;
 
   int retcode_ = -1;
 };
@@ -1275,8 +1262,8 @@ namespace detail {
   }
 
 
-  inline void Child::execute_child() {
 #ifndef __USING_WINDOWS__
+  inline void Child::execute_child() {
     int sys_ret = -1;
     auto& stream = parent_->stream_;
 
@@ -1336,8 +1323,8 @@ namespace detail {
     // Calling application would not get this
     // exit failure
     _exit (EXIT_FAILURE);
-#endif
   }
+#endif
 
 
   inline void Streams::setup_comm_channels()

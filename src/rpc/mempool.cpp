@@ -11,6 +11,7 @@
 #include <common/args.h>
 #include <consensus/validation.h>
 #include <core_io.h>
+#include <index/txospenderindex.h>
 #include <kernel/mempool_entry.h>
 #include <net_processing.h>
 #include <netbase.h>
@@ -30,6 +31,7 @@
 #include <util/time.h>
 #include <util/vector.h>
 
+#include <map>
 #include <string_view>
 #include <utility>
 
@@ -133,6 +135,126 @@ static RPCHelpMan sendrawtransaction()
             }
 
             return tx->GetHash().GetHex();
+        },
+    };
+}
+
+static RPCHelpMan getprivatebroadcastinfo()
+{
+    return RPCHelpMan{
+        "getprivatebroadcastinfo",
+        "Returns information about transactions that are currently being privately broadcast.\n",
+        {},
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::ARR, "transactions", "",
+                    {
+                        {RPCResult::Type::OBJ, "", "",
+                            {
+                                {RPCResult::Type::STR_HEX, "txid", "The transaction hash in hex"},
+                                {RPCResult::Type::STR_HEX, "wtxid", "The transaction witness hash in hex"},
+                                {RPCResult::Type::STR_HEX, "hex", "The serialized, hex-encoded transaction data"},
+                                {RPCResult::Type::ARR, "peers", "Per-peer send and acknowledgment information for this transaction",
+                                    {
+                                        {RPCResult::Type::OBJ, "", "",
+                                            {
+                                                {RPCResult::Type::STR, "address", "The address of the peer to which the transaction was sent"},
+                                                {RPCResult::Type::NUM_TIME, "sent", "The time this transaction was picked for sending to this peer via private broadcast (seconds since epoch)"},
+                                                {RPCResult::Type::NUM_TIME, "received", /*optional=*/true, "The time this peer acknowledged reception of the transaction (seconds since epoch)"},
+                                            }},
+                                    }},
+                            }},
+                    }},
+            }},
+        RPCExamples{
+            HelpExampleCli("getprivatebroadcastinfo", "")
+            + HelpExampleRpc("getprivatebroadcastinfo", "")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        {
+            const NodeContext& node{EnsureAnyNodeContext(request.context)};
+            const PeerManager& peerman{EnsurePeerman(node)};
+            const auto txs{peerman.GetPrivateBroadcastInfo()};
+
+            UniValue transactions(UniValue::VARR);
+            for (const auto& tx_info : txs) {
+                UniValue o(UniValue::VOBJ);
+                o.pushKV("txid", tx_info.tx->GetHash().ToString());
+                o.pushKV("wtxid", tx_info.tx->GetWitnessHash().ToString());
+                o.pushKV("hex", EncodeHexTx(*tx_info.tx));
+                UniValue peers(UniValue::VARR);
+                for (const auto& peer : tx_info.peers) {
+                    UniValue p(UniValue::VOBJ);
+                    p.pushKV("address", peer.address.ToStringAddrPort());
+                    p.pushKV("sent", TicksSinceEpoch<std::chrono::seconds>(peer.sent));
+                    if (peer.received.has_value()) {
+                        p.pushKV("received", TicksSinceEpoch<std::chrono::seconds>(*peer.received));
+                    }
+                    peers.push_back(std::move(p));
+                }
+                o.pushKV("peers", std::move(peers));
+                transactions.push_back(std::move(o));
+            }
+
+            UniValue ret(UniValue::VOBJ);
+            ret.pushKV("transactions", std::move(transactions));
+            return ret;
+        },
+    };
+}
+
+static RPCHelpMan abortprivatebroadcast()
+{
+    return RPCHelpMan{
+        "abortprivatebroadcast",
+        "Abort private broadcast attempts for a transaction currently being privately broadcast.\n"
+        "The transaction will be removed from the private broadcast queue.\n",
+        {
+            {"id", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "A transaction identifier to abort. It will be matched against both txid and wtxid for all transactions in the private broadcast queue.\n"
+                                                                "If the provided id matches a txid that corresponds to multiple transactions with different wtxids, multiple transactions will be removed and returned."},
+        },
+        RPCResult{
+            RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::ARR, "removed_transactions", "Transactions removed from the private broadcast queue",
+                    {
+                        {RPCResult::Type::OBJ, "", "",
+                            {
+                                {RPCResult::Type::STR_HEX, "txid", "The transaction hash in hex"},
+                                {RPCResult::Type::STR_HEX, "wtxid", "The transaction witness hash in hex"},
+                                {RPCResult::Type::STR_HEX, "hex", "The serialized, hex-encoded transaction data"},
+                            }},
+                    }},
+            }
+        },
+        RPCExamples{
+            HelpExampleCli("abortprivatebroadcast", "\"id\"")
+            + HelpExampleRpc("abortprivatebroadcast", "\"id\"")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        {
+            const uint256 id{ParseHashV(self.Arg<UniValue>("id"), "id")};
+
+            const NodeContext& node{EnsureAnyNodeContext(request.context)};
+            PeerManager& peerman{EnsurePeerman(node)};
+
+            const auto removed_txs{peerman.AbortPrivateBroadcast(id)};
+            if (removed_txs.empty()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in private broadcast queue. Check getprivatebroadcastinfo.");
+            }
+
+            UniValue removed_transactions(UniValue::VARR);
+            for (const auto& tx : removed_txs) {
+                UniValue o(UniValue::VOBJ);
+                o.pushKV("txid", tx->GetHash().ToString());
+                o.pushKV("wtxid", tx->GetWitnessHash().ToString());
+                o.pushKV("hex", EncodeHexTx(*tx));
+                removed_transactions.push_back(std::move(o));
+            }
+            UniValue ret(UniValue::VOBJ);
+            ret.pushKV("removed_transactions", std::move(removed_transactions));
+            return ret;
         },
     };
 }
@@ -775,7 +897,7 @@ static RPCHelpMan getmempoolentry()
 static RPCHelpMan gettxspendingprevout()
 {
     return RPCHelpMan{"gettxspendingprevout",
-        "Scans the mempool to find transactions spending any of the given outputs",
+        "Scans the mempool (and the txospenderindex, if available) to find transactions spending any of the given outputs",
         {
             {"outputs", RPCArg::Type::ARR, RPCArg::Optional::NO, "The transaction outputs that we want to check, and within each, the txid (string) vout (numeric).",
                 {
@@ -787,6 +909,12 @@ static RPCHelpMan gettxspendingprevout()
                     },
                 },
             },
+            {"options", RPCArg::Type::OBJ_NAMED_PARAMS, RPCArg::Optional::OMITTED, "",
+                {
+                    {"mempool_only", RPCArg::Type::BOOL, RPCArg::DefaultHint{"true if txospenderindex unavailable, otherwise false"}, "If false and mempool lacks a relevant spend, use txospenderindex (throws an exception if not available)."},
+                    {"return_spending_tx", RPCArg::Type::BOOL, RPCArg::DefaultHint{"false"}, "If true, return the full spending tx."},
+                },
+            },
         },
         RPCResult{
             RPCResult::Type::ARR, "", "",
@@ -796,12 +924,15 @@ static RPCHelpMan gettxspendingprevout()
                     {RPCResult::Type::STR_HEX, "txid", "the transaction id of the checked output"},
                     {RPCResult::Type::NUM, "vout", "the vout value of the checked output"},
                     {RPCResult::Type::STR_HEX, "spendingtxid", /*optional=*/true, "the transaction id of the mempool transaction spending this output (omitted if unspent)"},
+                    {RPCResult::Type::STR_HEX, "spendingtx", /*optional=*/true, "the transaction spending this output (only if return_spending_tx is set, omitted if unspent)"},
+                    {RPCResult::Type::STR_HEX, "blockhash", /*optional=*/true, "the hash of the spending block (omitted if unspent or the spending tx is not confirmed)"},
                 }},
             }
         },
         RPCExamples{
             HelpExampleCli("gettxspendingprevout", "\"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":3}]\"")
             + HelpExampleRpc("gettxspendingprevout", "\"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":3}]\"")
+            + HelpExampleCliNamed("gettxspendingprevout", {{"outputs", "[{\"txid\":\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\",\"vout\":3}]"}, {"return_spending_tx", true}})
         },
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
         {
@@ -809,8 +940,22 @@ static RPCHelpMan gettxspendingprevout()
             if (output_params.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, outputs are missing");
             }
+            const UniValue options{request.params[1].isNull() ? UniValue::VOBJ : request.params[1]};\
+            RPCTypeCheckObj(options,
+                            {
+                                {"mempool_only", UniValueType(UniValue::VBOOL)},
+                                {"return_spending_tx", UniValueType(UniValue::VBOOL)},
+                            }, /*fAllowNull=*/true, /*fStrict=*/true);
 
-            std::vector<COutPoint> prevouts;
+            const bool mempool_only{options.exists("mempool_only") ? options["mempool_only"].get_bool() : !g_txospenderindex};
+            const bool return_spending_tx{options.exists("return_spending_tx") ? options["return_spending_tx"].get_bool() : false};
+
+            struct Entry {
+                const COutPoint prevout;
+                const UniValue& input;
+                UniValue output;
+            };
+            std::vector<Entry> prevouts;
             prevouts.reserve(output_params.size());
 
             for (unsigned int idx = 0; idx < output_params.size(); idx++) {
@@ -827,25 +972,56 @@ static RPCHelpMan gettxspendingprevout()
                 if (nOutput < 0) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, vout cannot be negative");
                 }
-
-                prevouts.emplace_back(txid, nOutput);
+                prevouts.emplace_back(COutPoint{txid, uint32_t(nOutput)}, o, UniValue{});
             }
 
-            const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
-            LOCK(mempool.cs);
-
-            UniValue result{UniValue::VARR};
-
-            for (const COutPoint& prevout : prevouts) {
-                UniValue o(UniValue::VOBJ);
-                o.pushKV("txid", prevout.hash.ToString());
-                o.pushKV("vout", prevout.n);
-
-                const CTransaction* spendingTx = mempool.GetConflictTx(prevout);
-                if (spendingTx != nullptr) {
-                    o.pushKV("spendingtxid", spendingTx->GetHash().ToString());
+            // search the mempool first
+            bool missing_from_mempool{false};
+            {
+                const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
+                LOCK(mempool.cs);
+                for (auto& entry : prevouts) {
+                    const CTransaction* spendingTx = mempool.GetConflictTx(entry.prevout);
+                    if (spendingTx != nullptr) {
+                        UniValue o{entry.input};
+                        o.pushKV("spendingtxid", spendingTx->GetHash().ToString());
+                        if (return_spending_tx) {
+                            o.pushKV("spendingtx", EncodeHexTx(*spendingTx));
+                        }
+                        entry.output = std::move(o);
+                    } else {
+                        missing_from_mempool = true;
+                    }
                 }
-
+            }
+            // if search is not limited to the mempool and no spender was found for an outpoint, search the txospenderindex
+            // we call g_txospenderindex->BlockUntilSyncedToCurrentChain() only if g_txospenderindex is going to be used
+            UniValue result{UniValue::VARR};
+            bool txospenderindex_ready{mempool_only || !missing_from_mempool || (g_txospenderindex && g_txospenderindex->BlockUntilSyncedToCurrentChain())};
+            for (auto& entry : prevouts) {
+                if (!entry.output.isNull()) {
+                    result.push_back(std::move(entry.output));
+                    continue;
+                }
+                UniValue o{entry.input};
+                if (mempool_only) {
+                    // do nothing, caller has selected to only query the mempool
+                } else if (!txospenderindex_ready) {
+                    throw JSONRPCError(RPC_MISC_ERROR, strprintf("No spending tx for the outpoint %s:%d in mempool, and txospenderindex is unavailable.", entry.prevout.hash.GetHex(), entry.prevout.n));
+                } else {
+                    // no spending tx in mempool, query txospender index
+                    const auto spender{g_txospenderindex->FindSpender(entry.prevout)};
+                    if (!spender) {
+                        throw JSONRPCError(RPC_MISC_ERROR, spender.error());
+                    }
+                    if (spender.value()) {
+                        o.pushKV("spendingtxid", spender.value()->tx->GetHash().GetHex());
+                        o.pushKV("blockhash", spender.value()->block_hash.GetHex());
+                        if (return_spending_tx) {
+                            o.pushKV("spendingtx", EncodeHexTx(*spender.value()->tx));
+                        }
+                    }
+                }
                 result.push_back(std::move(o));
             }
 
@@ -1329,6 +1505,8 @@ void RegisterMempoolRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
         {"rawtransactions", &sendrawtransaction},
+        {"rawtransactions", &getprivatebroadcastinfo},
+        {"rawtransactions", &abortprivatebroadcast},
         {"rawtransactions", &testmempoolaccept},
         {"blockchain", &getmempoolancestors},
         {"blockchain", &getmempooldescendants},

@@ -211,7 +211,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             }
         }
     }
-    auto hreq{std::make_unique<HTTPRequest>(req, *static_cast<const util::SignalInterrupt*>(arg))};
+    auto hreq{std::make_shared<HTTPRequest>(req, *static_cast<const util::SignalInterrupt*>(arg))};
 
     // Early address-based allow check
     if (!ClientAllowed(hreq->GetPeer())) {
@@ -258,7 +258,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             return;
         }
 
-        auto item = [req = std::move(hreq), in_path = std::move(path), fn = i->handler]() {
+        auto item = [req = hreq, in_path = std::move(path), fn = i->handler]() {
             std::string err_msg;
             try {
                 fn(req.get(), in_path);
@@ -276,7 +276,13 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             req->WriteReply(HTTP_INTERNAL_SERVER_ERROR, err_msg);
         };
 
-        [[maybe_unused]] auto _{g_threadpool_http.Submit(std::move(item))};
+        if (auto res = g_threadpool_http.Submit(std::move(item)); !res.has_value()) {
+            Assume(hreq.use_count() == 1); // ensure request will be deleted
+            // Both SubmitError::Inactive and SubmitError::Interrupted mean shutdown
+            LogWarning("HTTP request rejected during server shutdown: '%s'", SubmitErrorString(res.error()));
+            hreq->WriteReply(HTTP_SERVICE_UNAVAILABLE, "Request rejected during server shutdown");
+            return;
+        }
     } else {
         hreq->WriteReply(HTTP_NOT_FOUND);
     }
@@ -410,8 +416,8 @@ bool InitHTTPServer(const util::SignalInterrupt& interrupt)
     }
 
     LogDebug(BCLog::HTTP, "Initialized HTTP server\n");
-    g_max_queue_depth = std::max((long)gArgs.GetIntArg("-rpcworkqueue", DEFAULT_HTTP_WORKQUEUE), 1L);
-    LogDebug(BCLog::HTTP, "set work queue of depth %d\n", g_max_queue_depth);
+    g_max_queue_depth = std::max(gArgs.GetArg("-rpcworkqueue", DEFAULT_HTTP_WORKQUEUE), 1);
+    LogDebug(BCLog::HTTP, "set work queue of depth %d", g_max_queue_depth);
 
     // transfer ownership to eventBase/HTTP via .release()
     eventBase = base_ctr.release();
@@ -431,8 +437,8 @@ static std::thread g_thread_http;
 
 void StartHTTPServer()
 {
-    int rpcThreads = std::max((long)gArgs.GetIntArg("-rpcthreads", DEFAULT_HTTP_THREADS), 1L);
-    LogInfo("Starting HTTP server with %d worker threads\n", rpcThreads);
+    int rpcThreads = std::max(gArgs.GetArg("-rpcthreads", DEFAULT_HTTP_THREADS), 1);
+    LogInfo("Starting HTTP server with %d worker threads", rpcThreads);
     g_threadpool_http.Start(rpcThreads);
     g_thread_http = std::thread(ThreadHTTP, eventBase);
 }
