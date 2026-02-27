@@ -620,26 +620,3 @@ CBlock getBlock13b8a()
     stream >> TX_WITH_WITNESS(block);
     return block;
 }
-
-std::ostream& operator<<(std::ostream& os, const arith_uint256& num)
-{
-    return os << num.ToString();
-}
-
-std::ostream& operator<<(std::ostream& os, const uint160& num)
-{
-    return os << num.ToString();
-}
-
-std::ostream& operator<<(std::ostream& os, const uint256& num)
-{
-    return os << num.ToString();
-}
-
-std::ostream& operator<<(std::ostream& os, const Txid& txid) {
-    return os << txid.ToString();
-}
-
-std::ostream& operator<<(std::ostream& os, const Wtxid& wtxid) {
-    return os << wtxid.ToString();
-}

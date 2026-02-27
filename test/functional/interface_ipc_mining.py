@@ -4,18 +4,22 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the IPC (multiprocess) Mining interface."""
 import asyncio
+import time
 from contextlib import AsyncExitStack
 from io import BytesIO
 import re
 from test_framework.blocktools import NULL_OUTPOINT
 from test_framework.messages import (
     MAX_BLOCK_WEIGHT,
+    CBlockHeader,
     CTransaction,
     CTxIn,
     CTxOut,
     CTxInWitness,
     ser_uint256,
     COIN,
+    from_hex,
+    msg_headers,
 )
 from test_framework.script import (
     CScript,
@@ -24,9 +28,11 @@ from test_framework.script import (
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
+    assert_greater_than_or_equal,
     assert_not_equal
 )
 from test_framework.wallet import MiniWallet
+from test_framework.p2p import P2PInterface
 from test_framework.ipc_util import (
     destroying,
     mining_create_block_template,
@@ -131,6 +137,14 @@ class IPCMiningTest(BitcoinTestFramework):
             assert_equal(oldblockref.hash, newblockref.hash)
             assert_equal(oldblockref.height, newblockref.height)
 
+            self.log.debug("interrupt() should abort waitTipChanged()")
+            async def wait_for_tip():
+                long_timeout = 60000.0  # 1 minute
+                result = (await mining.waitTipChanged(ctx, newblockref.hash, long_timeout)).result
+                # Unlike a timeout, interrupt() returns an empty BlockRef.
+                assert_equal(len(result.hash), 0)
+            await wait_and_do(wait_for_tip(), mining.interrupt())
+
         asyncio.run(capnp.run(async_routine()))
 
     def run_block_template_test(self):
@@ -141,9 +155,34 @@ class IPCMiningTest(BitcoinTestFramework):
 
         async def async_routine():
             ctx, mining = await self.make_mining_ctx()
-            blockref = await mining.getTip(ctx)
 
             async with AsyncExitStack() as stack:
+                self.log.debug("createNewBlock() should wait if tip is still updating")
+                self.disconnect_nodes(0, 1)
+                node1_block_hash = self.generate(self.nodes[1], 1, sync_fun=self.no_op)[0]
+                header = from_hex(CBlockHeader(), self.nodes[1].getblockheader(node1_block_hash, False))
+                header_only_peer = self.nodes[0].add_p2p_connection(P2PInterface())
+                header_only_peer.send_and_ping(msg_headers([header]))
+                start = time.time()
+                async with destroying((await mining.createNewBlock(ctx, self.default_block_create_options)).result, ctx):
+                    pass
+                # Lower-bound only: a heavily loaded CI host might still exceed 0.9s
+                # even without the cooldown, so this can miss regressions but avoids
+                # spurious failures.
+                assert_greater_than_or_equal(time.time() - start, 0.9)
+
+                self.log.debug("interrupt() should abort createNewBlock() during cooldown")
+                async def create_block():
+                    result = await mining.createNewBlock(ctx, self.default_block_create_options)
+                    # interrupt() causes createNewBlock to return nullptr
+                    assert_equal(result._has("result"), False)
+
+                await wait_and_do(create_block(), mining.interrupt())
+
+                header_only_peer.peer_disconnect()
+                self.connect_nodes(0, 1)
+                self.sync_all()
+
                 self.log.debug("Create a template")
                 template = await mining_create_block_template(mining, stack, ctx, self.default_block_create_options)
                 assert template is not None
@@ -152,8 +191,9 @@ class IPCMiningTest(BitcoinTestFramework):
                 header = (await template.getBlockHeader(ctx)).result
                 assert_equal(len(header), block_header_size)
                 block = await mining_get_block(template, ctx)
-                assert_equal(ser_uint256(block.hashPrevBlock), blockref.result.hash)
-                assert len(block.vtx) >= 1
+                current_tip = self.nodes[0].getbestblockhash()
+                assert_equal(ser_uint256(block.hashPrevBlock), ser_uint256(int(current_tip, 16)))
+                assert_greater_than_or_equal(len(block.vtx), 1)
                 txfees = await template.getTxFees(ctx)
                 assert_equal(len(txfees.result), 0)
                 txsigops = await template.getTxSigops(ctx)

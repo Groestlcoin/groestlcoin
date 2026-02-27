@@ -6,6 +6,7 @@
 #include <clientversion.h>
 #include <coins.h>
 #include <streams.h>
+#include <test/util/common.h>
 #include <test/util/poolresourcetester.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>

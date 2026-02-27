@@ -325,8 +325,8 @@ FUZZ_TARGET(txgraph)
     auto max_cluster_count = provider.ConsumeIntegralInRange<DepGraphIndex>(1, MAX_CLUSTER_COUNT_LIMIT);
     /** The maximum total size of transactions in a (non-oversized) cluster. */
     auto max_cluster_size = provider.ConsumeIntegralInRange<uint64_t>(1, 0x3fffff * MAX_CLUSTER_COUNT_LIMIT);
-    /** The number of iterations to consider a cluster acceptably linearized. */
-    auto acceptable_iters = provider.ConsumeIntegralInRange<uint64_t>(0, 10000);
+    /** The amount of work to consider a cluster acceptably linearized. */
+    auto acceptable_cost = provider.ConsumeIntegralInRange<uint64_t>(0, 10000);
 
     /** The set of uint64_t "txid"s that have been assigned before. */
     std::set<uint64_t> assigned_txids;
@@ -342,7 +342,7 @@ FUZZ_TARGET(txgraph)
     auto real = MakeTxGraph(
         /*max_cluster_count=*/max_cluster_count,
         /*max_cluster_size=*/max_cluster_size,
-        /*acceptable_iters=*/acceptable_iters,
+        /*acceptable_cost=*/acceptable_cost,
         /*fallback_order=*/fallback_order);
 
     std::vector<SimTxGraph> sims;
@@ -758,9 +758,9 @@ FUZZ_TARGET(txgraph)
                 break;
             } else if (command-- == 0) {
                 // DoWork.
-                uint64_t iters = provider.ConsumeIntegralInRange<uint64_t>(0, alt ? 10000 : 255);
-                bool ret = real->DoWork(iters);
-                uint64_t iters_for_optimal{0};
+                uint64_t max_cost = provider.ConsumeIntegralInRange<uint64_t>(0, alt ? 10000 : 255);
+                bool ret = real->DoWork(max_cost);
+                uint64_t cost_for_optimal{0};
                 for (unsigned level = 0; level < sims.size(); ++level) {
                     // DoWork() will not optimize oversized levels, or the main level if a builder
                     // is present. Note that this impacts the DoWork() return value, as true means
@@ -773,24 +773,24 @@ FUZZ_TARGET(txgraph)
                     if (ret) {
                         sims[level].real_is_optimal = true;
                     }
-                    // Compute how many iterations would be needed to make everything optimal.
+                    // Compute how much work would be needed to make everything optimal.
                     for (auto component : sims[level].GetComponents()) {
-                        auto iters_opt_this_cluster = MaxOptimalLinearizationIters(component.Count());
-                        if (iters_opt_this_cluster > acceptable_iters) {
-                            // If the number of iterations required to linearize this cluster
-                            // optimally exceeds acceptable_iters, DoWork() may process it in two
+                        auto cost_opt_this_cluster = MaxOptimalLinearizationCost(component.Count());
+                        if (cost_opt_this_cluster > acceptable_cost) {
+                            // If the amount of work required to linearize this cluster
+                            // optimally exceeds acceptable_cost, DoWork() may process it in two
                             // stages: once to acceptable, and once to optimal.
-                            iters_for_optimal += iters_opt_this_cluster + acceptable_iters;
+                            cost_for_optimal += cost_opt_this_cluster + acceptable_cost;
                         } else {
-                            iters_for_optimal += iters_opt_this_cluster;
+                            cost_for_optimal += cost_opt_this_cluster;
                         }
                     }
                 }
                 if (!ret) {
-                    // DoWork can only have more work left if the requested number of iterations
+                    // DoWork can only have more work left if the requested amount of work
                     // was insufficient to linearize everything optimally within the levels it is
                     // allowed to touch.
-                    assert(iters <= iters_for_optimal);
+                    assert(max_cost <= cost_for_optimal);
                 }
                 break;
             } else if (sims.size() == 2 && !sims[0].IsOversized() && !sims[1].IsOversized() && command-- == 0) {
@@ -1165,7 +1165,7 @@ FUZZ_TARGET(txgraph)
             auto real_redo = MakeTxGraph(
                 /*max_cluster_count=*/max_cluster_count,
                 /*max_cluster_size=*/max_cluster_size,
-                /*acceptable_iters=*/acceptable_iters,
+                /*acceptable_cost=*/acceptable_cost,
                 /*fallback_order=*/fallback_order);
             /** Vector (indexed by SimTxGraph::Pos) of TxObjects in real_redo). */
             std::vector<std::optional<SimTxObject>> txobjects_redo;

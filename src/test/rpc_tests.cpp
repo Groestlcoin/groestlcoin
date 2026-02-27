@@ -9,6 +9,7 @@
 #include <rpc/client.h>
 #include <rpc/server.h>
 #include <rpc/util.h>
+#include <test/util/common.h>
 #include <test/util/setup_common.h>
 #include <univalue.h>
 #include <util/time.h>

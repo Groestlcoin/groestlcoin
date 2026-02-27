@@ -31,6 +31,14 @@ template <class T>
     return i + j;
 }
 
+template <std::unsigned_integral T, std::unsigned_integral U>
+[[nodiscard]] constexpr bool TrySub(T& i, const U j) noexcept
+{
+    if (i < T{j}) return false;
+    i -= T{j};
+    return true;
+}
+
 template <class T>
 [[nodiscard]] T SaturatingAdd(const T i, const T j) noexcept
 {

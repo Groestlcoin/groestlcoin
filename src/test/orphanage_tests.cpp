@@ -10,6 +10,7 @@
 #include <pubkey.h>
 #include <script/sign.h>
 #include <script/signingprovider.h>
+#include <test/util/common.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>
 #include <test/util/transaction_utils.h>

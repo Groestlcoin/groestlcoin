@@ -472,6 +472,77 @@ concept StrongComparator =
  *  Linearize(), which just sorts by DepGraphIndex. */
 using IndexTxOrder = std::compare_three_way;
 
+/** A default cost model for SFL for SetType=BitSet<64>, based on benchmarks.
+ *
+ * The numbers here were obtained in February 2026 by:
+ * - For a variety of machines:
+ *   - Running a fixed collection of ~385000 clusters found through random generation and fuzzing,
+ *     optimizing for difficulty of linearization.
+ *     - Linearize each ~3000 times, with different random seeds. Sometimes without input
+ *       linearization, sometimes with a bad one.
+ *       - Gather cycle counts for each of the operations included in this cost model,
+ *         broken down by their parameters.
+ *   - Correct the data by subtracting the runtime of obtaining the cycle count.
+ *   - Drop the 5% top and bottom samples from each cycle count dataset, and compute the average
+ *     of the remaining samples.
+ *   - For each operation, fit a least-squares linear function approximation through the samples.
+ * - Rescale all machine expressions to make their total time match, as we only care about
+ *   relative cost of each operation.
+ * - Take the per-operation average of operation expressions across all machines, to construct
+ *   expressions for an average machine.
+ * - Approximate the result with integer coefficients. Each cost unit corresponds to somewhere
+ *   between 0.5 ns and 2.5 ns, depending on the hardware.
+ */
+class SFLDefaultCostModel
+{
+    uint64_t m_cost{0};
+
+public:
+    inline void InitializeBegin() noexcept {}
+    inline void InitializeEnd(int num_txns, int num_deps) noexcept
+    {
+         // Cost of initialization.
+         m_cost += 39 * num_txns;
+         // Cost of producing linearization at the end.
+         m_cost += 48 * num_txns + 4 * num_deps;
+    }
+    inline void GetLinearizationBegin() noexcept {}
+    inline void GetLinearizationEnd(int num_txns, int num_deps) noexcept
+    {
+        // Note that we account for the cost of the final linearization at the beginning (see
+        // InitializeEnd), because the cost budget decision needs to be made before calling
+        // GetLinearization.
+        // This function exists here to allow overriding it easily for benchmark purposes.
+    }
+    inline void MakeTopologicalBegin() noexcept {}
+    inline void MakeTopologicalEnd(int num_chunks, int num_steps) noexcept
+    {
+        m_cost += 20 * num_chunks + 28 * num_steps;
+    }
+    inline void StartOptimizingBegin() noexcept {}
+    inline void StartOptimizingEnd(int num_chunks) noexcept { m_cost += 13 * num_chunks; }
+    inline void ActivateBegin() noexcept {}
+    inline void ActivateEnd(int num_deps) noexcept { m_cost += 10 * num_deps + 1; }
+    inline void DeactivateBegin() noexcept {}
+    inline void DeactivateEnd(int num_deps) noexcept { m_cost += 11 * num_deps + 8; }
+    inline void MergeChunksBegin() noexcept {}
+    inline void MergeChunksMid(int num_txns) noexcept { m_cost += 2 * num_txns; }
+    inline void MergeChunksEnd(int num_steps) noexcept { m_cost += 3 * num_steps + 5; }
+    inline void PickMergeCandidateBegin() noexcept {}
+    inline void PickMergeCandidateEnd(int num_steps) noexcept { m_cost += 8 * num_steps; }
+    inline void PickChunkToOptimizeBegin() noexcept {}
+    inline void PickChunkToOptimizeEnd(int num_steps) noexcept { m_cost += num_steps + 4; }
+    inline void PickDependencyToSplitBegin() noexcept {}
+    inline void PickDependencyToSplitEnd(int num_txns) noexcept { m_cost += 8 * num_txns + 9; }
+    inline void StartMinimizingBegin() noexcept {}
+    inline void StartMinimizingEnd(int num_chunks) noexcept { m_cost += 18 * num_chunks; }
+    inline void MinimizeStepBegin() noexcept {}
+    inline void MinimizeStepMid(int num_txns) noexcept { m_cost += 11 * num_txns + 11; }
+    inline void MinimizeStepEnd(bool split) noexcept { m_cost += 17 * split + 7; }
+
+    inline uint64_t GetCost() const noexcept { return m_cost; }
+};
+
 /** Class to represent the internal state of the spanning-forest linearization (SFL) algorithm.
  *
  * At all times, each dependency is marked as either "active" or "inactive". The subset of active
@@ -643,7 +714,7 @@ using IndexTxOrder = std::compare_three_way;
  *   - Within chunks, repeatedly pick a uniformly random transaction among those with no missing
  *     dependencies.
  */
-template<typename SetType>
+template<typename SetType, typename CostModel = SFLDefaultCostModel>
 class SpanningForestState
 {
 private:
@@ -704,11 +775,11 @@ private:
      */
     VecDeque<std::tuple<SetIdx, TxIdx, unsigned>> m_nonminimal_chunks;
 
-    /** The number of updated transactions in activations/deactivations. */
-    uint64_t m_cost{0};
-
     /** The DepGraph we are trying to linearize. */
     const DepGraph<SetType>& m_depgraph;
+
+    /** Accounting for the cost of this computation. */
+    CostModel m_cost;
 
     /** Pick a random transaction within a set (which must be non-empty). */
     TxIdx PickRandomTx(const SetType& tx_idxs) noexcept
@@ -741,6 +812,7 @@ private:
      *  already, active. Returns the merged chunk idx. */
     SetIdx Activate(TxIdx parent_idx, TxIdx child_idx) noexcept
     {
+        m_cost.ActivateBegin();
         // Gather and check information about the parent and child transactions.
         auto& parent_data = m_tx_data[parent_idx];
         auto& child_data = m_tx_data[child_idx];
@@ -794,7 +866,6 @@ private:
         }
         // Merge top_info into bottom_info, which becomes the merged chunk.
         bottom_info |= top_info;
-        m_cost += bottom_info.transactions.Count();
         // Compute merged sets of reachable transactions from the new chunk, based on the input
         // chunks' reachable sets.
         m_reachable[child_chunk_idx].first |= m_reachable[parent_chunk_idx].first;
@@ -806,6 +877,7 @@ private:
         parent_data.active_children.Set(child_idx);
         m_chunk_idxs.Reset(parent_chunk_idx);
         // Return the newly merged chunk.
+        m_cost.ActivateEnd(/*num_deps=*/bottom_info.transactions.Count() - 1);
         return child_chunk_idx;
     }
 
@@ -813,6 +885,7 @@ private:
      *  indexes. */
     std::pair<SetIdx, SetIdx> Deactivate(TxIdx parent_idx, TxIdx child_idx) noexcept
     {
+        m_cost.DeactivateBegin();
         // Gather and check information about the parent transactions.
         auto& parent_data = m_tx_data[parent_idx];
         Assume(parent_data.children[child_idx]);
@@ -830,7 +903,7 @@ private:
         // Remove the active dependency.
         parent_data.active_children.Reset(child_idx);
         m_chunk_idxs.Set(parent_chunk_idx);
-        m_cost += bottom_info.transactions.Count();
+        auto ntx = bottom_info.transactions.Count();
         // Subtract the top_info from the bottom_info, as it will become the child chunk.
         bottom_info -= top_info;
         // See the comment above in Activate(). We perform the opposite operations here, removing
@@ -863,6 +936,7 @@ private:
         m_reachable[child_chunk_idx].first = bottom_parents - bottom_info.transactions;
         m_reachable[child_chunk_idx].second = bottom_children - bottom_info.transactions;
         // Return the two new set idxs.
+        m_cost.DeactivateEnd(/*num_deps=*/ntx - 1);
         return {parent_chunk_idx, child_chunk_idx};
     }
 
@@ -870,6 +944,7 @@ private:
      *  index of the merged chunk. */
     SetIdx MergeChunks(SetIdx top_idx, SetIdx bottom_idx) noexcept
     {
+        m_cost.MergeChunksBegin();
         Assume(m_chunk_idxs[top_idx]);
         Assume(m_chunk_idxs[bottom_idx]);
         auto& top_chunk_info = m_set_info[top_idx];
@@ -880,16 +955,22 @@ private:
             auto& tx_data = m_tx_data[tx_idx];
             num_deps += (tx_data.children & bottom_chunk_info.transactions).Count();
         }
+        m_cost.MergeChunksMid(/*num_txns=*/top_chunk_info.transactions.Count());
         Assume(num_deps > 0);
         // Uniformly randomly pick one of them and activate it.
         unsigned pick = m_rng.randrange(num_deps);
+        unsigned num_steps = 0;
         for (auto tx_idx : top_chunk_info.transactions) {
+            ++num_steps;
             auto& tx_data = m_tx_data[tx_idx];
             auto intersect = tx_data.children & bottom_chunk_info.transactions;
             auto count = intersect.Count();
             if (pick < count) {
                 for (auto child_idx : intersect) {
-                    if (pick == 0) return Activate(tx_idx, child_idx);
+                    if (pick == 0) {
+                        m_cost.MergeChunksEnd(/*num_steps=*/num_steps);
+                        return Activate(tx_idx, child_idx);
+                    }
                     --pick;
                 }
                 Assume(false);
@@ -917,6 +998,7 @@ private:
     template<bool DownWard>
     SetIdx PickMergeCandidate(SetIdx chunk_idx) noexcept
     {
+        m_cost.PickMergeCandidateBegin();
         /** Information about the chunk. */
         Assume(m_chunk_idxs[chunk_idx]);
         auto& chunk_info = m_set_info[chunk_idx];
@@ -957,6 +1039,7 @@ private:
         }
         Assume(steps <= m_set_info.size());
 
+        m_cost.PickMergeCandidateEnd(/*num_steps=*/steps);
         return best_other_chunk_idx;
     }
 
@@ -1028,23 +1111,31 @@ private:
     /** Determine the next chunk to optimize, or INVALID_SET_IDX if none. */
     SetIdx PickChunkToOptimize() noexcept
     {
+        m_cost.PickChunkToOptimizeBegin();
+        unsigned steps{0};
         while (!m_suboptimal_chunks.empty()) {
+            ++steps;
             // Pop an entry from the potentially-suboptimal chunk queue.
             SetIdx chunk_idx = m_suboptimal_chunks.front();
             Assume(m_suboptimal_idxs[chunk_idx]);
             m_suboptimal_idxs.Reset(chunk_idx);
             m_suboptimal_chunks.pop_front();
-            if (m_chunk_idxs[chunk_idx]) return chunk_idx;
+            if (m_chunk_idxs[chunk_idx]) {
+                m_cost.PickChunkToOptimizeEnd(/*num_steps=*/steps);
+                return chunk_idx;
+            }
             // If what was popped is not currently a chunk, continue. This may
             // happen when a split chunk merges in Improve() with one or more existing chunks that
             // are themselves on the suboptimal queue already.
         }
+        m_cost.PickChunkToOptimizeEnd(/*num_steps=*/steps);
         return INVALID_SET_IDX;
     }
 
     /** Find a (parent, child) dependency to deactivate in chunk_idx, or (-1, -1) if none. */
     std::pair<TxIdx, TxIdx> PickDependencyToSplit(SetIdx chunk_idx) noexcept
     {
+        m_cost.PickDependencyToSplitBegin();
         Assume(m_chunk_idxs[chunk_idx]);
         auto& chunk_info = m_set_info[chunk_idx];
 
@@ -1071,21 +1162,24 @@ private:
                 candidate_tiebreak = tiebreak;
             }
         }
+        m_cost.PickDependencyToSplitEnd(/*num_txns=*/chunk_info.transactions.Count());
         return candidate_dep;
     }
 
 public:
     /** Construct a spanning forest for the given DepGraph, with every transaction in its own chunk
      *  (not topological). */
-    explicit SpanningForestState(const DepGraph<SetType>& depgraph LIFETIMEBOUND, uint64_t rng_seed) noexcept :
-        m_rng(rng_seed), m_depgraph(depgraph)
+    explicit SpanningForestState(const DepGraph<SetType>& depgraph LIFETIMEBOUND, uint64_t rng_seed, const CostModel& cost = CostModel{}) noexcept :
+        m_rng(rng_seed), m_depgraph(depgraph), m_cost(cost)
     {
+        m_cost.InitializeBegin();
         m_transaction_idxs = depgraph.Positions();
         auto num_transactions = m_transaction_idxs.Count();
         m_tx_data.resize(depgraph.PositionRange());
         m_set_info.resize(num_transactions);
         m_reachable.resize(num_transactions);
         size_t num_chunks = 0;
+        size_t num_deps = 0;
         for (auto tx_idx : m_transaction_idxs) {
             // Fill in transaction data.
             auto& tx_data = m_tx_data[tx_idx];
@@ -1093,6 +1187,7 @@ public:
             for (auto parent_idx : tx_data.parents) {
                 m_tx_data[parent_idx].children.Set(tx_idx);
             }
+            num_deps += tx_data.parents.Count();
             // Create a singleton chunk for it.
             tx_data.chunk_idx = num_chunks;
             m_set_info[num_chunks++] = SetInfo(depgraph, tx_idx);
@@ -1106,6 +1201,7 @@ public:
         Assume(num_chunks == num_transactions);
         // Mark all chunk sets as chunks.
         m_chunk_idxs = SetType::Fill(num_chunks);
+        m_cost.InitializeEnd(/*num_txns=*/num_chunks, /*num_deps=*/num_deps);
     }
 
     /** Load an existing linearization. Must be called immediately after constructor. The result is
@@ -1127,6 +1223,7 @@ public:
     /** Make state topological. Can be called after constructing, or after LoadLinearization. */
     void MakeTopological() noexcept
     {
+        m_cost.MakeTopologicalBegin();
         Assume(m_suboptimal_chunks.empty());
         /** What direction to initially merge chunks in; one of the two directions is enough. This
          *  is sufficient because if a non-topological inactive dependency exists between two
@@ -1147,7 +1244,10 @@ public:
                 std::swap(m_suboptimal_chunks.back(), m_suboptimal_chunks[j]);
             }
         }
+        unsigned chunks = m_chunk_idxs.Count();
+        unsigned steps = 0;
         while (!m_suboptimal_chunks.empty()) {
+            ++steps;
             // Pop an entry from the potentially-suboptimal chunk queue.
             SetIdx chunk_idx = m_suboptimal_chunks.front();
             m_suboptimal_chunks.pop_front();
@@ -1187,11 +1287,13 @@ public:
                 }
             }
         }
+        m_cost.MakeTopologicalEnd(/*num_chunks=*/chunks, /*num_steps=*/steps);
     }
 
     /** Initialize the data structure for optimization. It must be topological already. */
     void StartOptimizing() noexcept
     {
+        m_cost.StartOptimizingBegin();
         Assume(m_suboptimal_chunks.empty());
         // Mark chunks suboptimal.
         m_suboptimal_idxs = m_chunk_idxs;
@@ -1203,6 +1305,7 @@ public:
                 std::swap(m_suboptimal_chunks.back(), m_suboptimal_chunks[j]);
             }
         }
+        m_cost.StartOptimizingEnd(/*num_chunks=*/m_suboptimal_chunks.size());
     }
 
     /** Try to improve the forest. Returns false if it is optimal, true otherwise. */
@@ -1228,6 +1331,7 @@ public:
      *  to be optimal. OptimizeStep() cannot be called anymore afterwards. */
     void StartMinimizing() noexcept
     {
+        m_cost.StartMinimizingBegin();
         m_nonminimal_chunks.clear();
         m_nonminimal_chunks.reserve(m_transaction_idxs.Count());
         // Gather all chunks, and for each, add it with a random pivot in it, and a random initial
@@ -1241,6 +1345,7 @@ public:
                 std::swap(m_nonminimal_chunks.back(), m_nonminimal_chunks[j]);
             }
         }
+        m_cost.StartMinimizingEnd(/*num_chunks=*/m_nonminimal_chunks.size());
     }
 
     /** Try to reduce a chunk's size. Returns false if all chunks are minimal, true otherwise. */
@@ -1248,6 +1353,7 @@ public:
     {
         // If the queue of potentially-non-minimal chunks is empty, we are done.
         if (m_nonminimal_chunks.empty()) return false;
+        m_cost.MinimizeStepBegin();
         // Pop an entry from the potentially-non-minimal chunk queue.
         auto [chunk_idx, pivot_idx, flags] = m_nonminimal_chunks.front();
         m_nonminimal_chunks.pop_front();
@@ -1283,6 +1389,7 @@ public:
                 }
             }
         }
+        m_cost.MinimizeStepMid(/*num_txns=*/chunk_info.transactions.Count());
         // If no dependencies have equal top and bottom set feerate, this chunk is minimal.
         if (!have_any) return true;
         // If all found dependencies have the pivot in the wrong place, try moving it in the other
@@ -1308,6 +1415,7 @@ public:
             // Re-insert the chunk into the queue, in the same direction. Note that the chunk_idx
             // will have changed.
             m_nonminimal_chunks.emplace_back(merged_chunk_idx, pivot_idx, flags);
+            m_cost.MinimizeStepEnd(/*split=*/false);
         } else {
             // No self-merge happens, and thus we have found a way to split the chunk. Create two
             // smaller chunks, and add them to the queue. The one that contains the current pivot
@@ -1328,6 +1436,7 @@ public:
             if (m_rng.randbool()) {
                 std::swap(m_nonminimal_chunks.back(), m_nonminimal_chunks[m_nonminimal_chunks.size() - 2]);
             }
+            m_cost.MinimizeStepEnd(/*split=*/true);
         }
         return true;
     }
@@ -1348,8 +1457,9 @@ public:
      *   - smallest tx size first
      *   - the lowest transaction, by fallback_order, first
      */
-    std::vector<DepGraphIndex> GetLinearization(const StrongComparator<DepGraphIndex> auto& fallback_order) const noexcept
+    std::vector<DepGraphIndex> GetLinearization(const StrongComparator<DepGraphIndex> auto& fallback_order) noexcept
     {
+        m_cost.GetLinearizationBegin();
         /** The output linearization. */
         std::vector<DepGraphIndex> ret;
         ret.reserve(m_set_info.size());
@@ -1367,9 +1477,11 @@ public:
          *  tx feerate (high to low), tx size (small to large), and fallback order. */
         std::vector<TxIdx> ready_tx;
         // Populate chunk_deps and tx_deps.
+        unsigned num_deps{0};
         for (TxIdx chl_idx : m_transaction_idxs) {
             const auto& chl_data = m_tx_data[chl_idx];
             tx_deps[chl_idx] = chl_data.parents.Count();
+            num_deps += tx_deps[chl_idx];
             auto chl_chunk_idx = chl_data.chunk_idx;
             auto& chl_chunk_info = m_set_info[chl_chunk_idx];
             chunk_deps[chl_chunk_idx] += (chl_data.parents - chl_chunk_info.transactions).Count();
@@ -1483,6 +1595,7 @@ public:
             }
         }
         Assume(ret.size() == m_set_info.size());
+        m_cost.GetLinearizationEnd(/*num_txns=*/m_set_info.size(), /*num_deps=*/num_deps);
         return ret;
     }
 
@@ -1510,7 +1623,7 @@ public:
     }
 
     /** Determine how much work was performed so far. */
-    uint64_t GetCost() const noexcept { return m_cost; }
+    uint64_t GetCost() const noexcept { return m_cost.GetCost(); }
 
     /** Verify internal consistency of the data structure. */
     void SanityCheck() const
@@ -1665,7 +1778,7 @@ public:
 /** Find or improve a linearization for a cluster.
  *
  * @param[in] depgraph            Dependency graph of the cluster to be linearized.
- * @param[in] max_iterations      Upper bound on the amount of work that will be done.
+ * @param[in] max_cost            Upper bound on the amount of work that will be done.
  * @param[in] rng_seed            A random number seed to control search order. This prevents peers
  *                                from predicting exactly which clusters would be hard for us to
  *                                linearize.
@@ -1685,7 +1798,7 @@ public:
 template<typename SetType>
 std::tuple<std::vector<DepGraphIndex>, bool, uint64_t> Linearize(
     const DepGraph<SetType>& depgraph,
-    uint64_t max_iterations,
+    uint64_t max_cost,
     uint64_t rng_seed,
     const StrongComparator<DepGraphIndex> auto& fallback_order,
     std::span<const DepGraphIndex> old_linearization = {},
@@ -1701,23 +1814,23 @@ std::tuple<std::vector<DepGraphIndex>, bool, uint64_t> Linearize(
     }
     // Make improvement steps to it until we hit the max_iterations limit, or an optimal result
     // is found.
-    if (forest.GetCost() < max_iterations) {
+    if (forest.GetCost() < max_cost) {
         forest.StartOptimizing();
         do {
             if (!forest.OptimizeStep()) break;
-        } while (forest.GetCost() < max_iterations);
+        } while (forest.GetCost() < max_cost);
     }
     // Make chunk minimization steps until we hit the max_iterations limit, or all chunks are
     // minimal.
     bool optimal = false;
-    if (forest.GetCost() < max_iterations) {
+    if (forest.GetCost() < max_cost) {
         forest.StartMinimizing();
         do {
             if (!forest.MinimizeStep()) {
                 optimal = true;
                 break;
             }
-        } while (forest.GetCost() < max_iterations);
+        } while (forest.GetCost() < max_cost);
     }
     return {forest.GetLinearization(fallback_order), optimal, forest.GetCost()};
 }

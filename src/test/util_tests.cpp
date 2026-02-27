@@ -9,6 +9,7 @@
 #include <script/parsing.h>
 #include <span.h>
 #include <sync.h>
+#include <test/util/common.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>
 #include <uint256.h>

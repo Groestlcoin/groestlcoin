@@ -12,6 +12,7 @@
 #include <rpc/blockchain.h>
 #include <sync.h>
 #include <test/util/chainstate.h>
+#include <test/util/common.h>
 #include <test/util/logging.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>

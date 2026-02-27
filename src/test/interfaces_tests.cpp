@@ -5,6 +5,7 @@
 #include <chainparams.h>
 #include <consensus/validation.h>
 #include <interfaces/chain.h>
+#include <test/util/common.h>
 #include <test/util/setup_common.h>
 #include <script/solver.h>
 #include <validation.h>

@@ -88,9 +88,15 @@ void TestOptimalLinearization(std::span<const uint8_t> enc, std::initializer_lis
                 is_topological = false;
                 break;
             }
-            std::tie(lin, opt, cost) = Linearize(depgraph, 1000000000000, rng.rand64(), IndexTxOrder{}, lin, is_topological);
+            std::tie(lin, opt, cost) = Linearize(
+                /*depgraph=*/depgraph,
+                /*max_cost=*/1000000000000,
+                /*rng_seed=*/rng.rand64(),
+                /*fallback_order=*/IndexTxOrder{},
+                /*old_linearization=*/lin,
+                /*is_topological=*/is_topological);
             BOOST_CHECK(opt);
-            BOOST_CHECK(cost <= MaxOptimalLinearizationIters(depgraph.TxCount()));
+            BOOST_CHECK(cost <= MaxOptimalLinearizationCost(depgraph.TxCount()));
             SanityCheck(depgraph, lin);
             BOOST_CHECK(std::ranges::equal(lin, optimal_linearization));
         }

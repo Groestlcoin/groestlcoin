@@ -5,11 +5,14 @@
 #include <common/system.h>
 #include <logging.h>
 #include <random.h>
+#include <test/util/common.h>
 #include <util/string.h>
 #include <util/threadpool.h>
 #include <util/time.h>
 
 #include <boost/test/unit_test.hpp>
+#include <latch>
+#include <semaphore>
 
 // General test values
 int NUM_WORKERS_DEFAULT = 0;
@@ -35,6 +38,9 @@ struct ThreadPoolFixture {
 // 8) Submit task when all threads are busy, stop pool and verify task gets executed.
 // 9) Congestion test; create more workers than available cores.
 // 10) Ensure Interrupt() prevents further submissions.
+// 11) Start() must not cause a deadlock when called during Stop().
+// 12) Ensure queued tasks complete after Interrupt().
+// 13) Ensure the Stop() calling thread helps drain the queue.
 BOOST_FIXTURE_TEST_SUITE(threadpool_tests, ThreadPoolFixture)
 
 #define WAIT_FOR(futures)                                                         \
@@ -51,36 +57,54 @@ template <typename F>
     return std::move(*Assert(pool.Submit(std::forward<F>(fn))));
 }
 
-// Block a number of worker threads by submitting tasks that wait on `blocker_future`.
+// Block a number of worker threads by submitting tasks that wait on `release_sem`.
 // Returns the futures of the blocking tasks, ensuring all have started and are waiting.
-std::vector<std::future<void>> BlockWorkers(ThreadPool& threadPool, const std::shared_future<void>& blocker_future, int num_of_threads_to_block)
+std::vector<std::future<void>> BlockWorkers(ThreadPool& threadPool, std::counting_semaphore<>& release_sem, size_t num_of_threads_to_block)
 {
-    // Per-thread ready promises to ensure all workers are actually blocked
-    std::vector<std::promise<void>> ready_promises(num_of_threads_to_block);
-    std::vector<std::future<void>> ready_futures;
-    ready_futures.reserve(num_of_threads_to_block);
-    for (auto& p : ready_promises) ready_futures.emplace_back(p.get_future());
-
-    // Fill all workers with blocking tasks
-    std::vector<std::future<void>> blocking_tasks;
-    for (int i = 0; i < num_of_threads_to_block; i++) {
-        std::promise<void>& ready = ready_promises[i];
-        blocking_tasks.emplace_back(Submit(threadPool, [blocker_future, &ready]() {
-            ready.set_value();
-            blocker_future.wait();
-        }));
-    }
-
-    // Wait until all threads are actually blocked
-    WAIT_FOR(ready_futures);
+    assert(threadPool.WorkersCount() >= num_of_threads_to_block);
+    std::latch ready{static_cast<std::ptrdiff_t>(num_of_threads_to_block)};
+    std::vector<std::future<void>> blocking_tasks(num_of_threads_to_block);
+    for (auto& f : blocking_tasks) f = Submit(threadPool, [&] {
+        ready.count_down();
+        release_sem.acquire();
+    });
+    ready.wait();
     return blocking_tasks;
 }
 
-// Test 0, submit task to a non-started pool
-BOOST_AUTO_TEST_CASE(submit_task_before_start_fails)
+// Test 0, submit task to a non-started, interrupted, or stopped pool
+BOOST_AUTO_TEST_CASE(submit_fails_with_correct_error)
 {
     ThreadPool threadPool(POOL_NAME);
-    auto res = threadPool.Submit([]{ return false; });
+    const auto fn_empty = [&] {};
+
+    // Never started: Inactive
+    auto res = threadPool.Submit(fn_empty);
+    BOOST_CHECK(!res);
+    BOOST_CHECK_EQUAL(SubmitErrorString(res.error()), "No active workers");
+
+    // Interrupted (workers still alive): Interrupted, and Start() must be rejected too
+    std::counting_semaphore<> blocker(0);
+    threadPool.Start(NUM_WORKERS_DEFAULT);
+    const auto blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT);
+    threadPool.Interrupt();
+    res = threadPool.Submit(fn_empty);
+    BOOST_CHECK(!res);
+    BOOST_CHECK_EQUAL(SubmitErrorString(res.error()), "Interrupted");
+    BOOST_CHECK_EXCEPTION(threadPool.Start(NUM_WORKERS_DEFAULT), std::runtime_error, HasReason("Thread pool has been interrupted or is stopping"));
+    blocker.release(NUM_WORKERS_DEFAULT);
+    WAIT_FOR(blocking_tasks);
+
+    // Interrupted then stopped: Inactive
+    threadPool.Stop();
+    res = threadPool.Submit(fn_empty);
+    BOOST_CHECK(!res);
+    BOOST_CHECK_EQUAL(SubmitErrorString(res.error()), "No active workers");
+
+    // Started then stopped: Inactive
+    threadPool.Start(NUM_WORKERS_DEFAULT);
+    threadPool.Stop();
+    res = threadPool.Submit(fn_empty);
     BOOST_CHECK(!res);
     BOOST_CHECK_EQUAL(SubmitErrorString(res.error()), "No active workers");
 }
@@ -115,10 +139,8 @@ BOOST_AUTO_TEST_CASE(single_available_worker_executes_all_tasks)
 {
     ThreadPool threadPool(POOL_NAME);
     threadPool.Start(NUM_WORKERS_DEFAULT);
-    // Single blocking future for all threads
-    std::promise<void> blocker;
-    std::shared_future<void> blocker_future(blocker.get_future());
-    const auto blocking_tasks = BlockWorkers(threadPool, blocker_future, NUM_WORKERS_DEFAULT - 1);
+    std::counting_semaphore<> blocker(0);
+    const auto blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT - 1);
 
     // Now execute tasks on the single available worker
     // and check that all the tasks are executed.
@@ -132,7 +154,7 @@ BOOST_AUTO_TEST_CASE(single_available_worker_executes_all_tasks)
     WAIT_FOR(futures);
     BOOST_CHECK_EQUAL(counter, num_tasks);
 
-    blocker.set_value();
+    blocker.release(NUM_WORKERS_DEFAULT - 1);
     WAIT_FOR(blocking_tasks);
     threadPool.Stop();
     BOOST_CHECK_EQUAL(threadPool.WorkersCount(), 0);
@@ -171,21 +193,17 @@ BOOST_AUTO_TEST_CASE(task_exception_propagates_to_future)
     ThreadPool threadPool(POOL_NAME);
     threadPool.Start(NUM_WORKERS_DEFAULT);
 
-    int num_tasks = 5;
-    std::string err_msg{"something wrong happened"};
+    const auto make_err{[&](size_t n) { return strprintf("error on thread #%s", n); }};
+
+    const int num_tasks = 5;
     std::vector<std::future<void>> futures;
     futures.reserve(num_tasks);
     for (int i = 0; i < num_tasks; i++) {
-        futures.emplace_back(Submit(threadPool, [err_msg, i]() {
-            throw std::runtime_error(err_msg + util::ToString(i));
-        }));
+        futures.emplace_back(Submit(threadPool, [&make_err, i] { throw std::runtime_error(make_err(i)); }));
     }
 
     for (int i = 0; i < num_tasks; i++) {
-        BOOST_CHECK_EXCEPTION(futures.at(i).get(), std::runtime_error, [&](const std::runtime_error& e) {
-            BOOST_CHECK_EQUAL(e.what(), err_msg + util::ToString(i));
-            return true;
-        });
+        BOOST_CHECK_EXCEPTION(futures[i].get(), std::runtime_error, HasReason{make_err(i)});
     }
 }
 
@@ -195,9 +213,8 @@ BOOST_AUTO_TEST_CASE(process_tasks_manually_when_workers_busy)
     ThreadPool threadPool(POOL_NAME);
     threadPool.Start(NUM_WORKERS_DEFAULT);
 
-    std::promise<void> blocker;
-    std::shared_future<void> blocker_future(blocker.get_future());
-    const auto& blocking_tasks = BlockWorkers(threadPool, blocker_future, NUM_WORKERS_DEFAULT);
+    std::counting_semaphore<> blocker(0);
+    const auto& blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT);
 
     // Now submit tasks and check that none of them are executed.
     int num_tasks = 20;
@@ -216,7 +233,7 @@ BOOST_AUTO_TEST_CASE(process_tasks_manually_when_workers_busy)
     }
     BOOST_CHECK_EQUAL(counter.load(), num_tasks);
     BOOST_CHECK_EQUAL(threadPool.WorkQueueSize(), 0);
-    blocker.set_value();
+    blocker.release(NUM_WORKERS_DEFAULT);
     threadPool.Stop();
     WAIT_FOR(blocking_tasks);
 }
@@ -244,9 +261,8 @@ BOOST_AUTO_TEST_CASE(task_submitted_while_busy_completes)
     ThreadPool threadPool(POOL_NAME);
     threadPool.Start(NUM_WORKERS_DEFAULT);
 
-    std::promise<void> blocker;
-    std::shared_future<void> blocker_future(blocker.get_future());
-    const auto& blocking_tasks = BlockWorkers(threadPool, blocker_future, NUM_WORKERS_DEFAULT);
+    std::counting_semaphore<> blocker(0);
+    const auto& blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT);
 
     // Submit an extra task that should execute once a worker is free
     std::future<bool> future = Submit(threadPool, []() { return true; });
@@ -257,7 +273,7 @@ BOOST_AUTO_TEST_CASE(task_submitted_while_busy_completes)
     // Wait a short moment before unblocking the threads to mimic a concurrent shutdown
     std::thread thread_unblocker([&blocker]() {
         UninterruptibleSleep(300ms);
-        blocker.set_value();
+        blocker.release(NUM_WORKERS_DEFAULT);
     });
 
     // Stop the pool while the workers are still blocked
@@ -314,18 +330,116 @@ BOOST_AUTO_TEST_CASE(interrupt_blocks_new_submissions)
     // One worker is blocked, another calls Interrupt(), and the remaining one waits for tasks.
     threadPool.Start(/*num_workers=*/3);
     std::atomic<int> counter{0};
-    std::promise<void> blocker;
-    const auto blocking_tasks = BlockWorkers(threadPool, blocker.get_future().share(), 1);
+    std::counting_semaphore<> blocker(0);
+    const auto blocking_tasks = BlockWorkers(threadPool, blocker, 1);
     Submit(threadPool, [&threadPool, &counter]{
         threadPool.Interrupt();
         counter.fetch_add(1, std::memory_order_relaxed);
     }).get();
-    blocker.set_value(); // unblock worker
+    blocker.release(1); // unblock worker
 
     BOOST_CHECK_EQUAL(counter.load(), 1);
     threadPool.Stop();
     WAIT_FOR(blocking_tasks);
     BOOST_CHECK_EQUAL(threadPool.WorkersCount(), 0);
+}
+
+// Test 11, Start() must not cause a deadlock when called during Stop()
+BOOST_AUTO_TEST_CASE(start_mid_stop_does_not_deadlock)
+{
+    ThreadPool threadPool(POOL_NAME);
+    threadPool.Start(NUM_WORKERS_DEFAULT);
+
+    // Keep all workers busy so Stop() gets stuck waiting for them to finish during join()
+    std::counting_semaphore<> workers_blocker(0);
+    const auto blocking_tasks = BlockWorkers(threadPool, workers_blocker, NUM_WORKERS_DEFAULT);
+
+    std::thread stopper_thread([&threadPool] { threadPool.Stop(); });
+
+    // Stop() takes ownership of the workers before joining them, so WorkersCount()
+    // hits 0 the moment Stop() is waiting for them to join. That is our signal
+    // to call Start() right into the middle of the joining phase.
+    while (threadPool.WorkersCount() != 0) {
+        std::this_thread::yield(); // let the OS breathe so it can switch context
+    }
+    // Now we know for sure the stopper thread is hanging while workers are still alive.
+    // Restart the pool and resume workers so the stopper thread can proceed.
+    // This will throw an exception only if the pool handles Start-Stop race properly,
+    // otherwise it will proceed and hang the stopper_thread.
+    try {
+        threadPool.Start(NUM_WORKERS_DEFAULT);
+    } catch (std::exception& e) {
+        BOOST_CHECK_EQUAL(e.what(), "Thread pool has been interrupted or is stopping");
+    }
+    workers_blocker.release(NUM_WORKERS_DEFAULT);
+    WAIT_FOR(blocking_tasks);
+
+    // If Stop() is stuck, joining the stopper thread will deadlock
+    stopper_thread.join();
+}
+
+// Test 12, queued tasks complete after Interrupt()
+BOOST_AUTO_TEST_CASE(queued_tasks_complete_after_interrupt)
+{
+    ThreadPool threadPool(POOL_NAME);
+    threadPool.Start(NUM_WORKERS_DEFAULT);
+
+    std::counting_semaphore<> blocker(0);
+    const auto blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT);
+
+    // Queue tasks while all workers are busy, then interrupt
+    std::atomic<int> counter{0};
+    const int num_tasks = 10;
+    std::vector<std::future<void>> futures;
+    futures.reserve(num_tasks);
+    for (int i = 0; i < num_tasks; i++) {
+        futures.emplace_back(Submit(threadPool, [&counter]{ counter.fetch_add(1, std::memory_order_relaxed); }));
+    }
+    threadPool.Interrupt();
+
+    // Queued tasks must still complete despite the interrupt
+    blocker.release(NUM_WORKERS_DEFAULT);
+    WAIT_FOR(futures);
+    BOOST_CHECK_EQUAL(counter.load(), num_tasks);
+
+    threadPool.Stop();
+    WAIT_FOR(blocking_tasks);
+}
+
+// Test 13, ensure the Stop() calling thread helps drain the queue
+BOOST_AUTO_TEST_CASE(stop_active_wait_drains_queue)
+{
+    ThreadPool threadPool(POOL_NAME);
+    threadPool.Start(NUM_WORKERS_DEFAULT);
+
+    std::counting_semaphore<> blocker(0);
+    const auto blocking_tasks = BlockWorkers(threadPool, blocker, NUM_WORKERS_DEFAULT);
+
+    auto main_thread_id = std::this_thread::get_id();
+    std::atomic<int> main_thread_tasks{0};
+    const size_t num_tasks = 20;
+    for (size_t i = 0; i < num_tasks; i++) {
+        (void)Submit(threadPool, [&main_thread_tasks, main_thread_id]() {
+            if (std::this_thread::get_id() == main_thread_id)
+                main_thread_tasks.fetch_add(1, std::memory_order_relaxed);
+        });
+    }
+    BOOST_CHECK_EQUAL(threadPool.WorkQueueSize(), num_tasks);
+
+    // Delay release so Stop() drains all tasks from the calling thread
+    std::thread unblocker([&blocker, &threadPool]() {
+        while (threadPool.WorkQueueSize() > 0) {
+            std::this_thread::yield();
+        }
+        blocker.release(NUM_WORKERS_DEFAULT);
+    });
+
+    threadPool.Stop();
+    unblocker.join();
+
+    // Check the main thread processed all tasks
+    BOOST_CHECK_EQUAL(main_thread_tasks.load(), num_tasks);
+    WAIT_FOR(blocking_tasks);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

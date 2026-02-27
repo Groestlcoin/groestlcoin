@@ -12,6 +12,7 @@
 #include <node/miner.h>
 #include <pow.h>
 #include <test/util/blockfilter.h>
+#include <test/util/common.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
 

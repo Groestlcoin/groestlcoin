@@ -2084,12 +2084,12 @@ void PeerManagerImpl::BlockConnected(
     }
 
     // The following task can be skipped since we don't maintain a mempool for
-    // the historical chainstate.
-    if (role.historical) {
-        return;
+    // the historical chainstate, or during ibd since we don't receive incoming
+    // transactions from peers into the mempool.
+    if (!role.historical && !m_chainman.IsInitialBlockDownload()) {
+        LOCK(m_tx_download_mutex);
+        m_txdownloadman.BlockConnected(pblock);
     }
-    LOCK(m_tx_download_mutex);
-    m_txdownloadman.BlockConnected(pblock);
 }
 
 void PeerManagerImpl::BlockDisconnected(const std::shared_ptr<const CBlock> &block, const CBlockIndex* pindex)

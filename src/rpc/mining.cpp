@@ -165,7 +165,7 @@ static UniValue generateBlocks(ChainstateManager& chainman, Mining& miner, const
 {
     UniValue blockHashes(UniValue::VARR);
     while (nGenerate > 0 && !chainman.m_interrupt) {
-        std::unique_ptr<BlockTemplate> block_template(miner.createNewBlock({ .coinbase_output_script = coinbase_output_script, .include_dummy_extranonce = true }));
+        std::unique_ptr<BlockTemplate> block_template(miner.createNewBlock({ .coinbase_output_script = coinbase_output_script, .include_dummy_extranonce = true }, /*cooldown=*/false));
         CHECK_NONFATAL(block_template);
 
         std::shared_ptr<const CBlock> block_out;
@@ -376,7 +376,7 @@ static RPCHelpMan generateblock()
     {
         LOCK(chainman.GetMutex());
         {
-            std::unique_ptr<BlockTemplate> block_template{miner.createNewBlock({.use_mempool = false, .coinbase_output_script = coinbase_output_script, .include_dummy_extranonce = true})};
+            std::unique_ptr<BlockTemplate> block_template{miner.createNewBlock({.use_mempool = false, .coinbase_output_script = coinbase_output_script, .include_dummy_extranonce = true}, /*cooldown=*/false)};
             CHECK_NONFATAL(block_template);
 
             block = block_template->getBlock();
@@ -870,8 +870,11 @@ static RPCHelpMan getblocktemplate()
         CBlockIndex* pindexPrevNew = chainman.m_blockman.LookupBlockIndex(tip);
         time_start = GetTime();
 
-        // Create new block
-        block_template = miner.createNewBlock({.include_dummy_extranonce = true});
+        // Create new block. Opt-out of cooldown mechanism, because it would add
+        // a delay to each getblocktemplate call. This differs from typical
+        // long-lived IPC usage, where the overhead is paid only when creating
+        // the initial template.
+        block_template = miner.createNewBlock({.include_dummy_extranonce = true}, /*cooldown=*/false);
         CHECK_NONFATAL(block_template);
 
 

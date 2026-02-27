@@ -8,6 +8,7 @@
 #include <node/txdownloadman_impl.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
+#include <test/util/common.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>
 #include <validation.h>

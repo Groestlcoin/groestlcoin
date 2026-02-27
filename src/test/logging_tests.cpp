@@ -6,6 +6,7 @@
 #include <logging.h>
 #include <logging/timer.h>
 #include <scheduler.h>
+#include <test/util/common.h>
 #include <test/util/logging.h>
 #include <test/util/setup_common.h>
 #include <tinyformat.h>

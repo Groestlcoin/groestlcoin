@@ -116,20 +116,28 @@ public:
      * @param[in] timeout     how long to wait for a new tip (default is forever)
      *
      * @retval BlockRef hash and height of the current chain tip after this call.
-     * @retval std::nullopt if the node is shut down.
+     * @retval std::nullopt if the node is shut down or interrupt() is called.
      */
     virtual std::optional<BlockRef> waitTipChanged(uint256 current_tip, MillisecondsDouble timeout = MillisecondsDouble::max()) = 0;
 
    /**
      * Construct a new block template.
      *
-     * During node initialization, this will wait until the tip is connected.
-     *
      * @param[in] options options for creating the block
+     * @param[in] cooldown wait for tip to be connected and IBD to complete.
+     *                     If the best header is ahead of the tip, wait for the
+     *                     tip to catch up. It's recommended to disable this on
+     *                     regtest and signets with only one miner, as these
+     *                     could stall.
      * @retval BlockTemplate a block template.
-     * @retval std::nullptr if the node is shut down.
+     * @retval std::nullptr if the node is shut down or interrupt() is called.
      */
-    virtual std::unique_ptr<BlockTemplate> createNewBlock(const node::BlockCreateOptions& options = {}) = 0;
+    virtual std::unique_ptr<BlockTemplate> createNewBlock(const node::BlockCreateOptions& options = {}, bool cooldown = true) = 0;
+
+    /**
+     * Interrupts createNewBlock and waitTipChanged.
+     */
+    virtual void interrupt() = 0;
 
     /**
      * Checks if a given block is valid.

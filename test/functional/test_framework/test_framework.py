@@ -179,7 +179,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
                             help="The seed to use for assigning port numbers (default: current process id)")
         parser.add_argument("--previous-releases", dest="prev_releases", action="store_true",
                             default=os.path.isdir(previous_releases_path) and bool(os.listdir(previous_releases_path)),
-                            help="Force test of previous releases (default: %(default)s)")
+                            help="Force test of previous releases (default: %(default)s). Previous releases binaries can be downloaded via `test/get_previous_releases.py`.")
         parser.add_argument("--coveragedir", dest="coveragedir",
                             help="Write tested RPC commands into this directory")
         parser.add_argument("--configfile", dest="configfile",
@@ -192,7 +192,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         parser.add_argument("--perf", dest="perf", default=False, action="store_true",
                             help="profile running nodes with perf for the duration of the test")
         parser.add_argument("--valgrind", dest="valgrind", default=False, action="store_true",
-                            help="run nodes under the valgrind memory error detector: expect at least a ~10x slowdown. valgrind 3.14 or later required. Does not apply to previous release binaries.")
+                            help="Run binaries under the valgrind memory error detector: Expect at least a ~10x slowdown. Does not apply to previous release binaries.")
         parser.add_argument("--randomseed", type=int,
                             help="set a random seed for deterministically reproducing a previous test run")
         parser.add_argument("--timeout-factor", dest="timeout_factor", type=float, help="adjust test timeouts by a factor. Setting it to 0 disables all timeouts")
@@ -223,7 +223,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         PortSeed.n = self.options.port_seed
 
     def get_binaries(self, bin_dir=None):
-        return Binaries(self.binary_paths, bin_dir)
+        return Binaries(self.binary_paths, bin_dir, use_valgrind=self.options.valgrind)
 
     def setup(self):
         """Call this method to start up the test framework object with options set."""
@@ -458,18 +458,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         bin_dirs = []
         for v in versions:
             bin_dir = bin_dir_from_version(v)
-
-            # Fail test if any of the needed release binaries is missing
-            for bin_path in (argv[0] for binaries in (self.get_binaries(bin_dir),)
-                                     for argv in (binaries.node_argv(), binaries.rpc_argv())):
-
-                if shutil.which(bin_path) is None:
-                    self.log.error(f"Binary not found: {bin_path}")
-                    if v is None:
-                        raise AssertionError("At least one binary is missing, did you compile?")
-                    raise AssertionError("At least one release binary is missing. "
-                                         "Previous releases binaries can be downloaded via `test/get_previous_releases.py`.")
-
             bin_dirs.append(bin_dir)
 
         extra_init = [{}] * num_nodes if self.extra_init is None else self.extra_init # type: ignore[var-annotated]
@@ -493,7 +481,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
                 extra_args=args,
                 use_cli=self.options.usecli,
                 start_perf=self.options.perf,
-                use_valgrind=self.options.valgrind,
                 v2transport=self.options.v2transport,
                 uses_wallet=self.uses_wallet,
             )
@@ -969,8 +956,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         """Checks whether previous releases are present and enabled."""
         if not os.path.isdir(self.options.previous_releases_path):
             if self.options.prev_releases:
-                raise AssertionError("Force test of previous releases but releases missing: {}".format(
-                    self.options.previous_releases_path))
+                raise AssertionError(f"Force test of previous releases but releases missing: {self.options.previous_releases_path}\n"
+                                     "Previous releases binaries can be downloaded via `test/get_previous_releases.py`.")
         return self.options.prev_releases
 
     def skip_if_no_external_signer(self):

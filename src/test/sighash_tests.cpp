@@ -11,6 +11,7 @@
 #include <serialize.h>
 #include <streams.h>
 #include <test/data/sighash.json.h>
+#include <test/util/common.h>
 #include <test/util/json.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>

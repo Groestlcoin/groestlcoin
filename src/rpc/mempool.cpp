@@ -1050,6 +1050,7 @@ UniValue MempoolInfoToJSON(const CTxMemPool& pool)
     ret.pushKV("maxdatacarriersize", pool.m_opts.max_datacarrier_bytes.value_or(0));
     ret.pushKV("limitclustercount", pool.m_opts.limits.cluster_count);
     ret.pushKV("limitclustersize", pool.m_opts.limits.cluster_size_vbytes);
+    ret.pushKV("optimal", pool.m_txgraph->DoWork(0)); // 0 work is a quick check for known optimality
     return ret;
 }
 
@@ -1076,6 +1077,7 @@ static RPCHelpMan getmempoolinfo()
                 {RPCResult::Type::NUM, "maxdatacarriersize", "Maximum number of bytes that can be used by OP_RETURN outputs in the mempool"},
                 {RPCResult::Type::NUM, "limitclustercount", "Maximum number of transactions that can be in a cluster (configured by -limitclustercount)"},
                 {RPCResult::Type::NUM, "limitclustersize", "Maximum size of a cluster in virtual bytes (configured by -limitclustersize)"},
+                {RPCResult::Type::BOOL, "optimal", "If the mempool is in a known-optimal transaction ordering"},
             }},
         RPCExamples{
             HelpExampleCli("getmempoolinfo", "")

@@ -10,6 +10,7 @@
 #include <node/miner.h>
 #include <pow.h>
 #include <random.h>
+#include <test/util/common.h>
 #include <test/util/random.h>
 #include <test/util/script.h>
 #include <test/util/setup_common.h>

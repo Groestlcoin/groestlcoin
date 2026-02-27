@@ -15,6 +15,7 @@
 #include <serialize.h>
 #include <span.h>
 #include <streams.h>
+#include <test/util/common.h>
 #include <test/util/net.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>

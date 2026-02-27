@@ -15,6 +15,7 @@
 #include <support/allocators/pool.h>
 #include <uint256.h>
 #include <util/check.h>
+#include <util/overflow.h>
 #include <util/hasher.h>
 
 #include <cassert>
@@ -278,7 +279,7 @@ struct CoinsViewCacheCursor
     inline CoinsCachePair* NextAndMaybeErase(CoinsCachePair& current) noexcept
     {
         const auto next_entry{current.second.Next()};
-        m_dirty_count -= current.second.IsDirty();
+        Assume(TrySub(m_dirty_count, current.second.IsDirty()));
         // If we are not going to erase the cache, we must still erase spent entries.
         // Otherwise, clear the state of the entry.
         if (!m_will_erase) {

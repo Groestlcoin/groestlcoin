@@ -984,7 +984,7 @@ FUZZ_TARGET(clusterlin_sfl)
 
     // Verify that optimality is reached within an expected amount of work. This protects against
     // hypothetical bugs that hugely increase the amount of work needed to reach optimality.
-    assert(sfl.GetCost() <= MaxOptimalLinearizationIters(depgraph.TxCount()));
+    assert(sfl.GetCost() <= MaxOptimalLinearizationCost(depgraph.TxCount()));
 
     // The result must be as good as SimpleLinearize.
     auto [simple_linearization, simple_optimal] = SimpleLinearize(depgraph, MAX_SIMPLE_ITERATIONS / 10);
@@ -1011,16 +1011,17 @@ FUZZ_TARGET(clusterlin_linearize)
 {
     // Verify the behavior of Linearize().
 
-    // Retrieve an RNG seed, an iteration count, a depgraph, and whether to make it connected from
-    // the fuzz input.
+    // Retrieve an RNG seed, a maximum amount of work, a depgraph, and whether to make it connected
+    // from the fuzz input.
     SpanReader reader(buffer);
     DepGraph<TestBitSet> depgraph;
     uint64_t rng_seed{0};
-    uint64_t iter_count{0};
+    uint64_t max_cost{0};
     uint8_t flags{7};
     try {
-        reader >> VARINT(iter_count) >> Using<DepGraphFormatter>(depgraph) >> rng_seed >> flags;
+        reader >> VARINT(max_cost) >> Using<DepGraphFormatter>(depgraph) >> rng_seed >> flags;
     } catch (const std::ios_base::failure&) {}
+    if (depgraph.TxCount() <= 1) return;
     bool make_connected = flags & 1;
     // The following 3 booleans have 4 combinations:
     // - (flags & 6) == 0: do not provide input linearization.
@@ -1043,8 +1044,14 @@ FUZZ_TARGET(clusterlin_linearize)
     }
 
     // Invoke Linearize().
-    iter_count &= 0x7ffff;
-    auto [linearization, optimal, cost] = Linearize(depgraph, iter_count, rng_seed, IndexTxOrder{}, old_linearization, /*is_topological=*/claim_topological_input);
+    max_cost &= 0x3fffff;
+    auto [linearization, optimal, cost] = Linearize(
+        /*depgraph=*/depgraph,
+        /*max_cost=*/max_cost,
+        /*rng_seed=*/rng_seed,
+        /*fallback_order=*/IndexTxOrder{},
+        /*old_linearization=*/old_linearization,
+        /*is_topological=*/claim_topological_input);
     SanityCheck(depgraph, linearization);
     auto chunking = ChunkLinearization(depgraph, linearization);
 
@@ -1056,8 +1063,8 @@ FUZZ_TARGET(clusterlin_linearize)
         assert(cmp >= 0);
     }
 
-    // If the iteration count is sufficiently high, an optimal linearization must be found.
-    if (iter_count > MaxOptimalLinearizationIters(depgraph.TxCount())) {
+    // If the maximum amount of work is sufficiently high, an optimal linearization must be found.
+    if (max_cost > MaxOptimalLinearizationCost(depgraph.TxCount())) {
         assert(optimal);
     }
 
@@ -1145,7 +1152,7 @@ FUZZ_TARGET(clusterlin_linearize)
 
         // Redo from scratch with a different rng_seed. The resulting linearization should be
         // deterministic, if both are optimal.
-        auto [linearization2, optimal2, cost2] = Linearize(depgraph, MaxOptimalLinearizationIters(depgraph.TxCount()) + 1, rng_seed ^ 0x1337, IndexTxOrder{});
+        auto [linearization2, optimal2, cost2] = Linearize(depgraph, MaxOptimalLinearizationCost(depgraph.TxCount()) + 1, rng_seed ^ 0x1337, IndexTxOrder{});
         assert(optimal2);
         assert(linearization2 == linearization);
     }
@@ -1236,7 +1243,7 @@ FUZZ_TARGET(clusterlin_postlinearize_tree)
 
     // Try to find an even better linearization directly. This must not change the diagram for the
     // same reason.
-    auto [opt_linearization, _optimal, _cost] = Linearize(depgraph_tree, 100000, rng_seed, IndexTxOrder{}, post_linearization);
+    auto [opt_linearization, _optimal, _cost] = Linearize(depgraph_tree, 1000000, rng_seed, IndexTxOrder{}, post_linearization);
     auto opt_chunking = ChunkLinearization(depgraph_tree, opt_linearization);
     auto cmp_opt = CompareChunks(opt_chunking, post_chunking);
     assert(cmp_opt == 0);

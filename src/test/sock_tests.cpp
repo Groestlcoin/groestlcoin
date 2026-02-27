@@ -4,6 +4,7 @@
 
 #include <common/system.h>
 #include <compat/compat.h>
+#include <test/util/common.h>
 #include <test/util/setup_common.h>
 #include <util/sock.h>
 #include <util/threadinterrupt.h>

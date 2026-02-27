@@ -113,8 +113,8 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
         fresh = !it->second.IsDirty();
     }
     if (!inserted) {
-        m_dirty_count -= it->second.IsDirty();
-        cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
+        Assume(TrySub(m_dirty_count, it->second.IsDirty()));
+        Assume(TrySub(cachedCoinsUsage, it->second.coin.DynamicMemoryUsage()));
     }
     it->second.coin = std::move(coin);
     CCoinsCacheEntry::SetDirty(*it, m_sentinel);
@@ -153,8 +153,8 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool 
 bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
     CCoinsMap::iterator it = FetchCoin(outpoint);
     if (it == cacheCoins.end()) return false;
-    m_dirty_count -= it->second.IsDirty();
-    cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
+    Assume(TrySub(m_dirty_count, it->second.IsDirty()));
+    Assume(TrySub(cachedCoinsUsage, it->second.coin.DynamicMemoryUsage()));
     TRACEPOINT(utxocache, spent,
            outpoint.hash.data(),
            (uint32_t)outpoint.n,
@@ -248,12 +248,12 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
             if (itUs->second.IsFresh() && it->second.coin.IsSpent()) {
                 // The grandparent cache does not have an entry, and the coin
                 // has been spent. We can just delete it from the parent cache.
-                m_dirty_count -= itUs->second.IsDirty();
-                cachedCoinsUsage -= itUs->second.coin.DynamicMemoryUsage();
+                Assume(TrySub(m_dirty_count, itUs->second.IsDirty()));
+                Assume(TrySub(cachedCoinsUsage, itUs->second.coin.DynamicMemoryUsage()));
                 cacheCoins.erase(itUs);
             } else {
                 // A normal modification.
-                cachedCoinsUsage -= itUs->second.coin.DynamicMemoryUsage();
+                Assume(TrySub(cachedCoinsUsage, itUs->second.coin.DynamicMemoryUsage()));
                 if (cursor.WillErase(*it)) {
                     // Since this entry will be erased,
                     // we can move the coin into us instead of copying it
@@ -311,7 +311,7 @@ void CCoinsViewCache::Uncache(const COutPoint& hash)
 {
     CCoinsMap::iterator it = cacheCoins.find(hash);
     if (it != cacheCoins.end() && !it->second.IsDirty()) {
-        cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
+        Assume(TrySub(cachedCoinsUsage, it->second.coin.DynamicMemoryUsage()));
         TRACEPOINT(utxocache, uncache,
                hash.hash.data(),
                (uint32_t)hash.n,
