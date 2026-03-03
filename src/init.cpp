@@ -1206,8 +1206,10 @@ bool AppInitLockDirectories()
 
 bool AppInitInterfaces(NodeContext& node)
 {
-    node.chain = node.init->makeChain();
-    node.mining = node.init->makeMining();
+    node.chain = interfaces::MakeChain(node);
+    // Specify wait_loaded=false so internal mining interface can be initialized
+    // on early startup and does not need to be tied to chainstate loading.
+    node.mining = interfaces::MakeMining(node, /*wait_loaded=*/false);
     return true;
 }
 
@@ -1304,15 +1306,11 @@ static ChainstateLoadResult InitAndLoadChainstate(
     const ArgsManager& args)
 {
     // This function may be called twice, so any dirty state must be reset.
-    node.notifications.reset(); // Drop state, such as a cached tip block
+    node.notifications->setChainstateLoaded(false); // Drop state, such as a cached tip block
     node.mempool.reset();
     node.chainman.reset(); // Drop state, such as an initialized m_block_tree_db
 
     const CChainParams& chainparams = Params();
-
-    Assert(!node.notifications); // Was reset above
-    node.notifications = std::make_unique<KernelNotifications>(Assert(node.shutdown_request), node.exit_status, *Assert(node.warnings));
-    ReadNotificationArgs(args, *node.notifications);
 
     CTxMemPool::Options mempool_opts{
         .check_ratio = chainparams.DefaultConsistencyChecks() ? 1 : 0,
@@ -1414,6 +1412,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
         std::tie(status, error) = catch_exceptions([&] { return VerifyLoadedChainstate(chainman, options); });
         if (status == node::ChainstateLoadStatus::SUCCESS) {
             LogInfo("Block index and chainstate loaded");
+            node.notifications->setChainstateLoaded(true);
         }
     }
     return {status, error};
@@ -1485,6 +1484,13 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     assert(!node.validation_signals);
     node.validation_signals = std::make_unique<ValidationSignals>(std::make_unique<SerialTaskRunner>(scheduler));
     auto& validation_signals = *node.validation_signals;
+
+    // Create KernelNotifications object. Important to do this early before
+    // calling ipc->listenAddress() below so makeMining and other IPC methods
+    // can use this.
+    assert(!node.notifications);
+    node.notifications = std::make_unique<KernelNotifications>(Assert(node.shutdown_request), node.exit_status, *Assert(node.warnings));
+    ReadNotificationArgs(args, *node.notifications);
 
     // Create client interfaces for wallets that are supposed to be loaded
     // according to -wallet and -disablewallet options. This only constructs

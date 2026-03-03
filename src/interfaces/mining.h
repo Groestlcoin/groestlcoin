@@ -160,7 +160,11 @@ public:
 };
 
 //! Return implementation of Mining interface.
-std::unique_ptr<Mining> MakeMining(node::NodeContext& node);
+//!
+//! @param[in] wait_loaded waits for chainstate data to be loaded before
+//!                        returning. Used to prevent external clients from
+//!                        being able to crash the node during startup.
+std::unique_ptr<Mining> MakeMining(node::NodeContext& node, bool wait_loaded=true);
 
 } // namespace interfaces
 

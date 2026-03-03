@@ -251,7 +251,7 @@ class Binaries:
     def __init__(self, paths, bin_dir, *, use_valgrind=False):
         self.paths = paths
         self.bin_dir = bin_dir
-        suppressions_file = pathlib.Path(__file__).parents[3] / "contrib" / "valgrind.supp"
+        suppressions_file = pathlib.Path(__file__).resolve().parents[3] / "test" / "sanitizer_suppressions" / "valgrind.supp"
         self.valgrind_cmd = [
             "valgrind",
             f"--suppressions={suppressions_file}",

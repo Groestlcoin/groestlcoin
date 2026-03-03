@@ -2,12 +2,12 @@
 # dependencies that cannot be fixed in-tree.
 #
 # Example use:
-# $ valgrind --suppressions=contrib/valgrind.supp build/bin/test_groestlcoin
-# $ valgrind --suppressions=contrib/valgrind.supp --leak-check=full \
+# $ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp build/bin/test_groestlcoin
+# $ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp --leak-check=full \
 #       --show-leak-kinds=all build/bin/test_groestlcoin
 #
 # To create suppressions for found issues, use the --gen-suppressions=all option:
-# $ valgrind --suppressions=contrib/valgrind.supp --leak-check=full \
+# $ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp --leak-check=full \
 #       --show-leak-kinds=all --gen-suppressions=all --show-reachable=yes \
 #       --error-limit=no build/bin/test_groestlcoin
 #

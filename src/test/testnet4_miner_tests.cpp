@@ -22,7 +22,7 @@ namespace testnet4_miner_tests {
 struct Testnet4MinerTestingSetup : public Testnet4Setup {
     std::unique_ptr<Mining> MakeMining()
     {
-        return interfaces::MakeMining(m_node);
+        return interfaces::MakeMining(m_node, /*wait_loaded=*/false);
     }
 };
 } // namespace testnet4_miner_tests
