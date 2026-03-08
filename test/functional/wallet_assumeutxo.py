@@ -12,8 +12,8 @@ from test_framework.messages import COIN
 from test_framework.util import (
     assert_equal,
     assert_greater_than,
-    assert_greater_than_or_equal,
     assert_raises_rpc_error,
+    dumb_sync_blocks,
     ensure_for,
 )
 from test_framework.wallet import MiniWallet
@@ -42,8 +42,8 @@ class AssumeutxoTest(BitcoinTestFramework):
     def setup_network(self):
         """Start with the nodes disconnected so that one can generate a snapshot
         including blocks the other hasn't yet seen."""
-        self.add_nodes(4)
-        self.start_nodes(extra_args=self.extra_args)
+        self.add_nodes(self.num_nodes, self.extra_args)
+        self.start_nodes()
 
     def import_descriptor(self, node, wallet_name, key, timestamp):
         import_request = [{"desc": descsum_create("pkh(" + key.pubkey + ")"),
@@ -85,15 +85,16 @@ class AssumeutxoTest(BitcoinTestFramework):
         # Balance of w wallet is still 0 because n3 has not synced yet
         assert_equal(n3.getbalance(), 0)
 
+        n3.unloadwallet("w")
         self.log.info("Backup from before the snapshot height can't be loaded during background sync (pruned node)")
         assert_raises_rpc_error(-4, expected_error_message, n3.restorewallet, "w2", "backup_w2.dat")
 
     def test_restore_wallet_pruneheight(self, n3):
         self.log.info("Ensuring wallet can't be restored from a backup that was created before the pruneheight (pruned node)")
         self.complete_background_validation(n3)
-        # After background sync, pruneheight is reset to 0, so mine 500 blocks
+        # After background sync, pruneheight is reset to 0, so mine 200 blocks
         # and prune the chain again
-        self.generate(n3, nblocks=500, sync_fun=self.no_op)
+        self.generate(n3, nblocks=200, sync_fun=self.no_op)
         assert_equal(n3.pruneblockchain(FINAL_HEIGHT), 298)  # 298 is the height of the last block pruned (pruneheight 299)
         error_message = "Wallet loading failed. Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of a pruned node)"
         # This backup (backup_w2.dat) was created at height 199, so it can't be restored in a node with a pruneheight of 299
@@ -227,32 +228,18 @@ class AssumeutxoTest(BitcoinTestFramework):
 
         PAUSE_HEIGHT = FINAL_HEIGHT - 40
 
-        self.log.info("Restarting node to stop at height %d", PAUSE_HEIGHT)
-        self.restart_node(1, extra_args=[
-            f"-stopatheight={PAUSE_HEIGHT}", *self.extra_args[1]])
+        self.log.info(f"Unload wallets and sync node up to height {PAUSE_HEIGHT}")
+        n1.unloadwallet("w")
+        n1.unloadwallet(wallet_name)
+        dumb_sync_blocks(src=n0, dst=n1, height=PAUSE_HEIGHT)
 
-        # Finally connect the nodes and let them sync.
-        #
-        # Set `wait_for_connect=False` to avoid a race between performing connection
-        # assertions and the -stopatheight tripping.
-        self.connect_nodes(0, 1, wait_for_connect=False)
-
-        n1.wait_until_stopped(timeout=5)
-
-        self.log.info(
-            "Restarted node before snapshot validation completed, reloading...")
-        self.restart_node(1, extra_args=self.extra_args[1])
-
-        self.log.info("Verify node state after restart during background sync")
+        self.log.info("Verify node state during background sync")
         # Verify there are still two chainstates (background validation not complete)
         chainstates = n1.getchainstates()['chainstates']
         assert_equal(len(chainstates), 2)
         # The background chainstate should still be at START_HEIGHT
         assert_equal(chainstates[0]['blocks'], START_HEIGHT)
-        # The snapshot chainstate should be at least PAUSE_HEIGHT. It may be
-        # higher because stopatheight may allow additional blocks to be
-        # processed during shutdown (per stopatheight documentation).
-        assert_greater_than_or_equal(chainstates[1]['blocks'], PAUSE_HEIGHT)
+        assert_equal(chainstates[1]["blocks"], PAUSE_HEIGHT)
 
         # After restart, wallets that existed before cannot be loaded because
         # the wallet loading code checks if required blocks are available for
