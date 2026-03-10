@@ -34,21 +34,22 @@ PATTERN_ONION = re.compile(r"^([a-z2-7]{56}\.onion):(\d+)$")
 PATTERN_I2P = re.compile(r"^([a-z2-7]{52}\.b32\.i2p):(\d{1,5})$")
 PATTERN_AGENT = re.compile(
     r"^/Groestlcoin:("
-    r"2.13.(3)|"
-    r"2.16.(0|3)|"
-    r"2.17.(2)|"
-    r"2.18.(2)|"
-    r"2.19.(1)|"
-    r"2.20.(1)|"
-    r"2.21.(0|1)|"
-    r"22.(0)|"
-    r"23.(0)|"
-    r"24.(0)|"
-    r"25.(0)|"
-    r"26.(0)|"
-    r"27.(0)|"
-    r"28.(0)|"
-    r"29.(0)|"
+    r"2\.13\.(3)|"
+    r"2\.16\.(0|3)|"
+    r"2\.17\.(2)|"
+    r"2\.18\.(2)|"
+    r"2\.19\.(1)|"
+    r"2\.20\.(1)|"
+    r"2\.21\.(0|1)|"
+    r"22.(0)|\.0"
+    r"23.(0)|\.0"
+    r"24.(0)|\.(0|1)"
+    r"25.(0)|\.0"
+    r"26.(0)|\.0"
+    r"27.(0)|\.0"
+    r"28.(0)|\.0"
+    r"29.(0)|\.0"
+    r"30.(2)|\.0"
     r")")
 
 def parseline(line: str) -> Union[dict, None]:
@@ -137,7 +138,9 @@ def dedup(ips: list[dict]) -> list[dict]:
     """ Remove duplicates from `ips` where multiple ips share address and port. """
     d = {}
     for ip in ips:
-        d[ip['ip'],ip['port']] = ip
+        ip_port = (ip["ip"], ip["port"])
+        if ip_port not in d or ip["lastsuccess"] > d[ip_port]["lastsuccess"]:
+            d[ip_port] = ip
     return list(d.values())
 
 def filtermultiport(ips: list[dict]) -> list[dict]:
