@@ -9,7 +9,7 @@ If this becomes continuous ("thrashing"), `bitcoind` can slow to a crawl, especi
 
 If you see sustained swap I/O while `bitcoind` runs, restart with a lower `-dbcache`.
 If needed, also reduce `-maxmempool`, `-maxconnections`, or use `-blocksonly`.
-Bitcoin Core may warn at startup when `-dbcache` looks too large for the detected system memory.
+Groestlcoin Core may warn at startup when `-dbcache` looks too large for the detected system memory.
 
 ## In-memory caches
 
