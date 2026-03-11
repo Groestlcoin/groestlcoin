@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: recursive
@@ -152,7 +152,7 @@ jobs:
           echo "Computed FORCE_VERSION=$FORCE_VERSION"
 
       - name: Cache depends downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: depends/sources
           key: depends-sources-${{ hashFiles('depends/packages/*') }}
@@ -160,7 +160,7 @@ jobs:
             depends-sources-
 
       - name: Cache SDKs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: depends/SDKs
           key: depends-sdks-xcode15
@@ -206,7 +206,7 @@ jobs:
           done
 
       - name: Upload SHA256SUMS.part
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha256sums-part-${{ matrix.host }}
           path: |
@@ -246,7 +246,7 @@ jobs:
           ls -lah selected-artifacts || true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: guix-${{ matrix.host }}
           path: selected-artifacts/
@@ -260,7 +260,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -271,7 +271,7 @@ jobs:
             ca-certificates git coreutils diffutils
 
       - name: Download all SHA256SUMS.part artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: sha256sums-parts
 
@@ -328,7 +328,7 @@ jobs:
           find guix.sigs -maxdepth 4 -type d -print
 
       - name: Upload attestations
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: guix-attest-${{ env.FORCE_VERSION }}
           path: |
@@ -348,7 +348,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -366,7 +366,7 @@ jobs:
           echo "FORCE_VERSION=$FORCE_VERSION" >> $GITHUB_ENV
 
       - name: Download all artifacts (guix-* + guix-attest-*)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
 
@@ -412,7 +412,7 @@ jobs:
           ls -lah release-bundle
 
       - name: Upload release bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-bundle-${{ github.ref_name }}
           path: release-bundle/

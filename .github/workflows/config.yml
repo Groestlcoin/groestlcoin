@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout source (current branch)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Groestlcoin/groestlcoin
           fetch-depth: 1
@@ -43,7 +43,7 @@ jobs:
           ls -lah share/examples/groestlcoin.conf
 
       - name: Upload groestlcoin.conf artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: groestlcoin-conf
           path: share/examples/groestlcoin.conf

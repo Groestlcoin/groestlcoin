@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -65,7 +65,7 @@ jobs:
 
       - name: Create Pull Request (into same branch)
         if: steps.chmod.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           base: "${{ steps.vars.outputs.base }}"   # PR targets the same branch this ran on
           commit-message: "ci: ensure shell scripts are executable (+x)"
