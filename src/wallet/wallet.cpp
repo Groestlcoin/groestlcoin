@@ -1106,7 +1106,11 @@ CWalletTx* CWallet::AddToWallet(CTransactionRef tx, const TxState& state, const 
     }
 
     //// debug print
-    WalletLogPrintf("AddToWallet %s  %s%s %s\n", hash.ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""), TxStateString(state));
+    std::string status{"no-change"};
+    if (fInsertedNew || fUpdated) {
+        status = fInsertedNew ? (fUpdated ? "new, update" : "new") : "update";
+    }
+    WalletLogPrintf("AddToWallet %s %s %s", hash.ToString(), status, TxStateString(state));
 
     // Write to disk
     if (fInsertedNew || fUpdated)
@@ -2357,15 +2361,6 @@ DBErrors CWallet::PopulateWalletFromDB(bilingual_str& error, std::vector<bilingu
     Assert(m_spk_managers.empty());
     Assert(m_wallet_flags == 0);
     DBErrors nLoadWalletRet = WalletBatch(GetDatabase()).LoadWallet(this);
-    if (nLoadWalletRet == DBErrors::NEED_REWRITE)
-    {
-        if (GetDatabase().Rewrite())
-        {
-            for (const auto& spk_man_pair : m_spk_managers) {
-                spk_man_pair.second->RewriteDB();
-            }
-        }
-    }
 
     if (m_spk_managers.empty()) {
         assert(m_external_spk_managers.empty());
@@ -2393,9 +2388,6 @@ DBErrors CWallet::PopulateWalletFromDB(bilingual_str& error, std::vector<bilingu
         break;
     case DBErrors::EXTERNAL_SIGNER_SUPPORT_REQUIRED:
         error = strprintf(_("Error loading %s: External signer wallet being loaded without external signer support compiled"), wallet_file);
-        break;
-    case DBErrors::NEED_REWRITE:
-        error = strprintf(_("Wallet needed to be rewritten: restart %s to complete"), CLIENT_NAME);
         break;
     case DBErrors::UNKNOWN_DESCRIPTOR:
         error = strprintf(_("Unrecognized descriptor found. Loading wallet %s\n\n"
@@ -4018,14 +4010,16 @@ util::Result<void> CWallet::ApplyMigrationData(WalletBatch& local_wallet_batch, 
                 // Mark as to remove from the migrated wallet only if it does not also belong to it
                 if (!is_mine) {
                     txids_to_delete.push_back(hash);
+                    continue;
                 }
-                continue;
             }
         }
         if (!is_mine) {
             // Both not ours and not in the watchonly wallet
             return util::Error{strprintf(_("Error: Transaction %s in wallet cannot be identified to belong to migrated wallets"), wtx->GetHash().GetHex())};
         }
+        // Rewrite the transaction so that anything that may have changed about it in memory also persists to disk
+        local_wallet_batch.WriteTx(*wtx);
     }
 
     // Do the removes

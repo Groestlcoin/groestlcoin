@@ -6,7 +6,12 @@
 
 export LC_ALL=C.UTF-8
 
-set -ex
+set -o errexit -o xtrace
+
+if [ "${DANGER_RUN_CI_ON_HOST}" != "1" ]; then
+  echo "This script will make unsafe local and global modifications, so it can only be run inside a container and requires DANGER_RUN_CI_ON_HOST=1"
+  exit 1
+fi
 
 cd "${BASE_ROOT_DIR}"
 
@@ -43,6 +48,37 @@ export HOST=${HOST:-$("$BASE_ROOT_DIR/depends/config.guess")}
 echo "=== BEGIN env ==="
 env
 echo "=== END env ==="
+
+# The CI framework should be flexible where it is run from. For example, from
+# a git-archive, a git-worktree, or a normal git repo.
+# The iwyu task requires a working git repo, which may not always be
+# available, so initialize one with force.
+if [[ "${RUN_IWYU}" == true ]]; then
+  mv .git .git_ci_backup || true
+  git init
+  git add ./src  # the git diff command used later for iwyu only cares about ./src
+  git config user.email "ci@ci"
+  git config user.name "CI"
+  git commit -m "dummy CI ./src init for IWYU"
+fi
+
+if [ "$RUN_FUZZ_TESTS" = "true" ]; then
+  export DIR_FUZZ_IN=${DIR_QA_ASSETS}/fuzz_corpora/
+  if [ ! -d "$DIR_FUZZ_IN" ]; then
+    ${CI_RETRY_EXE} git clone --depth=1 https://github.com/bitcoin-core/qa-assets "${DIR_QA_ASSETS}"
+  fi
+  (
+    cd "${DIR_QA_ASSETS}"
+    echo "Using qa-assets repo from commit ..."
+    git log -1
+  )
+elif [ "$RUN_UNIT_TESTS" = "true" ]; then
+  export DIR_UNIT_TEST_DATA=${DIR_QA_ASSETS}/unit_test_data/
+  if [ ! -d "$DIR_UNIT_TEST_DATA" ]; then
+    mkdir -p "$DIR_UNIT_TEST_DATA"
+    ${CI_RETRY_EXE} curl --location --fail https://github.com/bitcoin-core/qa-assets/raw/main/unit_test_data/script_assets_test.json -o "${DIR_UNIT_TEST_DATA}/script_assets_test.json"
+  fi
+fi
 
 # Make sure default datadir does not exist and is never read by creating a dummy file
 if [ "$CI_OS_NAME" == "macos" ]; then
