@@ -893,8 +893,11 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         return false; // state filled in by CheckTxInputs
     }
 
-    if (m_pool.m_opts.require_standard && !AreInputsStandard(tx, m_view)) {
-        return state.Invalid(TxValidationResult::TX_INPUTS_NOT_STANDARD, "bad-txns-nonstandard-inputs");
+    if (m_pool.m_opts.require_standard) {
+        state = ValidateInputsStandardness(tx, m_view);
+        if (state.IsInvalid()) {
+            return false;
+        }
     }
 
     // Check for non-standard witnesses.
@@ -2990,7 +2993,7 @@ bool Chainstate::DisconnectTip(BlockValidationState& state, DisconnectedBlockTra
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
     if (m_chainman.m_options.signals) {
-        m_chainman.m_options.signals->BlockDisconnected(pblock, pindexDelete);
+        m_chainman.m_options.signals->BlockDisconnected(std::move(pblock), pindexDelete);
     }
     return true;
 }
@@ -3399,9 +3402,9 @@ bool Chainstate::ActivateBestChain(BlockValidationState& state, std::shared_ptr<
                 }
                 pindexNewTip = m_chain.Tip();
 
-                for (const auto& [index, block] : connected_blocks) {
+                for (auto& [index, block] : std::move(connected_blocks)) {
                     if (m_chainman.m_options.signals) {
-                        m_chainman.m_options.signals->BlockConnected(chainstate_role, Assert(block), Assert(index));
+                        m_chainman.m_options.signals->BlockConnected(chainstate_role, std::move(Assert(block)), Assert(index));
                     }
                 }
 
