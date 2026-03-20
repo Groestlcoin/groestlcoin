@@ -32,8 +32,13 @@ jobs:
 
       - name: Enable user namespaces (Guix containers)
         run: |
+          set -euxo pipefail
           sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sysctl kernel.unprivileged_userns_clone || true
+          sysctl kernel.apparmor_restrict_unprivileged_unconfined || true
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
 
       - name: Install base dependencies
         run: |
@@ -94,20 +99,85 @@ jobs:
 
           "$GUIX_BIN" --version
 
+      - name: Install and load AppArmor profiles for Guix
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apparmor apparmor-utils
+
+          GUIX_REAL="$(readlink -f /var/guix/profiles/per-user/root/current-guix/bin/guix)"
+          DAEMON_REAL="$(readlink -f /var/guix/profiles/per-user/root/current-guix/bin/guix-daemon)"
+
+          sudo tee /etc/apparmor.d/guix-ci >/dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile guix-ci-guix "${GUIX_REAL}" flags=(unconfined) {
+            userns,
+            include if exists <local/guix-ci-guix>
+          }
+
+          profile guix-ci-daemon "${DAEMON_REAL}" flags=(unconfined) {
+            userns,
+            include if exists <local/guix-ci-daemon>
+          }
+          EOF
+
+          sudo systemctl reload apparmor || sudo service apparmor reload || true
+          sudo apparmor_parser -r /etc/apparmor.d/guix-ci
+
+          echo "Resolved guix path:   ${GUIX_REAL}"
+          echo "Resolved daemon path: ${DAEMON_REAL}"
+          sudo aa-status || true
+
       - name: Configure GUIX_LOCPATH
         run: |
           echo "GUIX_LOCPATH=/var/guix/profiles/per-user/root/current-guix/lib/locale" >> $GITHUB_ENV
 
+      - name: Prepare writable temp dirs for Guix
+        run: |
+          set -euxo pipefail
+
+          sudo mkdir -p /var/tmp/guix-tmp
+          sudo chmod 1777 /tmp
+          sudo chmod 1777 /var/tmp
+          sudo chmod 1777 /var/tmp/guix-tmp
+
+          echo "TMPDIR=/var/tmp/guix-tmp" >> "$GITHUB_ENV"
+          echo "TMP=/var/tmp/guix-tmp" >> "$GITHUB_ENV"
+          echo "TEMP=/var/tmp/guix-tmp" >> "$GITHUB_ENV"
+          echo "GIT_CONFIG_NOSYSTEM=1" >> "$GITHUB_ENV"
+
       - name: Ensure guix-daemon is running
         run: |
           set -euxo pipefail
-          if pgrep -x guix-daemon >/dev/null; then
-            echo "guix-daemon already running"
+
+          sudo mkdir -p /etc/systemd/system/guix-daemon.service.d
+
+          sudo tee /etc/systemd/system/guix-daemon.service.d/override.conf >/dev/null <<'EOF'
+          [Service]
+          Environment=TMPDIR=/var/tmp/guix-tmp
+          Environment=TMP=/var/tmp/guix-tmp
+          Environment=TEMP=/var/tmp/guix-tmp
+          Environment=GIT_CONFIG_NOSYSTEM=1
+          EOF
+
+          sudo systemctl daemon-reload
+
+          if systemctl is-active --quiet guix-daemon.service; then
+            echo "guix-daemon already running; restarting to apply env override"
+            sudo systemctl restart guix-daemon.service
           else
-            echo "guix-daemon not running; starting it"
-            sudo -n guix-daemon --build-users-group=guixbuild >/tmp/guix-daemon.log 2>&1 &
-            sleep 2
+            echo "guix-daemon not running; starting via systemd"
+            sudo systemctl start guix-daemon.service
           fi
+
+          sleep 3
+
+          sudo systemctl show guix-daemon.service --property=Environment
+          sudo systemctl status guix-daemon.service --no-pager || true
+          pgrep -a guix-daemon || true
           guix gc --list-failures >/dev/null
 
       - name: Authorize substitute server signing keys
@@ -132,7 +202,7 @@ jobs:
           if [ -f "${KEYDIR}/berlin.guix.gnu.org.pub" ]; then
             sudo guix archive --authorize < "${KEYDIR}/berlin.guix.gnu.org.pub"
           else
-            echo "No berlin.guix.gnu.org.pub found in ${KEYDIR} (likely OK for mirrors)."
+            echo "No berlin.guix.gnu.org.pub found in ${KEYDIR}."
           fi
 
       - name: Compute VERSION and FORCE_VERSION from CMakeLists.txt
@@ -177,10 +247,16 @@ jobs:
           fi
 
       - name: Run Guix build (single target via HOSTS) with retries
+        id: guix_build
+        continue-on-error: true
         env:
           HOSTS: ${{ matrix.host }}
           JOBS: "2"
-          SUBSTITUTE_URLS: "https://bordeaux-singapore-mirror.cbaines.net https://bordeaux-us-east-mirror.cbaines.net https://mirror.sjtu.edu.cn/guix https://mirror.yandex.ru/guix https://berlin.guix.gnu.org https://bordeaux.guix.gnu.org https://ci.guix.gnu.org"
+          TMPDIR: /var/tmp/guix-tmp
+          TMP: /var/tmp/guix-tmp
+          TEMP: /var/tmp/guix-tmp
+          GIT_CONFIG_NOSYSTEM: "1"
+          SUBSTITUTE_URLS: "https://bordeaux-singapore-mirror.cbaines.net https://bordeaux-us-east-mirror.cbaines.net https://mirrors.sjtug.sjtu.edu.cn/guix https://mirror.yandex.ru/mirrors/guix/ https://berlin.guix.gnu.org https://bordeaux.guix.gnu.org https://ci.guix.gnu.org https://hydra-guix-129.guix.gnu.org https://berlin-guix.jing.rocks https://bordeaux-guix.jing.rocks https://mirrors.sjtug.sjtu.edu.cn/guix-bordeaux"
 
         run: |
           set -euxo pipefail
@@ -204,6 +280,68 @@ jobs:
             sleep "${sleep_time}"
             n=$((n + 1))
           done
+
+      - name: Collect Guix inner logs for this host
+        if: steps.guix_build.outcome == 'failure'
+        env:
+          HOST: ${{ matrix.host }}
+        run: |
+          set -euxo pipefail
+
+          OUTDIR="$RUNNER_TEMP/guix-inner-logs-$HOST"
+          mkdir -p "$OUTDIR/raw" "$OUTDIR/unpacked" "$OUTDIR/filtered"
+
+          echo "$HOST" > "$OUTDIR/host.txt"
+
+          echo "== list all Guix drv logs =="
+          find /var/log/guix/drvs -type f | sort > "$OUTDIR/raw/all-drv-logs.txt" || true
+
+          echo "== copy all compressed drv logs =="
+          find /var/log/guix/drvs -type f -name '*.drv.gz' -exec cp {} "$OUTDIR/raw/" \; || true
+
+          echo "== unpack drv logs =="
+          shopt -s nullglob
+          for f in "$OUTDIR"/raw/*.drv.gz; do
+            gzip -cd "$f" > "$OUTDIR/unpacked/$(basename "$f" .gz)" || true
+          done
+
+          echo "== collect likely relevant logs =="
+          find /var/log/guix/drvs -type f -name '*.drv.gz' | \
+            grep -E 'checkout|glibc|certvalidator|python-' \
+            > "$OUTDIR/filtered/matches.txt" || true
+
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            cp "$f" "$OUTDIR/filtered/" || true
+            gzip -cd "$f" > "$OUTDIR/filtered/$(basename "$f" .gz)" || true
+          done < "$OUTDIR/filtered/matches.txt"
+
+          echo "== make quick summary =="
+          {
+            echo "Host: $HOST"
+            echo
+            echo "Relevant matched logs:"
+            cat "$OUTDIR/filtered/matches.txt" 2>/dev/null || true
+            echo
+            for f in "$OUTDIR"/filtered/*.drv "$OUTDIR"/unpacked/*.drv; do
+              [ -e "$f" ] || continue
+              echo "===== $f ====="
+              tail -n 200 "$f" || true
+              echo
+            done
+          } > "$OUTDIR/summary-tail.txt"
+
+      - name: Upload Guix inner logs for this host
+        if: steps.guix_build.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: guix-inner-logs-${{ matrix.host }}
+          path: ${{ runner.temp }}/guix-inner-logs-${{ matrix.host }}
+          if-no-files-found: warn
+
+      - name: Fail job if Guix build failed
+        if: steps.guix_build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload SHA256SUMS.part
         uses: actions/upload-artifact@v4
