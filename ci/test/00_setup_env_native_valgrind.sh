@@ -8,14 +8,16 @@ export LC_ALL=C.UTF-8
 
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/debian:trixie"
 export CONTAINER_NAME=ci_native_valgrind
-export PACKAGES="valgrind python3-zmq libevent-dev libboost-dev libzmq3-dev libsqlite3-dev libcapnp-dev capnproto python3-pip"
+export PACKAGES="clang llvm libclang-rt-dev valgrind python3-zmq libevent-dev libboost-dev libzmq3-dev libsqlite3-dev libcapnp-dev capnproto python3-pip"
 export PIP_PACKAGES="--break-system-packages pycapnp"
 export USE_VALGRIND=1
 export NO_DEPENDS=1
 export GOAL="install"
-# TODO enable GUI
+# GUI disabled, because it only passes with a DEBUG=1 depends build
 export GROESTLCOIN_CONFIG="\
-  --preset=dev-mode \
+ --preset=dev-mode \
  -DBUILD_GUI=OFF \
  -DWITH_USDT=OFF \
+ -DCMAKE_C_COMPILER=clang \
+ -DCMAKE_CXX_COMPILER=clang++ \
 "

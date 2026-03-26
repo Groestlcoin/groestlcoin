@@ -180,7 +180,11 @@ You can also manually configure your node to be reachable from the Tor network.
 Add these lines to your `/etc/tor/torrc` (or equivalent config file):
 
     HiddenServiceDir /var/lib/tor/groestlcoin-service/
-    HiddenServicePort 1331 127.0.0.1:1331
+    HiddenServicePort 1331 127.0.0.1:1332
+    # If `tor --list-modules` shows "pow: yes", then enable PoW protection.
+    # It is available in tor-0.4.8.1-alpha and newer when configured with
+    # `./configure --enable-gpl`.
+    HiddenServicePoWDefensesEnabled 1
 
 The directory can be different of course, but virtual port numbers should be equal to
 your groestlcoind's P2P listen port (1331 by default), and target addresses and ports
