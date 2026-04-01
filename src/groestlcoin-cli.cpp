@@ -111,7 +111,7 @@ static void SetupCliArgs(ArgsManager& argsman)
     argsman.AddArg("-stdin", "Read extra arguments from standard input, one per line until EOF/Ctrl-D (recommended for sensitive information such as passphrases). When combined with -stdinrpcpass, the first line from standard input is used for the RPC password.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-stdinrpcpass", "Read RPC password from standard input as a single line. When combined with -stdin, the first line from standard input is used for the RPC password. When combined with -stdinwalletpassphrase, -stdinrpcpass consumes the first line, and -stdinwalletpassphrase consumes the second.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-stdinwalletpassphrase", "Read wallet passphrase from standard input as a single line. When combined with -stdin, the first line from standard input is used for the wallet passphrase.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-    argsman.AddArg("-ipcconnect=<address>", "Connect to bitcoin-node through IPC socket instead of TCP socket to execute requests. Valid <address> values are 'auto' to try to connect to default socket path at <datadir>/node.sock but fall back to TCP if it is not available, 'unix' to connect to the default socket and fail if it isn't available, or 'unix:<socket path>' to connect to a socket at a nonstandard path. -noipcconnect can be specified to avoid attempting to use IPC at all. Default value: auto", ArgsManager::ALLOW_ANY, OptionsCategory::IPC);
+    argsman.AddArg("-ipcconnect=<address>", "Connect to groestlcoin-node through IPC socket instead of TCP socket to execute requests. Valid <address> values are 'auto' to try to connect to default socket path at <datadir>/node.sock but fall back to TCP if it is not available, 'unix' to connect to the default socket and fail if it isn't available, or 'unix:<socket path>' to connect to a socket at a nonstandard path. -noipcconnect can be specified to avoid attempting to use IPC at all. Default value: auto", ArgsManager::ALLOW_ANY, OptionsCategory::IPC);
 }
 
 std::optional<std::string> RpcWalletName(const ArgsManager& args)
@@ -804,10 +804,10 @@ static std::optional<UniValue> CallIPC(BaseRequestHandler* rh, const std::string
         throw std::runtime_error("-rpcconnect and -ipcconnect options cannot both be enabled");
     }
 
-    std::unique_ptr<interfaces::Init> local_init{interfaces::MakeBasicInit("bitcoin-cli")};
+    std::unique_ptr<interfaces::Init> local_init{interfaces::MakeBasicInit("groestlcoin-cli")};
     if (!local_init || !local_init->ipc()) {
         if (ipcconnect == "auto") return {}; // Use HTTP if -ipcconnect=auto is set and there is no IPC support.
-        throw std::runtime_error("bitcoin-cli was not built with IPC support");
+        throw std::runtime_error("groestlcoin-cli was not built with IPC support");
     }
 
     std::unique_ptr<interfaces::Init> node_init;
@@ -817,8 +817,8 @@ static std::optional<UniValue> CallIPC(BaseRequestHandler* rh, const std::string
     } catch (const std::exception& e) {
         // Catch connect error if -ipcconnect=unix was specified
         throw CConnectionFailed{strprintf("%s\n\n"
-            "Probably bitcoin-node is not running or not listening on a unix socket. Can be started with:\n\n"
-            "    bitcoin-node -chain=%s -ipcbind=unix", e.what(), gArgs.GetChainTypeString())};
+            "Probably groestlcoin-node is not running or not listening on a unix socket. Can be started with:\n\n"
+            "    groestlcoin-node -chain=%s -ipcbind=unix", e.what(), gArgs.GetChainTypeString())};
     }
 
     std::unique_ptr<interfaces::Rpc> rpc{node_init->makeRpc()};
