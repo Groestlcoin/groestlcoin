@@ -9,6 +9,7 @@
 #include <common/args.h> // GRS
 
 #include <clientversion.h>
+#include <common/license_info.h>
 #include <common/system.h>
 #include <interfaces/handler.h>
 #include <interfaces/node.h>
