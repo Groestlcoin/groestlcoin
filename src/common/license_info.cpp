@@ -9,6 +9,7 @@
 #include <tinyformat.h>
 #include <util/translation.h>
 
+#include <cstddef>
 #include <string>
 
 std::string CopyrightHolders(const std::string& strPrefix)
