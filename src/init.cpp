@@ -12,6 +12,7 @@
 #include <addrman.h>
 #include <banman.h>
 #include <blockfilter.h>
+#include <btcsignals.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <chainparamsbase.h>
@@ -111,8 +112,6 @@
 #include <csignal>
 #include <sys/stat.h>
 #endif
-
-#include <boost/signals2/signal.hpp>
 
 #ifdef ENABLE_ZMQ
 #include <zmq/zmqabstractnotifier.h>
@@ -276,7 +275,9 @@ void Interrupt(NodeContext& node)
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
-    InterruptTorControl();
+    if (node.tor_controller) {
+        node.tor_controller->Interrupt();
+    }
     InterruptMapPort();
     if (node.connman)
         node.connman->Interrupt();
@@ -319,7 +320,10 @@ void Shutdown(NodeContext& node)
     if (node.peerman && node.validation_signals) node.validation_signals->UnregisterValidationInterface(node.peerman.get());
     if (node.connman) node.connman->Stop();
 
-    StopTorControl();
+    if (node.tor_controller) {
+        node.tor_controller->Join();
+        node.tor_controller.reset();
+    }
 
     if (node.background_init_thread.joinable()) node.background_init_thread.join();
     // After everything has been shut down, but before things get flushed, stop the
@@ -2187,10 +2191,29 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                     "for the automatically created Tor onion service."),
                                   onion_service_target.ToStringAddrPort()));
         }
-        StartTorControl(onion_service_target);
+        node.tor_controller = std::make_unique<TorController>(gArgs.GetArg("-torcontrol", DEFAULT_TOR_CONTROL), onion_service_target);
     }
 
-    if (connOptions.bind_on_any) {
+    bool should_discover = connOptions.bind_on_any;
+    if (!should_discover) {
+        for (const auto& bind : connOptions.vBinds) {
+            if (bind.IsBindAny()) {
+                should_discover = true;
+                break;
+            }
+        }
+    }
+
+    if (!should_discover) {
+        for (const auto& whitebind : connOptions.vWhiteBinds) {
+            if (whitebind.m_service.IsBindAny()) {
+                should_discover = true;
+                break;
+            }
+        }
+    }
+
+    if (should_discover) {
         // Only add all IP addresses of the machine if we would be listening on
         // any address - 0.0.0.0 (IPv4) and :: (IPv6).
         Discover();

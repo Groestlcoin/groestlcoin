@@ -796,7 +796,7 @@ Common misconceptions are clarified in those sections:
 - Do not compare an iterator from one data structure with an iterator of
   another data structure (even if of the same type).
 
-  - *Rationale*: Behavior is undefined. In C++ parlor this means "may reformat
+  - *Rationale*: Behavior is undefined. In C++ parlance this means "may reformat
     the universe", in practice this has resulted in at least one hard-to-debug crash bug.
 
 - Watch out for out-of-bounds vector access. `&vch[vch.size()]` is illegal,
@@ -1417,9 +1417,9 @@ communication:
   using TipChangedFn = std::function<void(int block_height, int64_t block_time)>;
   virtual std::unique_ptr<interfaces::Handler> handleTipChanged(TipChangedFn fn) = 0;
 
-  // Bad: returns boost connection specific to local process
+  // Bad: returns btcsignals connection specific to local process
   using TipChangedFn = std::function<void(int block_height, int64_t block_time)>;
-  virtual boost::signals2::scoped_connection connectTipChanged(TipChangedFn fn) = 0;
+  virtual btcsignals::scoped_connection connectTipChanged(TipChangedFn fn) = 0;
   ```
 
 - Interface methods should not be overloaded.
