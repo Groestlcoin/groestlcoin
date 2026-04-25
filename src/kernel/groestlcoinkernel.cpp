@@ -905,6 +905,13 @@ const btck_BlockTreeEntry* btck_block_tree_entry_get_previous(const btck_BlockTr
     return btck_BlockTreeEntry::ref(btck_BlockTreeEntry::get(entry).pprev);
 }
 
+const btck_BlockTreeEntry* btck_block_tree_entry_get_ancestor(const btck_BlockTreeEntry* block_tree_entry, int32_t height)
+{
+    const auto* ancestor{btck_BlockTreeEntry::get(block_tree_entry).GetAncestor(height)};
+    assert(ancestor);
+    return btck_BlockTreeEntry::ref(ancestor);
+}
+
 btck_BlockValidationState* btck_block_validation_state_create()
 {
     return btck_BlockValidationState::create();
@@ -1352,13 +1359,13 @@ const btck_Chain* btck_chainstate_manager_get_active_chain(const btck_Chainstate
     return btck_Chain::ref(&WITH_LOCK(btck_ChainstateManager::get(chainman).m_chainman->GetMutex(), return btck_ChainstateManager::get(chainman).m_chainman->ActiveChain()));
 }
 
-int btck_chain_get_height(const btck_Chain* chain)
+int32_t btck_chain_get_height(const btck_Chain* chain)
 {
     LOCK(::cs_main);
     return btck_Chain::get(chain).Height();
 }
 
-const btck_BlockTreeEntry* btck_chain_get_by_height(const btck_Chain* chain, int height)
+const btck_BlockTreeEntry* btck_chain_get_by_height(const btck_Chain* chain, int32_t height)
 {
     LOCK(::cs_main);
     return btck_BlockTreeEntry::ref(btck_Chain::get(chain)[height]);
@@ -1367,7 +1374,7 @@ const btck_BlockTreeEntry* btck_chain_get_by_height(const btck_Chain* chain, int
 int btck_chain_contains(const btck_Chain* chain, const btck_BlockTreeEntry* entry)
 {
     LOCK(::cs_main);
-    return btck_Chain::get(chain).Contains(&btck_BlockTreeEntry::get(entry)) ? 1 : 0;
+    return btck_Chain::get(chain).Contains(btck_BlockTreeEntry::get(entry)) ? 1 : 0;
 }
 
 btck_BlockHeader* btck_block_header_create(const void* raw_block_header, size_t raw_block_header_len)

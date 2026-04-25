@@ -112,6 +112,12 @@ extern "C" {
  * object.
  *
  * Array lengths follow the pointer argument they describe.
+ *
+ * @section types Type conventions
+ *
+ * Fixed-width integer types (e.g. int32_t, uint32_t) are used for data values
+ * such as heights. Plain int and unsigned int are used for boolean-like values
+ * and flags.
  */
 
 /**
@@ -1033,6 +1039,17 @@ BITCOINKERNEL_API const btck_BlockHash* BITCOINKERNEL_WARN_UNUSED_RESULT btck_bl
 BITCOINKERNEL_API int BITCOINKERNEL_WARN_UNUSED_RESULT btck_block_tree_entry_equals(
     const btck_BlockTreeEntry* entry1, const btck_BlockTreeEntry* entry2) BITCOINKERNEL_ARG_NONNULL(1, 2);
 
+/**
+ * @brief Return the ancestor of a btck_BlockTreeEntry at the given height.
+ *
+ * @param[in] block_tree_entry Non-null.
+ * @param[in] height           The height of the requested ancestor.
+ * @return                     The ancestor at the given height.
+ */
+BITCOINKERNEL_API const btck_BlockTreeEntry* BITCOINKERNEL_WARN_UNUSED_RESULT btck_block_tree_entry_get_ancestor(
+    const btck_BlockTreeEntry* block_tree_entry,
+    int32_t height) BITCOINKERNEL_ARG_NONNULL(1);
+
 ///@}
 
 /** @name ChainstateManagerOptions
@@ -1423,7 +1440,7 @@ BITCOINKERNEL_API int32_t BITCOINKERNEL_WARN_UNUSED_RESULT btck_chain_get_height
  */
 BITCOINKERNEL_API const btck_BlockTreeEntry* BITCOINKERNEL_WARN_UNUSED_RESULT btck_chain_get_by_height(
     const btck_Chain* chain,
-    int block_height) BITCOINKERNEL_ARG_NONNULL(1);
+    int32_t block_height) BITCOINKERNEL_ARG_NONNULL(1);
 
 /**
  * @brief Return true if the passed in chain contains the block tree entry.

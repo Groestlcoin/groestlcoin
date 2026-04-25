@@ -14,6 +14,7 @@
 #include <test/util/setup_common.h>
 #include <test/util/time.h>
 #include <uint256.h>
+#include <univalue.h>
 #include <util/bitdeque.h>
 #include <util/byte_units.h>
 #include <util/fs.h>
@@ -36,7 +37,7 @@
 #include <optional>
 #include <string>
 #include <thread>
-#include <univalue.h>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -1633,10 +1634,10 @@ BOOST_AUTO_TEST_CASE(util_ParseByteUnits)
     BOOST_CHECK_EQUAL(ParseByteUnits("1K", noop).value(), 1ULL << 10);
 
     BOOST_CHECK_EQUAL(ParseByteUnits("2m", noop).value(), 2'000'000ULL);
-    BOOST_CHECK_EQUAL(ParseByteUnits("2M", noop).value(), 2ULL << 20);
+    BOOST_CHECK_EQUAL(ParseByteUnits("2M", noop).value(), 2_MiB);
 
     BOOST_CHECK_EQUAL(ParseByteUnits("3g", noop).value(), 3'000'000'000ULL);
-    BOOST_CHECK_EQUAL(ParseByteUnits("3G", noop).value(), 3ULL << 30);
+    BOOST_CHECK_EQUAL(ParseByteUnits("3G", noop).value(), 3_GiB);
 
     BOOST_CHECK_EQUAL(ParseByteUnits("4t", noop).value(), 4'000'000'000'000ULL);
     BOOST_CHECK_EQUAL(ParseByteUnits("4T", noop).value(), 4ULL << 40);
@@ -1657,7 +1658,7 @@ BOOST_AUTO_TEST_CASE(util_ParseByteUnits)
     BOOST_CHECK(!ParseByteUnits("+123m", noop));
 
     // zero padding
-    BOOST_CHECK_EQUAL(ParseByteUnits("020M", noop).value(), 20ULL << 20);
+    BOOST_CHECK_EQUAL(ParseByteUnits("020M", noop).value(), 20_MiB);
 
     // fractions not allowed
     BOOST_CHECK(!ParseByteUnits("0.5T", noop));
@@ -1827,12 +1828,38 @@ BOOST_AUTO_TEST_CASE(saturating_left_shift_test)
     TestSaturatingLeftShift<int64_t>();
 }
 
+template <class Int, auto bytes>
+concept BraceInitializesTo = requires { Int{bytes}; };
+
 BOOST_AUTO_TEST_CASE(mib_string_literal_test)
 {
+    // Basic equivalences and simple arithmetic operations
     BOOST_CHECK_EQUAL(0_MiB, 0);
+    BOOST_CHECK_EQUAL(1_MiB, 1 << 20);
     BOOST_CHECK_EQUAL(1_MiB, 1024 * 1024);
-    const auto max_mib{std::numeric_limits<size_t>::max() >> 20};
-    BOOST_CHECK_EXCEPTION(operator""_MiB(static_cast<unsigned long long>(max_mib) + 1), std::overflow_error, HasReason("MiB value too large for size_t byte conversion"));
+    BOOST_CHECK_EQUAL(1_MiB, 0x100000U);
+    BOOST_CHECK_EQUAL(1_MiB, 1048576U);
+    BOOST_CHECK_EQUAL(2ULL * 1_MiB, 2ULL << 20);
+    BOOST_CHECK_EQUAL((3_MiB + 123) / double(1_MiB), (3_MiB + 123) / 1024.0 / 1024.0);
+
+    // Specific codebase values
+    BOOST_CHECK_EQUAL(4_MiB, 1 << 22);
+    BOOST_CHECK_EQUAL(8_MiB, 1 << 23);
+    BOOST_CHECK_EQUAL(16_MiB, 0x1000000U);
+    BOOST_CHECK_EQUAL(16_MiB, 1 << 24);
+    BOOST_CHECK_EQUAL(32_MiB, 0x2000000U);
+    BOOST_CHECK_EQUAL(32_MiB, 32U << 20);
+    BOOST_CHECK_EQUAL(50_MiB / 1_MiB, 50U);
+    BOOST_CHECK_EQUAL(50_MiB, 52428800U);
+    BOOST_CHECK_EQUAL(128_MiB, 0x8000000U);
+    BOOST_CHECK_EQUAL(550_MiB, 550ULL * 1024 * 1024);
+
+    // 4095 MiB fits in uint32_t bytes. 4096 MiB requires the uint64_t return type.
+    static_assert(BraceInitializesTo<uint32_t, 4095_MiB>);
+    static_assert(!BraceInitializesTo<uint32_t, 4096_MiB>);
+    static_assert(BraceInitializesTo<uint64_t, 4096_MiB>);
+    BOOST_CHECK_EQUAL(4095_MiB, uint32_t{4095} << 20);
+    BOOST_CHECK_EQUAL(4096_MiB, uint64_t{4096} << 20);
 }
 
 BOOST_AUTO_TEST_CASE(ceil_div_test)
@@ -1870,6 +1897,37 @@ BOOST_AUTO_TEST_CASE(ceil_div_test)
 
     // `serialize.h` varint scratch-buffer pattern.
     BOOST_CHECK_EQUAL(CeilDiv(sizeof(uint64_t) * 8, 7u), (sizeof(uint64_t) * 8 + 6) / 7);
+}
+
+BOOST_AUTO_TEST_CASE(gib_string_literal_test)
+{
+    // Basic equivalences and simple arithmetic operations
+    BOOST_CHECK_EQUAL(0_GiB, 0);
+    BOOST_CHECK_EQUAL(1_GiB, 1 << 30);
+    BOOST_CHECK_EQUAL(1_GiB, 1024 * 1024 * 1024);
+    BOOST_CHECK_EQUAL(1_GiB, 0x40000000U);
+    BOOST_CHECK_EQUAL(1_GiB, 1073741824U);
+    BOOST_CHECK_EQUAL(1_GiB, 1_MiB * 1024);
+    BOOST_CHECK_EQUAL(1_GiB, 1024_MiB);
+    BOOST_CHECK_EQUAL((1_GiB + 123) / double(1_GiB), (1_GiB + 123) / 1024.0 / 1024.0 / 1024.0);
+    BOOST_CHECK_EQUAL(2ULL * 1_GiB, 2ULL << 30);
+    BOOST_CHECK_EQUAL(4 * uint64_t{1_GiB}, uint64_t{4} << 30);
+    BOOST_CHECK_EQUAL(2_GiB, 2048_MiB);
+    BOOST_CHECK_EQUAL(3_GiB / 1_GiB, 3U);
+    BOOST_CHECK_EQUAL(3_GiB, 3U << 30);
+
+    // 3 GiB fits in uint32_t bytes. 4 GiB requires the uint64_t return type.
+    static_assert(BraceInitializesTo<uint32_t, 3_GiB>);
+    static_assert(!BraceInitializesTo<uint32_t, 4_GiB>);
+    static_assert(BraceInitializesTo<uint64_t, 4_GiB>);
+    BOOST_CHECK_EQUAL(3_GiB, uint32_t{3} << 30);
+    BOOST_CHECK_EQUAL(4_GiB, uint64_t{4} << 30);
+
+    // Specific codebase values
+    BOOST_CHECK_EQUAL(4_GiB, 4096_MiB);
+    BOOST_CHECK_EQUAL(8_GiB, 8192_MiB);
+    BOOST_CHECK_EQUAL(16_GiB, 16384_MiB);
+    BOOST_CHECK_EQUAL(32_GiB, 32768_MiB);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

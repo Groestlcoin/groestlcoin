@@ -25,6 +25,7 @@ Release Process
   - set `CLIENT_VERSION_MINOR` to `0`
   - set `CLIENT_VERSION_BUILD` to `0`
   - set `CLIENT_VERSION_IS_RELEASE` to `true`
+* Check with the security team whether there is any security advisory to pre-announce.
 
 #### Before branch-off
 
@@ -221,7 +222,7 @@ cat "$VERSION"/*/all.SHA256SUMS.asc > SHA256SUMS.asc
 
       - Create a [new GitHub release](https://github.com/groestlcoin/groestlcoin/releases/new) with a link to the archived release notes
 
-- Announce the release:
+- Announce the release, along with any security advisory pre-announcements:
 
       - groestlcoin.org/forum post
 

@@ -13,6 +13,7 @@
 #include <txdb.h>
 #include <uint256.h>
 #include <undo.h>
+#include <util/byte_units.h>
 #include <util/strencodings.h>
 
 #include <map>
@@ -296,7 +297,7 @@ BOOST_FIXTURE_TEST_SUITE(coins_tests_dbbase, BasicTestingSetup)
 
 BOOST_FIXTURE_TEST_CASE(coins_cache_dbbase_simulation_test, CacheTest)
 {
-    CCoinsViewDB db_base{{.path = "test", .cache_bytes = 1 << 23, .memory_only = true}, {}};
+    CCoinsViewDB db_base{{.path = "test", .cache_bytes = 8_MiB, .memory_only = true}, {}};
     SimulationTest(&db_base, true);
 }
 
@@ -524,7 +525,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     // Good example
     Coin cc1;
     SpanReader{"97f23c835800816115944e077fe7c803cfa57f29b36bf87c1d35"_hex} >> cc1;
-    BOOST_CHECK_EQUAL(cc1.fCoinBase, false);
+    BOOST_CHECK_EQUAL(cc1.IsCoinBase(), false);
     BOOST_CHECK_EQUAL(cc1.nHeight, 203998U);
     BOOST_CHECK_EQUAL(cc1.out.nValue, CAmount{60000000000});
     BOOST_CHECK_EQUAL(HexStr(cc1.out.scriptPubKey), HexStr(GetScriptForDestination(PKHash(uint160("816115944e077fe7c803cfa57f29b36bf87c1d35"_hex_u8)))));
@@ -532,7 +533,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     // Good example
     Coin cc2;
     SpanReader{"8ddf77bbd123008c988f1a4a4de2161e0f50aac7f17e7f9555caa4"_hex} >> cc2;
-    BOOST_CHECK_EQUAL(cc2.fCoinBase, true);
+    BOOST_CHECK_EQUAL(cc2.IsCoinBase(), true);
     BOOST_CHECK_EQUAL(cc2.nHeight, 120891U);
     BOOST_CHECK_EQUAL(cc2.out.nValue, 110397);
     BOOST_CHECK_EQUAL(HexStr(cc2.out.scriptPubKey), HexStr(GetScriptForDestination(PKHash(uint160("8c988f1a4a4de2161e0f50aac7f17e7f9555caa4"_hex_u8)))));
@@ -540,7 +541,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     // Smallest possible example
     Coin cc3;
     SpanReader{"000006"_hex} >> cc3;
-    BOOST_CHECK_EQUAL(cc3.fCoinBase, false);
+    BOOST_CHECK_EQUAL(cc3.IsCoinBase(), false);
     BOOST_CHECK_EQUAL(cc3.nHeight, 0U);
     BOOST_CHECK_EQUAL(cc3.out.nValue, 0);
     BOOST_CHECK_EQUAL(cc3.out.scriptPubKey.size(), 0U);
@@ -880,7 +881,7 @@ Coin MakeCoin()
     Coin coin;
     coin.out.nValue = m_rng.rand32();
     coin.nHeight = m_rng.randrange(4096);
-    coin.fCoinBase = 0;
+    coin.fCoinBase = false;
     return coin;
 }
 
@@ -1048,7 +1049,7 @@ void TestFlushBehavior(
 BOOST_FIXTURE_TEST_CASE(ccoins_flush_behavior, FlushTest)
 {
     // Create two in-memory caches atop a leveldb view.
-    CCoinsViewDB base{{.path = "test", .cache_bytes = 1 << 23, .memory_only = true}, {}};
+    CCoinsViewDB base{{.path = "test", .cache_bytes = 8_MiB, .memory_only = true}, {}};
     std::vector<std::unique_ptr<CCoinsViewCacheTest>> caches;
     caches.push_back(std::make_unique<CCoinsViewCacheTest>(&base));
     caches.push_back(std::make_unique<CCoinsViewCacheTest>(caches.back().get()));
