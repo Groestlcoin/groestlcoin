@@ -125,12 +125,12 @@ RPC interface will be abused.
   trust.
 
 - **RPC Credentials Security Boundary:** Any client with valid RPC credentials
-  should be treated as having significant control over both the Bitcoin Core node
-  and the filesystem resources accessible by the `bitcoind` process. RPC commands
-  can load wallet files from paths that the `bitcoind` process has permission to
+  should be treated as having significant control over both the Groestlcoin Core node
+  and the filesystem resources accessible by the `groestlcoind` process. RPC commands
+  can load wallet files from paths that the `groestlcoind` process has permission to
   access, specify file paths for operations, and potentially gain broader access
   than intended. This means that someone with RPC access can potentially compromise
-  not only the Bitcoin Core node, but also the machine it is running on. Bitcoin Core
+  not only the Groestlcoin Core node, but also the machine it is running on. Groestlcoin Core
   provides the `-rpcwhitelist` option to restrict which RPC commands specific users
   can access, and `-rpcwhitelistdefault` to control the default behavior for users
   without explicit whitelists. However, when using multiple wallets or sharing access

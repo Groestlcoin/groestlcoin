@@ -51,7 +51,7 @@ versions = []
 for relpath in BINARIES:
     abspath = os.path.join(builddir, relpath)
     # Prevent QT from emitting a localized version string for --version and --help
-    is_qt = relpath == "bin/bitcoin-qt"
+    is_qt = relpath == "bin/groestlcoin-qt"
     try:
         cmd_args = ["--version"]
         if is_qt:
