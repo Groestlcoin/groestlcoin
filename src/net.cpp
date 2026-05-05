@@ -384,6 +384,7 @@ CNode* CConnman::ConnectNode(CAddress addrConnect,
                              bool use_v2transport,
                              const std::optional<Proxy>& proxy_override)
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
 
@@ -1691,6 +1692,8 @@ std::pair<size_t, bool> CConnman::SocketSendData(CNode& node) const
  */
 bool CConnman::AttemptToEvictConnection()
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
 
@@ -1739,6 +1742,8 @@ bool CConnman::AttemptToEvictConnection()
 }
 
 void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
+    AssertLockNotHeld(m_nodes_mutex);
+
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
     auto sock = hListenSocket.sock->Accept((struct sockaddr*)&sockaddr, &len);
@@ -1771,6 +1776,8 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
                                             const CService& addr_bind,
                                             const CService& addr)
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     int nInbound = 0;
 
     const bool inbound_onion = std::find(m_onion_binds.begin(), m_onion_binds.end(), addr_bind) != m_onion_binds.end();
@@ -1878,6 +1885,7 @@ void CConnman::CreateNodeFromAcceptedSocket(std::unique_ptr<Sock>&& sock,
 
 bool CConnman::AddConnection(const std::string& address, ConnectionType conn_type, bool use_v2transport = false)
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     std::optional<int> max_connections;
     switch (conn_type) {
@@ -1995,6 +2003,8 @@ void CConnman::DisconnectNodes()
 
 void CConnman::NotifyNumConnectionsChanged()
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     size_t nodes_size;
     {
         LOCK(m_nodes_mutex);
@@ -2099,6 +2109,7 @@ Sock::EventsPerSock CConnman::GenerateWaitSockets(std::span<CNode* const> nodes)
 
 void CConnman::SocketHandler()
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_total_bytes_sent_mutex);
 
     Sock::EventsPerSock events_per_sock;
@@ -2229,6 +2240,8 @@ void CConnman::SocketHandlerConnected(const std::vector<CNode*>& nodes,
 
 void CConnman::SocketHandlerListening(const Sock::EventsPerSock& events_per_sock)
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     for (const ListenSocket& listen_socket : vhListenSocket) {
         if (m_interrupt_net->interrupted()) {
             return;
@@ -2412,6 +2425,7 @@ void CConnman::DumpAddresses()
 
 void CConnman::ProcessAddrFetch()
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     std::string strDest;
     {
@@ -2451,6 +2465,8 @@ void CConnman::StartExtraBlockRelayPeers()
 // Return the number of outbound connections that are full relay (not blocks only)
 int CConnman::GetFullOutboundConnCount() const
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     int nRelevant = 0;
     {
         LOCK(m_nodes_mutex);
@@ -2469,6 +2485,8 @@ int CConnman::GetFullOutboundConnCount() const
 // evict some peer that has finished the handshake)
 int CConnman::GetExtraFullOutboundCount() const
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     int full_outbound_peers = 0;
     {
         LOCK(m_nodes_mutex);
@@ -2483,6 +2501,8 @@ int CConnman::GetExtraFullOutboundCount() const
 
 int CConnman::GetExtraBlockRelayCount() const
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     int block_relay_peers = 0;
     {
         LOCK(m_nodes_mutex);
@@ -2516,6 +2536,8 @@ bool CConnman::MultipleManualOrFullOutboundConns(Network net) const
 
 bool CConnman::MaybePickPreferredNetwork(std::optional<Network>& network)
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     std::array<Network, 5> nets{NET_IPV4, NET_IPV6, NET_ONION, NET_I2P, NET_CJDNS};
     std::shuffle(nets.begin(), nets.end(), FastRandomContext());
 
@@ -2532,8 +2554,10 @@ bool CConnman::MaybePickPreferredNetwork(std::optional<Network>& network)
 
 void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std::span<const std::string> seed_nodes)
 {
-    AssertLockNotHeld(m_unused_i2p_sessions_mutex);
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_reconnections_mutex);
+    AssertLockNotHeld(m_unused_i2p_sessions_mutex);
+
     FastRandomContext rng;
     // Connect to specific addresses
     if (!connect.empty())
@@ -2903,6 +2927,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
 
 std::vector<CAddress> CConnman::GetCurrentBlockRelayOnlyConns() const
 {
+    AssertLockNotHeld(m_nodes_mutex);
     std::vector<CAddress> ret;
     LOCK(m_nodes_mutex);
     for (const CNode* pnode : m_nodes) {
@@ -2916,6 +2941,8 @@ std::vector<CAddress> CConnman::GetCurrentBlockRelayOnlyConns() const
 
 std::vector<AddedNodeInfo> CConnman::GetAddedNodeInfo(bool include_connected) const
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     std::vector<AddedNodeInfo> ret;
 
     std::list<AddedNodeParams> lAddresses(0);
@@ -2976,8 +3003,10 @@ std::vector<AddedNodeInfo> CConnman::GetAddedNodeInfo(bool include_connected) co
 
 void CConnman::ThreadOpenAddedConnections()
 {
-    AssertLockNotHeld(m_unused_i2p_sessions_mutex);
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_reconnections_mutex);
+    AssertLockNotHeld(m_unused_i2p_sessions_mutex);
+
     while (true)
     {
         CountingSemaphoreGrant<> grant(*semAddnode);
@@ -3013,6 +3042,7 @@ bool CConnman::OpenNetworkConnection(const CAddress& addrConnect,
                                      bool use_v2transport,
                                      const std::optional<Proxy>& proxy_override)
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     assert(conn_type != ConnectionType::INBOUND);
 
@@ -3132,6 +3162,8 @@ Mutex NetEventsInterface::g_msgproc_mutex;
 
 void CConnman::ThreadMessageHandler()
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     LOCK(NetEventsInterface::g_msgproc_mutex);
 
     while (!flagInterruptMsgProc)
@@ -3171,6 +3203,8 @@ void CConnman::ThreadMessageHandler()
 
 void CConnman::ThreadI2PAcceptIncoming()
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     static constexpr auto err_wait_begin = 1s;
     static constexpr auto err_wait_cap = 5min;
     auto err_wait = err_wait_begin;
@@ -3214,6 +3248,7 @@ void CConnman::ThreadI2PAcceptIncoming()
 
 void CConnman::ThreadPrivateBroadcast()
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
 
     size_t addrman_num_bad_addresses{0};
@@ -3643,6 +3678,7 @@ void CConnman::StopThreads()
 
 void CConnman::StopNodes()
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_reconnections_mutex);
 
     if (fAddressesInitialized) {
@@ -3807,6 +3843,8 @@ uint32_t CConnman::GetMappedAS(const CNetAddr& addr) const
 
 void CConnman::GetNodeStats(std::vector<CNodeStats>& vstats) const
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     vstats.clear();
     LOCK(m_nodes_mutex);
     vstats.reserve(m_nodes.size());
@@ -3832,6 +3870,7 @@ bool CConnman::DisconnectNode(std::string_view strNode)
 
 bool CConnman::DisconnectNode(const CSubNet& subnet)
 {
+    AssertLockNotHeld(m_nodes_mutex);
     bool disconnected = false;
     LOCK(m_nodes_mutex);
     for (CNode* pnode : m_nodes) {
@@ -3846,6 +3885,7 @@ bool CConnman::DisconnectNode(const CSubNet& subnet)
 
 bool CConnman::DisconnectNode(const CNetAddr& addr)
 {
+    AssertLockNotHeld(m_nodes_mutex);
     return DisconnectNode(CSubNet(addr));
 }
 
@@ -4128,6 +4168,8 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 
 bool CConnman::ForNode(NodeId id, std::function<bool(CNode* pnode)> func)
 {
+    AssertLockNotHeld(m_nodes_mutex);
+
     CNode* found = nullptr;
     LOCK(m_nodes_mutex);
     for (auto&& pnode : m_nodes) {
@@ -4153,6 +4195,7 @@ uint64_t CConnman::CalculateKeyedNetGroup(const CNetAddr& address) const
 
 void CConnman::PerformReconnections()
 {
+    AssertLockNotHeld(m_nodes_mutex);
     AssertLockNotHeld(m_reconnections_mutex);
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     while (true) {

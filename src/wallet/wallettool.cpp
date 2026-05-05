@@ -102,7 +102,12 @@ bool ExecuteWalletToolFunc(const ArgsManager& args, const std::string& command)
         return false;
     }
     const std::string name = args.GetArg("-wallet", "");
-    const fs::path path = fsbridge::AbsPathJoin(GetWalletDir(), fs::PathFromString(name));
+    util::Result<fs::path> path_res = GetWalletPath(name);
+    if (!path_res) {
+        tfm::format(std::cerr, "%s\n", util::ErrorString(path_res).original);
+        return false;
+    }
+    const fs::path& path = *path_res;
 
     if (command == "create") {
         if (name.empty()) {
