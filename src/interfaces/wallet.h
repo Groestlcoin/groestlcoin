@@ -32,7 +32,7 @@ class CFeeRate;
 class CKey;
 enum class FeeReason;
 enum class OutputType;
-struct PartiallySignedTransaction;
+class PartiallySignedTransaction;
 struct bilingual_str;
 namespace common {
 enum class PSBTError;
