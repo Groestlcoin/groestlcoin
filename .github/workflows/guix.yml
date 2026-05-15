@@ -64,7 +64,7 @@ jobs:
 
               rm -f guix-install.sh
               wget -q --tries=3 --timeout=30 \
-                https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh \
+                https://guix.gnu.org/guix-install.sh \
                 -O guix-install.sh
 
               chmod +x guix-install.sh
