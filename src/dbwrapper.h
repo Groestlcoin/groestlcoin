@@ -79,10 +79,10 @@ private:
     struct WriteBatchImpl;
     const std::unique_ptr<WriteBatchImpl> m_impl_batch;
 
-    DataStream ssKey{};
-    DataStream ssValue{};
+    DataStream m_key_scratch{};
+    DataStream m_value_scratch{};
 
-    void WriteImpl(std::span<const std::byte> key, DataStream& ssValue);
+    void WriteImpl(std::span<const std::byte> key, DataStream& value);
     void EraseImpl(std::span<const std::byte> key);
 
 public:
@@ -96,22 +96,18 @@ public:
     template <typename K, typename V>
     void Write(const K& key, const V& value)
     {
-        ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
-        ssValue.reserve(DBWRAPPER_PREALLOC_VALUE_SIZE);
-        ssKey << key;
-        ssValue << value;
-        WriteImpl(ssKey, ssValue);
-        ssKey.clear();
-        ssValue.clear();
+        ScopedDataStreamUsage scoped_key{m_key_scratch}, scoped_value{m_value_scratch};
+        m_key_scratch << key;
+        m_value_scratch << value;
+        WriteImpl(m_key_scratch, m_value_scratch);
     }
 
     template <typename K>
     void Erase(const K& key)
     {
-        ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
-        ssKey << key;
-        EraseImpl(ssKey);
-        ssKey.clear();
+        ScopedDataStreamUsage scoped_key{m_key_scratch};
+        m_key_scratch << key;
+        EraseImpl(m_key_scratch);
     }
 
     size_t ApproximateSize() const;
@@ -125,6 +121,7 @@ public:
 private:
     const CDBWrapper &parent;
     const std::unique_ptr<IteratorImpl> m_impl_iter;
+    DataStream m_scratch{};
 
     void SeekImpl(std::span<const std::byte> key);
     std::span<const std::byte> GetKeyImpl() const;
@@ -144,10 +141,9 @@ public:
     void SeekToFirst();
 
     template<typename K> void Seek(const K& key) {
-        DataStream ssKey{};
-        ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
-        ssKey << key;
-        SeekImpl(ssKey);
+        ScopedDataStreamUsage scoped_scratch{m_scratch};
+        m_scratch << key;
+        SeekImpl(m_scratch);
     }
 
     void Next();
@@ -164,9 +160,10 @@ public:
 
     template<typename V> bool GetValue(V& value) {
         try {
-            DataStream ssValue{GetValueImpl()};
-            dbwrapper_private::GetObfuscation(parent)(ssValue);
-            ssValue >> value;
+            ScopedDataStreamUsage scoped_scratch{m_scratch};
+            m_scratch.write(GetValueImpl());
+            dbwrapper_private::GetObfuscation(parent)(m_scratch);
+            m_scratch >> value;
         } catch (const std::exception&) {
             return false;
         }

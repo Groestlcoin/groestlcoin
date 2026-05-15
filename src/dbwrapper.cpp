@@ -163,6 +163,8 @@ CDBBatch::CDBBatch(const CDBWrapper& _parent)
     : parent{_parent},
       m_impl_batch{std::make_unique<CDBBatch::WriteBatchImpl>()}
 {
+    m_key_scratch.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
+    m_value_scratch.reserve(DBWRAPPER_PREALLOC_VALUE_SIZE);
     Clear();
 };
 
@@ -171,13 +173,15 @@ CDBBatch::~CDBBatch() = default;
 void CDBBatch::Clear()
 {
     m_impl_batch->batch.Clear();
+    assert(m_key_scratch.empty());
+    assert(m_value_scratch.empty());
 }
 
-void CDBBatch::WriteImpl(std::span<const std::byte> key, DataStream& ssValue)
+void CDBBatch::WriteImpl(std::span<const std::byte> key, DataStream& value)
 {
     leveldb::Slice slKey(CharCast(key.data()), key.size());
-    dbwrapper_private::GetObfuscation(parent)(ssValue);
-    leveldb::Slice slValue(CharCast(ssValue.data()), ssValue.size());
+    dbwrapper_private::GetObfuscation(parent)(value);
+    leveldb::Slice slValue(CharCast(value.data()), value.size());
     m_impl_batch->batch.Put(slKey, slValue);
 }
 
@@ -356,7 +360,10 @@ struct CDBIterator::IteratorImpl {
 };
 
 CDBIterator::CDBIterator(const CDBWrapper& _parent, std::unique_ptr<IteratorImpl> _piter) : parent(_parent),
-                                                                                            m_impl_iter(std::move(_piter)) {}
+                                                                                            m_impl_iter(std::move(_piter))
+{
+    m_scratch.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
+}
 
 CDBIterator* CDBWrapper::NewIterator()
 {

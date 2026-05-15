@@ -12,7 +12,7 @@ set -o errexit -o pipefail -o xtrace
 # of the mounted groestlcoin src dir.
 git config --global --add safe.directory /groestlcoin
 
-export PATH="/python_build/bin:${PATH}"
+export PATH="/python_env/bin:${PATH}"
 
 if [ -n "${LINT_CI_IS_PR}" ]; then
   export COMMIT_RANGE="HEAD~..HEAD"
