@@ -675,10 +675,9 @@ BITCOINKERNEL_API const btck_Txid* BITCOINKERNEL_WARN_UNUSED_RESULT btck_transac
  *
  * @param[in]  tx               Non-null, the transaction to validate.
  * @param[out] validation_state Non-null, previously created with
- *                              btck_tx_validation_state_create. Reset on
- *                              entry (any prior contents are overwritten)
- *                              and updated in-place with the validation
- *                              result before this function returns.
+ *                              btck_tx_validation_state_create.
+ *                              Overwritten in-place with the validation
+ *                              result.
  * @return                      1 if valid, 0 if invalid.
  * @note                        Only btck_TxValidationResult_UNSET and
  *                              btck_TxValidationResult_CONSENSUS are
@@ -1243,13 +1242,11 @@ BITCOINKERNEL_API const btck_BlockTreeEntry* BITCOINKERNEL_WARN_UNUSED_RESULT bt
  *
  * @param[in] chainstate_manager        Non-null.
  * @param[in] header                    Non-null btck_BlockHeader to be validated.
- * @param[out] block_validation_state   The result of the btck_BlockHeader validation.
- * @return                              0 if btck_BlockHeader processing completed successfully, non-zero on error.
+ * @return                              The btck_BlockValidationState containing validation result, or null on error.
  */
-BITCOINKERNEL_API int BITCOINKERNEL_WARN_UNUSED_RESULT btck_chainstate_manager_process_block_header(
+BITCOINKERNEL_API btck_BlockValidationState* BITCOINKERNEL_WARN_UNUSED_RESULT btck_chainstate_manager_process_block_header(
     btck_ChainstateManager* chainstate_manager,
-    const btck_BlockHeader* header,
-    btck_BlockValidationState* block_validation_state) BITCOINKERNEL_ARG_NONNULL(1, 2, 3);
+    const btck_BlockHeader* header) BITCOINKERNEL_ARG_NONNULL(1, 2);
 
 /**
  * @brief Triggers the start of a reindex if the wipe options were previously
@@ -1385,9 +1382,10 @@ typedef uint32_t btck_BlockCheckFlags;
  *                                  optional POW and merkle-root checks. Use
  *                                  btck_BlockCheckFlags_BASE to run only the base
  *                                  checks.
- * @param[in,out] validation_state  Non-null, previously created with
- *                                  btck_block_validation_state_create and updated
- *                                  in-place with the validation result.
+ * @param[out]    validation_state  Non-null, previously created with
+ *                                  btck_block_validation_state_create.
+ *                                  Overwritten in-place with the validation
+ *                                  result.
  * @return                          1 if the btck_Block passed the checks, 0 otherwise.
  */
 BITCOINKERNEL_API int BITCOINKERNEL_WARN_UNUSED_RESULT btck_block_check(
