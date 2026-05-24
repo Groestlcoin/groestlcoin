@@ -14,7 +14,6 @@
 #include <leveldb/slice.h>
 #include <leveldb/status.h>
 #include <leveldb/write_batch.h>
-#include <logging.h>
 #include <random.h>
 #include <serialize.h>
 #include <span.h>
@@ -59,7 +58,7 @@ public:
     // This code is adapted from posix_logger.h, which is why it is using vsprintf.
     // Please do not do this in normal code
     void Logv(const char * format, va_list ap) override {
-            if (!LogAcceptCategory(BCLog::LEVELDB, util::log::Level::Debug)) {
+            if (!util::log::ShouldDebugLog(BCLog::LEVELDB)) {
                 return;
             }
             char buffer[500];
@@ -150,7 +149,6 @@ static leveldb::Options GetOptions(size_t nCacheSize)
         // on corruption in later versions.
         options.paranoid_checks = true;
     }
-    options.max_file_size = std::max(options.max_file_size, DBWRAPPER_MAX_FILE_SIZE);
     SetMaxOpenFiles(&options);
     return options;
 }
@@ -229,16 +227,23 @@ CDBWrapper::CDBWrapper(const DBParams& params)
     DBContext().syncoptions.sync = true;
     DBContext().options = GetOptions(params.cache_bytes);
     DBContext().options.create_if_missing = true;
-    if (params.memory_only) {
+    DBContext().options.max_file_size = params.max_file_size;
+    assert(!(params.testing_env && params.memory_only));
+    if (params.testing_env) {
+        DBContext().options.env = params.testing_env;
+    } else if (params.memory_only) {
         DBContext().penv = leveldb::NewMemEnv(leveldb::Env::Default());
         DBContext().options.env = DBContext().penv;
-    } else {
+    }
+    if (!params.memory_only) {
         if (params.wipe_data) {
             LogInfo("Wiping LevelDB in %s", fs::PathToString(params.path));
             leveldb::Status result = leveldb::DestroyDB(fs::PathToString(params.path), DBContext().options);
             HandleError(result);
         }
-        TryCreateDirectories(params.path);
+        if (!params.testing_env) {
+            TryCreateDirectories(params.path);
+        }
         LogInfo("Opening LevelDB in %s", fs::PathToString(params.path));
     }
     // PathToString() return value is safe to pass to leveldb open function,
@@ -282,7 +287,7 @@ CDBWrapper::~CDBWrapper()
 
 void CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 {
-    const bool log_memory = LogAcceptCategory(BCLog::LEVELDB, util::log::Level::Debug);
+    const bool log_memory = util::log::ShouldDebugLog(BCLog::LEVELDB);
     double mem_before = 0;
     if (log_memory) {
         mem_before = DynamicMemoryUsage() / double(1_MiB);
