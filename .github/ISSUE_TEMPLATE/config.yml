@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: Groestlcoin Core Security Policy
-    url: https://github.com/bitcoin/bitcoin/blob/master/SECURITY.md
+    url: https://github.com/groestlcoin/groestlcoin/blob/master/SECURITY.md
     about: View security policy
   - name: Groestlcoin Core Developers
     url: https://groestlcoin.org
