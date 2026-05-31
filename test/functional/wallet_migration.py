@@ -181,6 +181,15 @@ class WalletMigrationTest(BitcoinTestFramework):
         return migrate_info, wallet
 
     def test_basic(self):
+        # Remove the deprecated response fields that'd be present in the RPC responses
+        # sent by the old node(s).
+        def remove_deprecated_keys(list):
+            deprecated_keys = {"bip125-replaceable"}
+            for obj in list:
+                for key in deprecated_keys:
+                    obj.pop(key)
+            return list
+
         default = self.master_node.get_wallet_rpc(self.default_wallet_name)
 
         self.log.info("Test migration of a basic keys only wallet without balance")
@@ -236,7 +245,7 @@ class WalletMigrationTest(BitcoinTestFramework):
 
         basic1_migrate, basic1 = self.migrate_and_get_rpc("basic1")
         assert_equal(basic1.getbalance(), bal)
-        self.assert_list_txs_equal(basic1.listtransactions(), txs)
+        self.assert_list_txs_equal(basic1.listtransactions(), remove_deprecated_keys(txs))
 
         self.log.info("Test backup file can be successfully restored")
         self.old_node.restorewallet("basic1_restored", basic1_migrate['backup_path'])
@@ -244,7 +253,7 @@ class WalletMigrationTest(BitcoinTestFramework):
         basic1_restored_wi = basic1_restored.getwalletinfo()
         assert_equal(basic1_restored_wi['balance'], bal)
         assert_equal(basic1_restored.listaddressgroupings(), addr_gps)
-        self.assert_list_txs_equal(basic1_restored.listtransactions(), txs)
+        self.assert_list_txs_equal(remove_deprecated_keys(basic1_restored.listtransactions()), txs)
 
         # restart master node and verify that everything is still there
         self.restart_node(0)
@@ -274,7 +283,7 @@ class WalletMigrationTest(BitcoinTestFramework):
         # Now migrate and test that we still have the same balance/transactions
         _, basic2 = self.migrate_and_get_rpc("basic2")
         assert_equal(basic2.getbalance(), basic2_balance)
-        self.assert_list_txs_equal(basic2.listtransactions(), basic2_txs)
+        self.assert_list_txs_equal(basic2.listtransactions(), remove_deprecated_keys(basic2_txs))
 
         # Now test migration on a descriptor wallet
         self.log.info("Test \"nothing to migrate\" when the user tries to migrate a loaded wallet with no legacy data")
@@ -1573,6 +1582,36 @@ class WalletMigrationTest(BitcoinTestFramework):
 
         self.clear_default_wallet(backup_path)
 
+    @staticmethod
+    def erase_bdb_record(wallet_dat_path, key):
+        data = bytearray(wallet_dat_path.read_bytes())
+        idx = data.find(key)
+        assert idx != -1, f"{key!r} not found in wallet.dat"
+
+        for i in range(idx, idx + len(key)):
+            data[i] = 0
+
+        wallet_dat_path.write_bytes(data)
+
+    def test_missing_bestblock(self):
+        self.log.info("Test migrating legacy BDB wallet without bestblock record")
+        wallet_name = "nobestblock"
+        wallet = self.create_legacy_wallet(wallet_name)
+        wallet.unloadwallet()
+
+        # Erase block locator records like if this would be a pre-#152 wallet
+        self.erase_bdb_record(self.old_node.wallets_path / wallet_name / "wallet.dat", b"bestblock_nomerkle")
+        self.erase_bdb_record(self.old_node.wallets_path / wallet_name / "wallet.dat", b"bestblock")
+
+        shutil.copytree(self.old_node.wallets_path / wallet_name, self.master_node.wallets_path / wallet_name, dirs_exist_ok=True)
+        # Migrate, checking that rescan occurs
+        with self.master_node.assert_debug_log(expected_msgs=["Rescanning"], unexpected_msgs=[]):
+            self.master_node.migratewallet(wallet_name)
+
+        wallet = self.master_node.get_wallet_rpc(wallet_name)
+        info = wallet.getwalletinfo()
+        assert_equal(info["descriptors"], True)
+        assert_equal(info["format"], "sqlite")
 
     def run_test(self):
         self.master_node = self.nodes[0]
@@ -1619,6 +1658,7 @@ class WalletMigrationTest(BitcoinTestFramework):
         self.test_taproot()
         self.test_solvable_no_privs()
         self.test_loading_failure_after_migration()
+        self.test_missing_bestblock()
 
         # Note: After this test the first 250 blocks of 'master_node' are pruned
         self.unsynced_wallet_on_pruned_node_fails()

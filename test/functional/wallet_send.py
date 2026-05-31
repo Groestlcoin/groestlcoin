@@ -7,7 +7,6 @@
 from decimal import Decimal, getcontext
 from itertools import product
 
-from test_framework.authproxy import JSONRPCException
 from test_framework.descriptors import descsum_create
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
@@ -18,6 +17,7 @@ from test_framework.util import (
     assert_greater_than_or_equal,
     assert_raises_rpc_error,
     count_bytes,
+    JSONRPCException,
 )
 from test_framework.wallet_util import (
     calculate_input_weight,
@@ -31,10 +31,7 @@ class WalletSendTest(BitcoinTestFramework):
         # whitelist peers to speed up tx relay / mempool sync
         self.noban_tx_relay = True
         self.supports_cli = False
-        self.extra_args = [
-            ["-walletrbf=1", "-datacarriersize=16"],
-            ["-walletrbf=1", "-datacarriersize=16"]
-        ]
+        self.extra_args = [["-datacarriersize=16"]] * self.num_nodes
         getcontext().prec = 8 # Satoshi precision for Decimal
 
     def skip_test_if_missing_module(self):
@@ -170,7 +167,6 @@ class WalletSendTest(BitcoinTestFramework):
             # Ensure transaction exists in the wallet:
             tx = from_wallet.gettransaction(res["txid"])
             assert tx
-            assert_equal(tx["bip125-replaceable"], "yes" if replaceable else "no")
             if nonmempool:
                 assert_raises_rpc_error(-5, "No such mempool transaction", from_wallet.getrawtransaction, res["txid"])
                 assert from_wallet.getbalances()["mine"]["nonmempool"] < 0
@@ -433,14 +429,6 @@ class WalletSendTest(BitcoinTestFramework):
         # Locked coins are automatically unlocked when manually selected
         res = self.test_send(from_wallet=w0, to_wallet=w1, amount=1, inputs=[utxo1], add_to_wallet=False)
         assert res["complete"]
-
-        self.log.info("Replaceable...")
-        res = self.test_send(from_wallet=w0, to_wallet=w1, amount=1, add_to_wallet=True, replaceable=True)
-        assert res["complete"]
-        assert_equal(self.nodes[0].gettransaction(res["txid"])["bip125-replaceable"], "yes")
-        res = self.test_send(from_wallet=w0, to_wallet=w1, amount=1, add_to_wallet=True, replaceable=False)
-        assert res["complete"]
-        assert_equal(self.nodes[0].gettransaction(res["txid"])["bip125-replaceable"], "no")
 
         self.log.info("Subtract fee from output")
         self.test_send(from_wallet=w0, to_wallet=w1, amount=1, subtract_fee_from_outputs=[0])

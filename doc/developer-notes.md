@@ -42,7 +42,7 @@ code.
   - Constant names are all uppercase, and use `_` to separate words.
   - Enumerator constants may be `snake_case`, `PascalCase` or `ALL_CAPS`.
     This is a more tolerant policy than the [C++ Core
-    Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Renum-caps),
+    Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#renum-caps),
     which recommend using `snake_case`.  Please use what seems appropriate.
   - Class names, function names, and method names are UpperCamelCase
     (PascalCase). Do not prefix class names with `C`. See [Internal interface
@@ -55,16 +55,13 @@ code.
 
 - **Miscellaneous**
   - `++i` is preferred over `i++`.
-  - `nullptr` is preferred over `NULL` or `(void*)0`.
   - `static_assert` is preferred over `assert` where possible. Generally; compile-time checking is preferred over run-time checking.
   - Use a named cast or functional cast, not a C-Style cast. When casting
     between integer types, use functional casts such as `int(x)` or `int{x}`
     instead of `(int) x`. When casting between more complex types, use `static_cast`.
     Use `reinterpret_cast` and `const_cast` as appropriate.
-  - Prefer [`list initialization ({})`](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Res-list) where possible.
+  - Prefer [`list initialization ({})`](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#res-list) where possible.
     For example `int x{0};` instead of `int x = 0;` or `int x(0);`
-  - Recursion is checked by clang-tidy and thus must be made explicit. Use
-    `NOLINTNEXTLINE(misc-no-recursion)` to suppress the check.
 
 For function calls a namespace should be specified explicitly, unless such functions have been declared within it.
 Otherwise, [argument-dependent lookup](https://en.cppreference.com/w/cpp/language/adl), also known as ADL, could be
@@ -140,7 +137,18 @@ public:
   non-optional in-out and output parameters should usually be references, as
   they cannot be null.
 
-### Coding Style (C++ named arguments)
+### Coding Style (clang-tidy rules)
+
+The clang-tidy tool is used to check some rules. Please refer to the [upstream
+documentation](https://clang.llvm.org/extra/clang-tidy/checks/list.html) about
+the details and rationale for each rule.
+
+#### C++ Recursive Functions
+
+Recursion is checked by clang-tidy and thus must be made explicit. Use
+`NOLINTNEXTLINE(misc-no-recursion)` to suppress the check.
+
+#### C++ named arguments
 
 When passing named arguments, use a format that clang-tidy understands. The
 argument names can otherwise not be verified by clang-tidy.
@@ -156,7 +164,7 @@ int main()
 }
 ```
 
-### Running clang-tidy
+#### Running clang-tidy
 
 To run clang-tidy on Ubuntu/Debian, install the dependencies:
 
@@ -190,10 +198,6 @@ To run clang-tidy on the changed source lines:
 ```sh
 git diff | ( cd ./src/ && clang-tidy-diff -p2 -path ../build -j $(nproc) )
 ```
-
-## Coding Style (Python)
-
-Refer to [/test/functional/README.md#style-guidelines](/test/functional/README.md#style-guidelines).
 
 ## Coding Style (Doxygen-compatible comments)
 
@@ -298,6 +302,10 @@ Linux: `sudo apt install doxygen graphviz`
 
 MacOS: `brew install doxygen graphviz`
 
+## Coding Style (Python)
+
+Refer to [/test/functional/README.md#style-guidelines](/test/functional/README.md#style-guidelines).
+
 ## Development tips and tricks
 
 ### Compiling for debugging
@@ -385,22 +393,6 @@ other input.
      but a failed assumption does not result in a fatal bug. A failed
      assumption may or may not result in a slightly degraded user experience,
      but it is safe to continue program execution.
-
-### Valgrind suppressions file
-
-Valgrind is a programming tool for memory debugging, memory leak detection, and
-profiling. The repo contains a Valgrind suppressions file
-([`valgrind.supp`](/test/sanitizer_suppressions/valgrind.supp))
-which includes known Valgrind warnings in our dependencies that cannot be fixed
-in-tree. Example use:
-
-```shell
-$ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp build/bin/test_groestlcoin
-$ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp --leak-check=full \
-      --show-leak-kinds=all build/bin/test_groestlcoin --log_level=test_suite
-$ valgrind -v --leak-check=full build/bin/groestlcoind -printtoconsole
-$ ./build/test/functional/test_runner.py --valgrind
-```
 
 ### Compiling for test coverage
 
@@ -609,6 +601,21 @@ or using a graphical tool like [Hotspot](https://github.com/KDAB/hotspot).
 
 See the functional test documentation for how to invoke perf within tests.
 
+### Valgrind
+
+Valgrind is a programming tool for memory debugging, memory leak detection, and
+profiling. The repo contains a Valgrind suppressions file
+([`valgrind.supp`](/test/sanitizer_suppressions/valgrind.supp))
+which includes known Valgrind warnings in our dependencies that cannot be fixed
+in-tree. Example use:
+
+```shell
+$ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp build/bin/test_groestlcoin
+$ valgrind --suppressions=test/sanitizer_suppressions/valgrind.supp --leak-check=full \
+      --show-leak-kinds=all build/bin/test_groestlcoin --log_level=test_suite
+$ valgrind -v --leak-check=full build/bin/groestlcoind -printtoconsole
+$ ./build/test/functional/test_runner.py --valgrind
+```
 
 ### Sanitizers
 
@@ -664,6 +671,11 @@ Additional resources:
  * [GCC Instrumentation Options](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html)
  * [Google Sanitizers Wiki](https://github.com/google/sanitizers/wiki)
 
+# Development guidelines
+
+A few non-style-related recommendations for developers, as well as points to
+pay attention to for reviewers of Groestlcoin Core code.
+
 ## Locking/mutex usage notes
 
 The code is multi-threaded and uses mutexes and the
@@ -682,61 +694,56 @@ and its `cs_KeyStore` lock for example).
 
 ## Threads
 
-- [Main thread (`groestlcoind`)](https://doxygen.bitcoincore.org/bitcoind_8cpp.html#a0ddf1224851353fc92bfbff6f499fa97)
+- [Main thread (`groestlcoind`)](https://doxygen.bitcoincore.org/bitcoind_8cpp.html#main)
   : Started from `main()` in `bitcoind.cpp`. Responsible for starting up and
   shutting down the application.
 
-- [Init load (`b-initload`)](https://doxygen.bitcoincore.org/namespacenode.html#ab4305679079866f0f420f7dbf278381d)
+- [Init load (`b-initload`)](https://doxygen.bitcoincore.org/init_8cpp.html#initload)
   : Performs various loading tasks that are part of init but shouldn't block the node from being started: external block import,
    reindex, reindex-chainstate, main chain activation, spawn indexes background sync threads and mempool load.
 
-- [CCheckQueue::Loop (`b-scriptch.x`)](https://doxygen.bitcoincore.org/class_c_check_queue.html#a6e7fa51d3a25e7cb65446d4b50e6a987)
+- [CCheckQueue::Loop (`b-scriptch.x`)](https://doxygen.bitcoincore.org/class_c_check_queue.html#checkqueue)
   : Parallel script validation threads for transactions in blocks.
 
-- [ThreadHTTP (`b-http`)](https://doxygen.bitcoincore.org/httpserver_8cpp.html#abb9f6ea8819672bd9a62d3695070709c)
+- [ThreadHTTP (`b-http`)](https://doxygen.bitcoincore.org/httpserver_8cpp.html#http)
   : Libevent thread to listen for RPC and REST connections.
 
-- [HTTP worker threads (`b-http_pool_x`)](https://doxygen.bitcoincore.org/httpserver_8cpp.html#a2ad0a49dc9b5e8117c0dee98c24187d8)
+- [HTTP worker threads (`b-http_pool_x`)](https://doxygen.bitcoincore.org/httpserver_8cpp.html#http_pool)
   : Threads to service RPC and REST requests.
 
-- [Indexer threads (`b-txindex`, etc)](https://doxygen.bitcoincore.org/class_base_index.html#a96a7407421fbf877509248bbe64f8d87)
+- [Indexer threads (`b-txindex`, etc)](https://doxygen.bitcoincore.org/class_base_index.html#index_sync)
   : One thread per indexer.
 
-- [SchedulerThread (`b-scheduler`)](https://doxygen.bitcoincore.org/class_c_scheduler.html#a14d2800815da93577858ea078aed1fba)
+- [SchedulerThread (`b-scheduler`)](https://doxygen.bitcoincore.org/class_c_scheduler.html#scheduler)
   : Does asynchronous background tasks like dumping wallet contents, dumping
   addrman and running asynchronous validationinterface callbacks.
 
-- [TorControlThread (`b-torcontrol`)](https://doxygen.bitcoincore.org/torcontrol_8cpp.html#a52a3efff23634500bb42c6474f306091)
+- [TorControlThread (`b-torcontrol`)](https://doxygen.bitcoincore.org/class_tor_controller.html#torcontrol)
   : Libevent thread for tor connections.
 
 - Net threads:
 
-  - [ThreadMessageHandler (`b-msghand`)](https://doxygen.bitcoincore.org/class_c_connman.html#aacdbb7148575a31bb33bc345e2bf22a9)
+  - [ThreadMessageHandler (`b-msghand`)](https://doxygen.bitcoincore.org/class_c_connman.html#msghand)
     : Application level message handling (sending and receiving). Almost
     all net_processing and validation logic runs on this thread.
 
-  - [ThreadDNSAddressSeed (`b-dnsseed`)](https://doxygen.bitcoincore.org/class_c_connman.html#aa7c6970ed98a4a7bafbc071d24897d13)
+  - [ThreadDNSAddressSeed (`b-dnsseed`)](https://doxygen.bitcoincore.org/class_c_connman.html#dnsseed)
     : Loads addresses of peers from the DNS.
 
-  - ThreadMapPort (`b-mapport`)
+  - [ThreadMapPort (`b-mapport`)](https://doxygen.bitcoincore.org/mapport_8cpp.html#mapport)
     : Universal plug-and-play startup/shutdown.
 
-  - [ThreadSocketHandler (`b-net`)](https://doxygen.bitcoincore.org/class_c_connman.html#a765597cbfe99c083d8fa3d61bb464e34)
+  - [ThreadSocketHandler (`b-net`)](https://doxygen.bitcoincore.org/class_c_connman.html#net)
     : Sends/Receives data from peers on port 1331.
 
-  - [ThreadOpenAddedConnections (`b-addcon`)](https://doxygen.bitcoincore.org/class_c_connman.html#a0b787caf95e52a346a2b31a580d60a62)
+  - [ThreadOpenAddedConnections (`b-addcon`)](https://doxygen.bitcoincore.org/class_c_connman.html#addcon)
     : Opens network connections to added nodes.
 
-  - [ThreadOpenConnections (`b-opencon`)](https://doxygen.bitcoincore.org/class_c_connman.html#a55e9feafc3bab78e5c9d408c207faa45)
+  - [ThreadOpenConnections (`b-opencon`)](https://doxygen.bitcoincore.org/class_c_connman.html#opencon)
     : Initiates new connections to peers.
 
-  - [ThreadI2PAcceptIncoming (`b-i2paccept`)](https://doxygen.bitcoincore.org/class_c_connman.html#a57787b4f9ac847d24065fbb0dd6e70f8)
+  - [ThreadI2PAcceptIncoming (`b-i2paccept`)](https://doxygen.bitcoincore.org/class_c_connman.html#i2paccept)
     : Listens for and accepts incoming I2P connections through the I2P SAM proxy.
-
-# Development guidelines
-
-A few non-style-related recommendations for developers, as well as points to
-pay attention to for reviewers of Groestlcoin Core code.
 
 ## General Groestlcoin Core
 
@@ -796,7 +803,7 @@ Guidelines](https://isocpp.github.io/CppCoreGuidelines/).
 Common misconceptions are clarified in those sections:
 
 - Passing (non-)fundamental types in the [C++ Core
-  Guideline](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-conventional).
+  Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#rf-conventional).
 
 - If you use the `.h`, you must link the `.cpp`.
 
@@ -1379,6 +1386,46 @@ A few guidelines for modifying existing RPC interfaces:
 - It's preferable to avoid changing an RPC in a backward-incompatible manner, but in that case, add an associated `-deprecatedrpc=` option to retain previous RPC behavior during the deprecation period. Backward-incompatible changes include: data type changes (e.g. from `{"warnings":""}` to `{"warnings":[]}`, changing a value from a string to a number, etc.), logical meaning changes of a value, key name changes (e.g. `{"warning":""}` to `{"warnings":""}`), or removing a key from an object. Adding a key to an object is generally considered backward-compatible. Include a release note that refers the user to the RPC help for details of feature deprecation and re-enabling previous behavior. [Example RPC help](https://github.com/bitcoin/bitcoin/blob/94f0adcc/src/rpc/blockchain.cpp#L1316-L1323).
 
   - *Rationale*: Changes in RPC JSON structure can break downstream application compatibility. Implementation of `deprecatedrpc` provides a grace period for downstream applications to migrate. Release notes provide notification to downstream users.
+
+## Feature deprecation and removal process
+
+Groestlcoin Core uses a structured process for deprecating and removing features to give
+downstream users and applications time to migrate.
+
+### General principles
+
+- The minimum deprecation **grace period** for a feature that is going to be removed is one
+  major release.
+- Any deprecation or removal must come with a release note.
+
+### RPC methods and fields
+
+- To deprecate an entire RPC method, gate the old behavior behind `-deprecatedrpc=<feature>`.
+  Deprecated features should remain accessible via this flag during the grace period so
+  downstream users are not immediately broken.
+- The RPC help text must mention the deprecation and the `-deprecatedrpc=<feature>` flag
+  that re-enables it. For example:
+  ```
+  "\nDeprecated in v25.0, use the `newfoo` RPC instead. Start groestlcoind with"
+  " `-deprecatedrpc=foo` to continue using this RPC.\n"
+  ```
+
+### Startup options
+
+- To deprecate a startup option, emit a warning via `LogWarning` or `InitWarning` when the
+  option is used, so users are notified at startup.
+- Update the option's help text to indicate it is deprecated and, if applicable, will be
+  removed in a future release.
+
+### REST interface
+
+- Deprecated REST endpoints or behaviors should be documented in `doc/REST-interface.md`
+  with the version they were deprecated.
+
+### ZMQ
+
+- Deprecated ZMQ topics or behaviors should be documented in `doc/zmq.md` with the version
+  they were deprecated.
 
 ## Internal interface guidelines
 

@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class CScript;
@@ -125,6 +126,10 @@ public:
     bool operator==(const CHDChain& chain) const
     {
         return seed_id == chain.seed_id;
+    }
+    bool operator<(const CHDChain& chain) const
+    {
+        return seed_id < chain.seed_id;
     }
 };
 

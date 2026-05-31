@@ -5,6 +5,7 @@
 """Helpful routines for regression testing."""
 
 from base64 import b64encode
+from copy import copy
 from decimal import Decimal
 from subprocess import CalledProcessError
 import hashlib
@@ -20,7 +21,6 @@ import shlex
 import time
 import types
 
-from .authproxy import JSONRPCException
 from .descriptors import descsum_create
 from collections.abc import Callable
 from typing import Optional, Union
@@ -28,6 +28,18 @@ from typing import Optional, Union
 SATOSHI_PRECISION = Decimal('0.00000001')
 
 logger = logging.getLogger("TestFramework.utils")
+
+class JSONRPCException(Exception):
+    def __init__(self, rpc_error, http_status=None):
+        self.error = rpc_error
+        self.http_status = http_status
+
+        # throw KeyError if any required fields are missing
+        copied_error = copy(rpc_error)
+        message = copied_error.pop("message")
+        code = copied_error.pop("code")
+        extra = f'{copied_error}' if copied_error else ''
+        super().__init__(f"{message} ({code}) {extra} [http_status={http_status}]")
 
 # Assert functions
 ##################

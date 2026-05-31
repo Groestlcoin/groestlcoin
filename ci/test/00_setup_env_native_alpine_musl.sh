@@ -17,5 +17,5 @@ export GROESTLCOIN_CONFIG="\
  -DREDUCE_EXPORTS=ON \
  -DCMAKE_BUILD_TYPE=Debug \
 "
-export TEST_RUNNER_EXTRA="--v2transport --usecli --extended"
+export TEST_RUNNER_EXTRA="--v2transport --usecli --extended --exclude feature_dbcrash"  # Run extended tests under --usecli and --v2transport, but exclude the very slow dbcrash
 export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests
