@@ -15,8 +15,8 @@ export NO_DEPENDS=1
 export RUN_UNIT_TESTS=false
 export RUN_FUNCTIONAL_TESTS=false
 export RUN_FUZZ_TESTS=false
-export RUN_CHECK_DEPS=false
-export RUN_TIDY=false
+export RUN_CHECK_DEPS=true
+export RUN_TIDY=true
 export GOAL="install"
 export GROESTLCOIN_CONFIG="\
  --preset dev-mode \
