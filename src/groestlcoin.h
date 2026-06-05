@@ -19,7 +19,7 @@ public:
 
     ConstBuf(const std::span<const unsigned char> p) {
         if (p.begin() == p.end()) {
-            P = 0;
+            P = nullptr;
             Size = 0;
         } else {
             P = (unsigned char*)(p.data());
@@ -30,7 +30,7 @@ public:
     template <typename T>
     ConstBuf(const T pb, const T pe) {
         if (pb == pe) {
-            P = 0;
+            P = nullptr;
             Size = 0;
         } else {
             P = (unsigned char*)(&pb[0]);
@@ -40,7 +40,7 @@ public:
 
     ConstBuf(const std::vector<unsigned char>& vch) {
         if (vch.empty()) {
-            P = 0;
+            P = nullptr;
             Size = 0;
         } else {
             P = &vch[0];

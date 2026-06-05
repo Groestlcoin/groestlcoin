@@ -79,7 +79,7 @@ GroestlHasher::GroestlHasher() {
 GroestlHasher::GroestlHasher(GroestlHasher&& x)
     :    ctx(x.ctx)
 {
-    x.ctx = 0;
+    x.ctx = nullptr;
 }
 
 GroestlHasher::~GroestlHasher() {
@@ -90,7 +90,7 @@ GroestlHasher& GroestlHasher::operator=(GroestlHasher&& x)
 {
     delete (sph_groestl512_context*)ctx;
     ctx = x.ctx;
-    x.ctx = 0;
+    x.ctx = nullptr;
     return *this;
 }
 
