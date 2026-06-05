@@ -48,6 +48,24 @@ declare -A SUPPRESS
 SUPPRESS["common.cpp.o interface_ui.cpp.o _Z11InitWarningRK13bilingual_str"]=1
 SUPPRESS["common.cpp.o interface_ui.cpp.o _Z9InitErrorRK13bilingual_str"]=1
 
+SUPPRESS["block.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasher5WriteEPKhm"]=1
+SUPPRESS["block.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasher8FinalizeESt4spanIhLm18446744073709551615EE"]=1
+SUPPRESS["block.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasherC1Ev"]=1
+SUPPRESS["block.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasherD1Ev"]=1
+
+SUPPRESS["interpreter.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasher5WriteESt4spanIKhLm18446744073709551615EE"]=1
+SUPPRESS["interpreter.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasher8FinalizeESt4spanIhLm18446744073709551615EE"]=1
+SUPPRESS["interpreter.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasherC1Ev"]=1
+SUPPRESS["interpreter.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin13GroestlHasherD1Ev"]=1
+
+SUPPRESS["crypter.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin11HashGroestlERKNS_8ConstBufE"]=1
+SUPPRESS["scriptpubkeyman.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin11HashGroestlERKNS_8ConstBufE"]=1
+SUPPRESS["base58.cpp.o groestlcoin-hash.cpp.o _ZN5XCoin11HashGroestlERKNS_8ConstBufE"]=1
+
+SUPPRESS["groestlcoin-hash.cpp.o groestl.cpp.o sph_groestl512"]=1
+SUPPRESS["groestlcoin-hash.cpp.o groestl.cpp.o sph_groestl512_close"]=1
+SUPPRESS["groestlcoin-hash.cpp.o groestl.cpp.o sph_groestl512_init"]=1
+
 usage() {
    echo "Usage: $(basename "${BASH_SOURCE[0]}") [BUILD_DIR]"
 }
