@@ -25,7 +25,7 @@ find_program(CLANG_TIDY_EXE REQUIRED NAMES "clang-tidy-${LLVM_VERSION_MAJOR}" "c
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
 
-add_library(groestlcoin-tidy MODULE bitcoin-tidy.cpp nontrivial-threadlocal.cpp)
+add_library(groestlcoin-tidy MODULE groestlcoin-tidy.cpp nontrivial-threadlocal.cpp)
 target_include_directories(groestlcoin-tidy SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 
 # Disable RTTI and exceptions as necessary
