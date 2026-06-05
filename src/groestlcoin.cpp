@@ -112,7 +112,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
 
-    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
+    if (BlockLastSolved == nullptr || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
         return bnPowLimit.GetCompact();
      }
 
@@ -141,7 +141,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         }
         LastBlockTime = BlockReading->GetBlockTime();
 
-        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        if (BlockReading->pprev == nullptr) { assert(BlockReading); break; }
         BlockReading = BlockReading->pprev;
     }
 
@@ -183,7 +183,7 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
 
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
 
-    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
+    if (BlockLastSolved == nullptr || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
         return bnPowLimit.GetCompact();
     }
 
@@ -203,7 +203,7 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
         }
         LastBlockTime = BlockReading->GetBlockTime();
 
-        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        if (BlockReading->pprev == nullptr) { assert(BlockReading); break; }
         BlockReading = BlockReading->pprev;
     }
 

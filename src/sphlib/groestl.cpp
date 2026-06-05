@@ -29,8 +29,8 @@
  * @author   Thomas Pornin <thomas.pornin@cryptolog.com>
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 extern "C" {
 
