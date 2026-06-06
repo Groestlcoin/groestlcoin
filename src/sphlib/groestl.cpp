@@ -34,7 +34,7 @@
 
 extern "C" {
 
-#include <sph_groestl.h>
+#include "sph_groestl.h"
 
 //#if SPH_SMALL_FOOTPRINT && !defined SPH_SMALL_FOOTPRINT_GROESTL
 #define SPH_SMALL_FOOTPRINT_GROESTL   0

@@ -36,7 +36,7 @@
 #define SPH_GROESTL_H__
 
 #include <stddef.h>
-#include <sph_types.h>
+#include "sph_types.h"
 
 /**
  * Output size (in bits) for Groestl-224.
