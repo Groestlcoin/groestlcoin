@@ -53,7 +53,7 @@ Updated RPCs
 ------------
 
 - All JSON-RPC methods accept a new [named
-  parameter](JSON-RPC-interface.md#parameter-passing) called `args` that can
+  parameter](https://github.com/groestlcoin/groestlcoin/blob/master/doc/JSON-RPC-interface.md#parameter-passing) called `args` that can
   contain positional parameter values. This is a convenience to allow some
   parameter values to be passed by name without having to name every value. The
   python test framework and `groestlcoin-cli` tool both take advantage of this, so
