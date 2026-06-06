@@ -33,7 +33,7 @@ from test_framework.util import (
     assert_equal,
     assert_not_equal,
 )
-import groestlcoin_hash
+import groestlcoin_hash  # type: ignore[import]
 
 MAX_LOCATOR_SZ = 101
 MAX_BLOCK_WEIGHT = 4000000

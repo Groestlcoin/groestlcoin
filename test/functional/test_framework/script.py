@@ -15,7 +15,6 @@ from .key import TaggedHash, tweak_add_pubkey, compute_xonly_pubkey
 from .messages import (
     CTransaction,
     CTxOut,
-    hash256,
     ser_string,
     sha256,
 )

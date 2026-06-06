@@ -18,7 +18,7 @@ import time
 import glob
 from collections import namedtuple
 
-import groestlcoin_hash
+import groestlcoin_hash # type: ignore[import]
 
 settings = {}
 
