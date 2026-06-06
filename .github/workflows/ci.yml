@@ -183,16 +183,22 @@ jobs:
 
       - name: Restore caches
         id: restore-cache
-        uses: ./.github/actions/restore-caches
+        uses: ./.github/actions/cache/restore
+        with:
+          provider: ${{ needs.runners.outputs.provider }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
+        with:
+          provider: ${{ needs.runners.outputs.provider }}
 
       - name: CI script
         run: ./ci/test_run_all.sh
 
       - name: Save caches
-        uses: ./.github/actions/save-caches
+        uses: ./.github/actions/cache/save
+        with:
+          provider: ${{ needs.runners.outputs.provider }}
 
       - name: Upload built executables
         uses: actions/upload-artifact@v7
@@ -315,10 +321,14 @@ jobs:
 
       - name: Restore caches
         id: restore-cache
-        uses: ./.github/actions/restore-caches
+        uses: ./.github/actions/cache/restore
+        with:
+          provider: ${{ matrix.provider || needs.runners.outputs.provider }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
+        with:
+          provider: ${{ matrix.provider || needs.runners.outputs.provider }}
 
       - name: Clear unnecessary files
         if: ${{ needs.runners.outputs.provider == 'gha' && true || false }} # Only needed on GHA runners
@@ -339,4 +349,33 @@ jobs:
         run: ./ci/test_run_all.sh
 
       - name: Save caches
-        uses: ./.github/actions/save-caches
+        uses: ./.github/actions/cache/save
+        with:
+          provider: ${{ matrix.provider || needs.runners.outputs.provider }}
+
+  lint:
+    name: 'lint'
+    needs: runners
+    runs-on: ${{ needs.runners.outputs.provider == 'warp' && 'warp-ubuntu-latest-x64-2x' || 'ubuntu-latest' }}
+    if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
+    timeout-minutes: 20
+    env:
+      CONTAINER_NAME: "bitcoin-linter"
+    steps:
+      - *ANNOTATION_PR_NUMBER
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: *CHECKOUT_REF_TMPL
+          fetch-depth: 0
+
+      - name: Configure Docker
+        uses: ./.github/actions/configure-docker
+        with:
+          provider: ${{ needs.runners.outputs.provider }}
+
+      - name: CI script
+        run: |
+          git worktree add ../lint-worktree HEAD
+          ../lint-worktree/ci/lint.py

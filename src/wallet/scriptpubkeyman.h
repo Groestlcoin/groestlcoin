@@ -274,7 +274,6 @@ public:
 
 class DescriptorScriptPubKeyMan : public ScriptPubKeyMan
 {
-    friend class LegacyDataSPKM;
 private:
     using ScriptPubKeyMap = std::map<CScript, int32_t>; // Map of scripts to descriptor range index
     using PubKeyMap = std::map<CPubKey, int32_t>; // Map of pubkeys involved in scripts to descriptor range index
@@ -301,7 +300,7 @@ private:
      * must be done in order to prevent nonce reuse.
      *
      * The session id is an arbitrary value set by the signer in order for the signing logic
-     * to find ongoing signing sessions. It is the SHA256 of aggregate xonly key, + participant pubkey + sighash.
+     * to find ongoing signing sessions, see MuSig2SessionID.
      */
     mutable std::map<uint256, MuSig2SecNonce> m_musig2_secnonces;
 
