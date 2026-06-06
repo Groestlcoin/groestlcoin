@@ -360,7 +360,7 @@ jobs:
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
     timeout-minutes: 20
     env:
-      CONTAINER_NAME: "bitcoin-linter"
+      CONTAINER_NAME: "groestlcoin-linter"
     steps:
       - *ANNOTATION_PR_NUMBER
 
