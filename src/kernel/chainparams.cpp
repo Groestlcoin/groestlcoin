@@ -140,7 +140,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].threshold = 1815; // 90%
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].period = 2016;
 
-        ApplyDeploymentOptions(opts.dep_opts);        
+        ApplyDeploymentOptions(opts.dep_opts);
 
         consensus.nMinimumChainWork = uint256{"0000000000000000000000000000000000000000000001fb282e680efe15e73e"}; // groestlcoin-cli getblockheader 00000000000012d90cb55b1e1dd8c2ad3dfd01377339bcd3d5ff36f07365c5d9 | jq '{chainwork}'
         consensus.defaultAssumeValid = uint256{"00000000000012d90cb55b1e1dd8c2ad3dfd01377339bcd3d5ff36f07365c5d9"}; // groestlcoin-cli getblockhash 6036000
@@ -240,7 +240,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].period = 2016;
 
         ApplyDeploymentOptions(opts.dep_opts);
-        
+
         consensus.nMinimumChainWork = uint256{"0000000000000000000000000000000000000000000000000000603c29fc6dfe"}; // groestlcoin-cli -testnet getblockheader 000000e75261a2e116d21333cf28c11e66711b7dd8d439b9ca19f69de565982c | jq '{chainwork}'
         consensus.defaultAssumeValid = uint256{"000000e75261a2e116d21333cf28c11e66711b7dd8d439b9ca19f69de565982c"}; // groestlcoin-cli -testnet getblockhash 4449000
 
@@ -328,7 +328,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].period = 2016;
 
         ApplyDeploymentOptions(opts.dep_opts);
-        
+
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
 
