@@ -473,6 +473,65 @@ jobs:
             guix.sigs/${{ env.FORCE_VERSION }}/
           if-no-files-found: error
 
+  signpath-test:
+    name: SignPath test signing
+    runs-on: ubuntu-24.04
+    needs:
+      - guix
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: guix-x86_64-w64-mingw32
+          path: signpath-input
+
+      - name: List downloaded files
+        run: |
+          pwd
+          find signpath-input -type f
+
+      - name: Locate installer
+        id: locate
+        run: |
+          FILE=$(find signpath-input -name '*-win64-setup-unsigned.exe' | head -n1)
+
+          if [ -z "$FILE" ]; then
+            echo "No unsigned installer found"
+            exit 1
+          fi
+
+          echo "Found: $FILE"
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload unsigned artifact
+        id: upload-unsigned-artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: signpath-input
+          path: ${{ steps.locate.outputs.file }}
+
+      - name: Submit signing request
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '1c39aa12-6208-40f9-8804-90f6cc33895f'
+          project-slug: 'groestlcoin'
+          signing-policy-slug: 'test-signing'
+          github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: 'signed'
+
+      - name: Show signed files
+        run: |
+          find signed -type f || true
+
+      - name: Upload signed installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: signed-installer
+          path: signed/**
+
   release:
     name: Release bundle (tags or manual)
     runs-on: ubuntu-24.04
