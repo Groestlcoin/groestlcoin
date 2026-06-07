@@ -105,7 +105,7 @@ pub fn lint_std_filesystem() -> LintResult {
             "./src/",
             ":(exclude)src/ipc/libmultiprocess/",
             ":(exclude)src/util/fs.h",
-            ":(exclude)src/bitcoin-chainstate.cpp",
+            ":(exclude)src/groestlcoin-chainstate.cpp",
         ])
         .status()
         .expect("command error")
