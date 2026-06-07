@@ -12,7 +12,6 @@ import re
 import os
 import os.path
 import sys
-import hashlib
 import datetime
 import time
 import glob

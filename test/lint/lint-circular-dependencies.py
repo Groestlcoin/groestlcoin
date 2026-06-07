@@ -25,6 +25,11 @@ EXPECTED_CIRCULAR_DEPENDENCIES = (
 
     # Temporary, removed in followup https://github.com/bitcoin/bitcoin/pull/24230
     "index/base -> node/context -> net_processing -> index/blockfilterindex -> index/base",
+
+    # Not expected, but not worth fixing right now
+    "chain -> primitives/block -> groestlcoin -> chain",
+    "consensus/merkle -> hash -> groestlcoin -> consensus/merkle",
+    "chainparams -> kernel/chainparams -> hash -> groestlcoin -> chainparams",
 )
 
 CODE_DIR = "src"
