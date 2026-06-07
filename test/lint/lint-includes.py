@@ -17,7 +17,8 @@ from subprocess import check_output, CalledProcessError
 from lint_ignore_dirs import SHARED_EXCLUDED_SUBTREES
 
 
-EXCLUDED_DIRS = ["contrib/devtools/bitcoin-tidy/",
+EXCLUDED_DIRS = ["contrib/devtools/groestlcoin-tidy/",
+                 "src/sphlib/",
                 ] + SHARED_EXCLUDED_SUBTREES
 
 EXPECTED_BOOST_INCLUDES = [

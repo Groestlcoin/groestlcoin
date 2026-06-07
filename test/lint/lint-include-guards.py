@@ -18,7 +18,11 @@ from lint_ignore_dirs import SHARED_EXCLUDED_SUBTREES
 HEADER_ID_PREFIX = 'BITCOIN_'
 HEADER_ID_SUFFIX = '_H'
 
-EXCLUDE_FILES_WITH_PREFIX = ['contrib/devtools/bitcoin-tidy',
+EXCLUDE_FILES_WITH_PREFIX = ['contrib/devtools/groestlcoin-tidy',
+                             'src/groestlcoin.h',
+                             'src/kernel/groestlcoinkernel.h',
+                             'src/kernel/groestlcoinkernel_wrapper.h',
+                             'src/sphlib',
                              'src/tinyformat.h',
                              'src/bench/nanobench.h',
                              'src/test/fuzz/FuzzedDataProvider.h'] + SHARED_EXCLUDED_SUBTREES
