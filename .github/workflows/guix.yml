@@ -486,11 +486,6 @@ jobs:
           name: guix-x86_64-w64-mingw32
           path: signpath-input
 
-      - name: List downloaded files
-        run: |
-          pwd
-          find signpath-input -type f
-
       - name: Locate installer
         id: locate
         run: |
@@ -501,7 +496,6 @@ jobs:
             exit 1
           fi
 
-          echo "Found: $FILE"
           echo "file=$FILE" >> $GITHUB_OUTPUT
 
       - name: Upload unsigned artifact
@@ -522,9 +516,18 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: 'signed'
 
-      - name: Show signed files
+      - name: Rename signed installer
         run: |
-          find signed -type f || true
+          FILE=$(find signed -name '*-win64-setup-unsigned.exe' | head -n1)
+
+          if [ -z "$FILE" ]; then
+            echo "Signed installer not found"
+            exit 1
+          fi
+
+          NEWFILE=$(echo "$FILE" | sed 's/-setup-unsigned\.exe/-setup-signed-with-test-certificate.exe/')
+
+          mv "$FILE" "$NEWFILE"
 
       - name: Upload signed installer
         uses: actions/upload-artifact@v7
