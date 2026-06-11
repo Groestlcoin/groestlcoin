@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <addrman.h>
+#include <bip324.h>
 #include <chainparams.h>
 #include <clientversion.h>
 #include <common/args.h>
@@ -802,6 +803,41 @@ BOOST_AUTO_TEST_CASE(LocalAddress_BasicLifecycle)
     BOOST_CHECK(!IsLocal(addr));
 }
 
+BOOST_AUTO_TEST_CASE(LocalAddress_nScore_Overflow)
+{
+    g_reachable_nets.Add(NET_IPV4);
+    const CService addr{UtilBuildAddress(0x002, 0x001, 0x001, 0x001), 1000}; // 2.1.1.1:1000
+
+    const auto get_score = [](const CService& service) -> int {
+        LOCK(g_maplocalhost_mutex);
+        const auto it = mapLocalHost.find(service);
+        return it != mapLocalHost.end() ? it->second.nScore : 0;
+    };
+
+    const int initial_score = 1000;
+    BOOST_REQUIRE(AddLocal(addr, initial_score));
+    BOOST_REQUIRE(IsLocal(addr));
+    BOOST_CHECK_EQUAL(get_score(addr), initial_score);
+
+    // SeenLocal should increment nScore by 1.
+    BOOST_CHECK(SeenLocal(addr));
+    BOOST_CHECK_EQUAL(get_score(addr), initial_score + 1);
+
+    // AddLocal() saturates nScore when updating an existing entry at INT_MAX.
+    BOOST_REQUIRE(AddLocal(addr, std::numeric_limits<int>::max()));
+    BOOST_CHECK_EQUAL(get_score(addr), std::numeric_limits<int>::max());
+
+    BOOST_CHECK(AddLocal(addr, std::numeric_limits<int>::max()));
+    BOOST_CHECK_EQUAL(get_score(addr), std::numeric_limits<int>::max());
+
+    // SeenLocal() also saturates at INT_MAX.
+    BOOST_CHECK(SeenLocal(addr));
+    BOOST_CHECK_EQUAL(get_score(addr), std::numeric_limits<int>::max());
+
+    RemoveLocal(addr);
+    BOOST_CHECK(!IsLocal(addr));
+}
+
 BOOST_AUTO_TEST_CASE(initial_advertise_from_version_message)
 {
     LOCK(NetEventsInterface::g_msgproc_mutex);
@@ -1533,7 +1569,7 @@ BOOST_AUTO_TEST_CASE(v2transport_test)
         tester.CompareSessionIDs();
         auto msg_data_1 = m_rng.randbytes<uint8_t>(4000000); // test that receiving 4M payload works
         auto msg_data_2 = m_rng.randbytes<uint8_t>(4000000); // test that sending 4M payload works
-        tester.SendMessage(uint8_t(m_rng.randrange(223) + 33), {}); // unknown short id
+        tester.SendMessage(uint8_t(m_rng.randrange(256 - BIP324_SHORTIDS_IMPLEMENTED) + BIP324_SHORTIDS_IMPLEMENTED), {}); // unknown short id
         tester.SendMessage(uint8_t(2), msg_data_1); // "block" short id
         tester.AddMessage("blocktxn", msg_data_2); // schedule blocktxn to be sent to us
         ret = tester.Interact();
