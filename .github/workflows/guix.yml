@@ -63,9 +63,51 @@ jobs:
               cd /tmp
 
               rm -f guix-install.sh
-              wget -q --tries=3 --timeout=30 \
-                https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh \
-                -O guix-install.sh
+              rm -rf guix-src
+
+              echo "Downloading guix-install.sh (guix.gnu.org -> Savannah -> Codeberg)..."
+
+              if wget -q --tries=2 --timeout=15 \
+                https://guix.gnu.org/install.sh \
+                -O guix-install.sh; then
+
+                echo "Downloaded installer from guix.gnu.org"
+
+              elif wget -q --tries=2 --timeout=15 \
+                https://cgit.git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh \
+                -O guix-install.sh; then
+
+                echo "Downloaded installer from Savannah"
+
+              elif git clone --depth 1 \
+                https://codeberg.org/guix/guix.git \
+                guix-src && \
+                [ -f guix-src/etc/guix-install.sh ]; then
+
+                cp guix-src/etc/guix-install.sh guix-install.sh
+                rm -rf guix-src
+
+                echo "Downloaded installer from Codeberg"
+
+              else
+                echo "Failed to download guix-install.sh from all sources."
+
+                rm -rf guix-src
+
+                if [ "${attempt}" -eq 10 ]; then
+                  exit 1
+                fi
+
+                sleep_time=$((30 * (2 ** (attempt - 1))))
+
+                if [ "$sleep_time" -gt 900 ]; then
+                  sleep_time=900
+                fi
+
+                echo "Retrying in ${sleep_time}s..."
+                sleep "${sleep_time}"
+                continue
+              fi
 
               chmod +x guix-install.sh
 
