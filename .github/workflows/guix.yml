@@ -48,7 +48,7 @@ jobs:
             build-essential pkg-config python3 \
             netbase
 
-      - name: Install Guix (retry 5x)
+      - name: Install Guix (retry 10x)
         run: |
           set -euxo pipefail
 
@@ -58,8 +58,8 @@ jobs:
           if [ -x "$GUIX_BIN" ]; then
             echo "Guix already installed at $GUIX_BIN"
           else
-            for attempt in 1 2 3 4 5; do
-              echo "=== Install Guix attempt ${attempt}/5 ==="
+            for attempt in 1 2 3 4 5 6 7 8 9 10 ; do
+              echo "=== Install Guix attempt ${attempt}/10 ==="
               cd /tmp
 
               rm -f guix-install.sh
@@ -83,12 +83,17 @@ jobs:
                 break
               fi
 
-              if [ "${attempt}" -eq 5 ]; then
-                echo "Guix install failed after 5 attempts."
+              if [ "${attempt}" -eq 10 ]; then
+                echo "Guix install failed after 10 attempts."
                 exit 1
               fi
 
-              sleep_time=$((10 * (2 ** (attempt - 1))))
+              sleep_time=$((30 * (2 ** (attempt - 1))))
+
+              if [ "$sleep_time" -gt 900 ]; then
+                sleep_time=900
+              fi
+
               echo "Retrying in ${sleep_time}s..."
               sleep "${sleep_time}"
             done
@@ -235,6 +240,14 @@ jobs:
           path: depends/SDKs
           key: depends-sdks-xcode15
 
+      - name: Cache Guix
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/guix
+            ~/.config/guix
+          key: guix-cache-v1
+
       - name: Fetch Xcode SDK
         run: |
           set -eux
@@ -261,7 +274,10 @@ jobs:
         run: |
           set -euxo pipefail
 
-          max=5
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
+
+          max=10
           n=1
           while true; do
             echo "Guix build attempt ${n}/${max} (HOSTS=${HOSTS})"
@@ -275,7 +291,12 @@ jobs:
             fi
 
             # Backoff (10s, 20s, 40s, 80s...)
-            sleep_time=$((10 * (2 ** (n - 1))))
+            sleep_time=$((30 * (2 ** (n - 1))))
+
+            if [ "$sleep_time" -gt 900 ]; then
+              sleep_time=900
+            fi
+
             echo "Retrying in ${sleep_time}s..."
             sleep "${sleep_time}"
             n=$((n + 1))
