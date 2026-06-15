@@ -31,9 +31,9 @@ set -e -o pipefail
                 ;;
         esac
 
-        # copy over the example bitcoin.conf file. if contrib/devtools/gen-bitcoin-conf.sh
+        # copy over the example groestlcoin.conf file. if contrib/devtools/gen-groestlcoin-conf.sh
         # has not been run before buildling, this file will be a stub
-        cp "${DISTSRC}/share/examples/bitcoin.conf" "${DISTNAME}/"
+        cp "${DISTSRC}/share/examples/groestlcoin.conf" "${DISTNAME}/"
 
         cp -r "${DISTSRC}/share/rpcauth" "${DISTNAME}/share/"
 
@@ -96,7 +96,7 @@ set -e -o pipefail
             ;;
         *darwin*)
             cmake --build build --target deploy ${V:+--verbose}
-            mv build/dist/bitcoin-macos-app.zip "${OUTDIR}/${DISTNAME}-${HOST}-unsigned.zip"
+            mv build/dist/groestlcoin-macos-app.zip "${OUTDIR}/${DISTNAME}-${HOST}-unsigned.zip"
             mkdir -p "unsigned-app-${HOST}"
             cp  --target-directory="unsigned-app-${HOST}" \
                 contrib/macdeploy/detached-sig-create.sh
