@@ -97,5 +97,5 @@ To configure the primary repository, follow these steps:
 When used in a fork the CI will run on GitHub's free hosted runners by default.
 In this case, GitHub's cache size limitations may cause caches to be frequently evicted and missed, but the workflows will run (slowly).
 
-It is also possible to use your own WarpBuild Runners in your own fork by replacing the references to `bitcoin/bitcoin` in `../.github/workflows/ci.yml` with the name of your fork (e.g. `your-org/bitcoin`).
+It is also possible to use your own WarpBuild Runners in your own fork by replacing the references to `groestlcoin/groestlcoin` in `../.github/workflows/ci.yml` with the name of your fork (e.g. `your-org/groestlcoin`).
 NB that WarpBuild Runners only work at an organisation level, therefore in order to use your own WarpBuild Runners, *the fork must be within your own organisation*.
