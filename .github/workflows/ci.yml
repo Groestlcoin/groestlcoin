@@ -19,7 +19,6 @@ concurrency:
 
 env:
   CI_FAILFAST_TEST_LEAVE_DANGLING: 1  # GHA does not care about dangling processes and setting this variable avoids killing the CI script itself on error
-  REPO_USE_WARP_RUNNERS: 'bitcoin/bitcoin' # Use warp runners for this repo, instead of falling back to the slow GHA runners
 
 defaults:
   run:
@@ -28,12 +27,16 @@ defaults:
     shell: bash
 
 jobs:
-  runners:
-    name: '[meta] determine runners'
-    runs-on: ubuntu-slim
-    outputs:
-      provider: ${{ steps.runners.outputs.provider }}
+  test-each-commit:
+    name: 'test ancestor commits'
+    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-latest-x64-8x' || 'ubuntu-latest' }}
+    env:
+      TEST_RUNNER_PORT_MIN: "14000"  # Use a larger port range to avoid colliding with other CI services.
+    if: github.event_name == 'pull_request' && github.event.pull_request.commits != 1
+    timeout-minutes: 360  # Use maximum time, see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes.
     steps:
+      - name: Determine fetch depth
+        run: echo "FETCH_DEPTH=$((${{ github.event.pull_request.commits }} + 2))" >> "$GITHUB_ENV"
       - &ANNOTATION_PR_NUMBER
         name: Annotate with pull request number
         # This annotation is machine-readable and can be used to assign a check
@@ -44,15 +47,61 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "::notice title=debug_pull_request_number_str::${{ github.event.number }}"
           fi
-      - id: runners
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Determine commit range
         run: |
-          if [[ "${REPO_USE_WARP_RUNNERS}" == "${{ github.repository }}" ]]; then
-            echo "provider=warp" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Runner Selection::Using Warp Runners"
-          else
-            echo "provider=gha" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Runner Selection::Using GitHub-hosted runners"
+          # Checkout HEAD~ and find the test base commit.
+          # Checkout HEAD~ because it would be wasteful to rerun
+          # tests on the PR head commit that are already run
+          # by other jobs.
+          git checkout HEAD~
+          # Moreover, pull requests that contain a merge commit
+          # are generally draft pull requests that merge in other
+          # pull requests, so only check the relevant commits
+          # after the last merge commit. A merge commit could
+          # also be a subtree merge commit, which may be
+          # worthwhile to check. However, it is rare that the
+          # subtree merge commit is not the top commit (which
+          # would be skipped anyway by this task, because it is
+          # run by all other tasks). Also, `git rebase --exec`
+          # does not work on merge commits, so if this was
+          # important to check, the logic would have to be
+          # rewritten.
+          #
+          # Figure out test base commit by listing ancestors of
+          # HEAD, excluding ancestors of the most recent merge
+          # commit, ordering them from oldest to newest, and
+          # taking the first one.
+          #
+          # In the command below, the ^@ suffix is used to refer
+          # to all parents of the merge commit as described in:
+          # https://git-scm.com/docs/git-rev-parse#_other_rev_parent_shorthand_notations
+          # and the ^ prefix is used to exclude these parents
+          # and all their ancestors from the rev-list output
+          # as described in:
+          # https://git-scm.com/docs/git-rev-list
+          MERGE_BASE=$(git rev-list -n1 --merges HEAD)
+          EXCLUDE_MERGE_BASE_ANCESTORS=
+          # MERGE_BASE can be empty due to limited fetch-depth
+          if test -n "$MERGE_BASE"; then
+            EXCLUDE_MERGE_BASE_ANCESTORS=^${MERGE_BASE}^@
           fi
+          echo "TEST_BASE=$(git rev-list -n${{ github.event.pull_request.commits }} --reverse HEAD $EXCLUDE_MERGE_BASE_ANCESTORS | head -1)" >> "$GITHUB_ENV"
+      - run: |
+          git fetch origin "${GITHUB_BASE_REF}"
+          git config user.email "ci@example.com"
+          git config user.name "CI"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install clang mold ccache build-essential cmake ninja-build pkgconf python3-zmq libevent-dev libboost-dev libsqlite3-dev systemtap-sdt-dev libzmq3-dev qt6-base-dev qt6-tools-dev qt6-l10n-tools libqrencode-dev capnproto libcapnp-dev -y
+          sudo pip3 install --break-system-packages pycapnp
+      - name: Compile and run tests
+        run: |
+          # Run tests on commits after the last merge commit and before the PR head commit
+          git rebase --exec "git merge --no-commit origin/${GITHUB_BASE_REF} && python3 ./.github/ci-test-each-commit-exec.py && git reset --hard" ${{ env.TEST_BASE }}
 
   macos-native-arm64:
     name: ${{ matrix.job-name }}
@@ -150,8 +199,8 @@ jobs:
 
   windows-cross:
     name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
-    needs: [runners, record-frozen-commit]
-    runs-on: ${{ needs.runners.outputs.provider == 'warp' && 'warp-ubuntu-latest-x64-4x' || 'ubuntu-latest' }}
+    needs: record-frozen-commit
+    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp-ubuntu-latest-x64-4x' || 'ubuntu-latest' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
 
     strategy:
@@ -185,7 +234,7 @@ jobs:
         id: restore-cache
         uses: ./.github/actions/cache/restore
         with:
-          provider: ${{ needs.runners.outputs.provider }}
+          provider: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha' }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
@@ -198,7 +247,7 @@ jobs:
       - name: Save caches
         uses: ./.github/actions/cache/save
         with:
-          provider: ${{ needs.runners.outputs.provider }}
+          provider: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha' }}
 
       - name: Upload built executables
         uses: actions/upload-artifact@v7
@@ -213,8 +262,7 @@ jobs:
 
   ci-matrix:
     name: ${{ matrix.name }}
-    needs: runners
-    runs-on: ${{ needs.runners.outputs.provider == 'warp' && matrix.warp-runner || matrix.fallback-runner }}
+    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && matrix.warp-runner || matrix.fallback-runner }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
     timeout-minutes: ${{ matrix.timeout-minutes }}
 
@@ -302,7 +350,7 @@ jobs:
           - name: 'MSan, fuzz'
             warp-runner: 'warp-ubuntu-latest-x64-8x'
             fallback-runner: 'ubuntu-latest'
-            timeout-minutes: 150
+            timeout-minutes: 180
             file-env: './ci/test/00_setup_env_native_fuzz_with_msan.sh'
 
           - name: 'MSan'
@@ -323,7 +371,7 @@ jobs:
         id: restore-cache
         uses: ./.github/actions/cache/restore
         with:
-          provider: ${{ matrix.provider || needs.runners.outputs.provider }}
+          provider: ${{ matrix.provider || (github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha') }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
@@ -331,7 +379,7 @@ jobs:
           provider: ${{ matrix.provider || needs.runners.outputs.provider }}
 
       - name: Clear unnecessary files
-        if: ${{ needs.runners.outputs.provider == 'gha' && true || false }} # Only needed on GHA runners
+        if: ${{ github.repository != 'groestlcoin/groestlcoin' || matrix.provider == 'gha' }} # Only needed on GHA runners
         uses: ./.github/actions/clear-files
 
       - name: Enable bpfcc script
@@ -351,12 +399,11 @@ jobs:
       - name: Save caches
         uses: ./.github/actions/cache/save
         with:
-          provider: ${{ matrix.provider || needs.runners.outputs.provider }}
+          provider: ${{ matrix.provider || (github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha') }}
 
   lint:
     name: 'lint'
-    needs: runners
-    runs-on: ${{ needs.runners.outputs.provider == 'warp' && 'warp-ubuntu-latest-x64-2x' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp-ubuntu-latest-x64-2x' || 'ubuntu-latest' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
     timeout-minutes: 20
     env:
