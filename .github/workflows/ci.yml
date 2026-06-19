@@ -200,7 +200,7 @@ jobs:
   windows-cross:
     name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
     needs: record-frozen-commit
-    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp-ubuntu-latest-x64-4x' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-latest-x64-4x' || 'ubuntu-latest' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
 
     strategy:
@@ -234,7 +234,7 @@ jobs:
         id: restore-cache
         uses: ./.github/actions/cache/restore
         with:
-          provider: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha' }}
+          provider: ${{ github.repository == 'bitcoin/bitcoin' && 'warp' || 'gha' }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
@@ -247,7 +247,7 @@ jobs:
       - name: Save caches
         uses: ./.github/actions/cache/save
         with:
-          provider: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha' }}
+          provider: ${{ github.repository == 'bitcoin/bitcoin' && 'warp' || 'gha' }}
 
       - name: Upload built executables
         uses: actions/upload-artifact@v7
@@ -262,7 +262,7 @@ jobs:
 
   ci-matrix:
     name: ${{ matrix.name }}
-    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && matrix.warp-runner || matrix.fallback-runner }}
+    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && matrix.warp-runner || matrix.fallback-runner }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
     timeout-minutes: ${{ matrix.timeout-minutes }}
 
@@ -371,7 +371,7 @@ jobs:
         id: restore-cache
         uses: ./.github/actions/cache/restore
         with:
-          provider: ${{ matrix.provider || (github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha') }}
+          provider: ${{ matrix.provider || (github.repository == 'bitcoin/bitcoin' && 'warp' || 'gha') }}
 
       - name: Configure Docker
         uses: ./.github/actions/configure-docker
@@ -379,7 +379,7 @@ jobs:
           provider: ${{ matrix.provider || needs.runners.outputs.provider }}
 
       - name: Clear unnecessary files
-        if: ${{ github.repository != 'groestlcoin/groestlcoin' || matrix.provider == 'gha' }} # Only needed on GHA runners
+        if: ${{ github.repository != 'bitcoin/bitcoin' || matrix.provider == 'gha' }} # Only needed on GHA runners
         uses: ./.github/actions/clear-files
 
       - name: Enable bpfcc script
@@ -399,11 +399,11 @@ jobs:
       - name: Save caches
         uses: ./.github/actions/cache/save
         with:
-          provider: ${{ matrix.provider || (github.repository == 'groestlcoin/groestlcoin' && 'warp' || 'gha') }}
+          provider: ${{ matrix.provider || (github.repository == 'bitcoin/bitcoin' && 'warp' || 'gha') }}
 
   lint:
     name: 'lint'
-    runs-on: ${{ github.repository == 'groestlcoin/groestlcoin' && 'warp-ubuntu-latest-x64-2x' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-latest-x64-2x' || 'ubuntu-latest' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
     timeout-minutes: 20
     env:
