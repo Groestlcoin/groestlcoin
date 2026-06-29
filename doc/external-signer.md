@@ -88,13 +88,13 @@ Prerequisite knowledge:
 
 With `<name>` one of `main`, `test`, `signet`, `regtest`, `testnet4`.
 
-Bitcoin Core passes this flag to commands that operate on a chain-specific signer, for example `getdescriptors`, `displayaddress` and `signtx`.
+Groestlcoin Core passes this flag to commands that operate on a chain-specific signer, for example `getdescriptors`, `displayaddress` and `signtx`.
 
 ### Flag `--stdin` (required)
 
 Indicate that (sub)command should be received over stdin and results returned in response to that. `--stdin` is a global flag, it is not specific to any subcommand.
 
-Bitcoin Core currently uses this flag for `signtx`.
+Groestlcoin Core currently uses this flag for `signtx`.
 
 All subcommands SHOULD support both
 - being called as commandline arguments; or
@@ -115,7 +115,7 @@ Note: remember that shell-expansion is not available on _stdin_. Consequently, c
 
 With `<fingerprint>` being the hexadecimal 8-symbol identifier for a wallet.
 
-Bitcoin Core passes this flag to commands that operate on a specific external-signer wallet, for example `getdescriptors`, `displayaddress` and `signtx`.
+Groestlcoin Core passes this flag to commands that operate on a specific external-signer wallet, for example `getdescriptors`, `displayaddress` and `signtx`.
 
 ### `enumerate` (required)
 
