@@ -10,7 +10,7 @@ This guide describes how to build groestlcoind, command-line utilities, and GUI 
 Run the following as root to install the base dependencies for building.
 
 ```bash
-pkg_add git cmake boost libevent
+pkg_add git cmake boost
 ```
 
 SQLite is required for the wallet:

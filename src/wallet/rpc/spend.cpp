@@ -173,7 +173,11 @@ UniValue SendMoney(CWallet& wallet, const CCoinControl &coin_control, std::vecto
     EnsureWalletIsUnlocked(wallet);
 
     // This function is only used by sendtoaddress and sendmany.
-    // This should always try to sign, if we don't have private keys, don't try to do anything here.
+    // This should always try to sign, if we don't have (all) private keys, don't
+    // try to do anything here.
+    if (wallet.IsWalletFlagSet(WALLET_FLAG_EXTERNAL_SIGNER)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: sendtoaddress and sendmany are not supported for wallets with external signers; use send instead");
+    }
     if (wallet.IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Private keys are disabled for this wallet");
     }
@@ -1179,8 +1183,7 @@ RPCMethod send()
 {
     return RPCMethod{
         "send",
-        "EXPERIMENTAL warning: this call may be changed in future releases.\n"
-        "\nSend a transaction.\n",
+        "Send a transaction.\n",
         {
             {"outputs", RPCArg::Type::ARR, RPCArg::Optional::NO, "The outputs specified as key-value pairs.\n"
                     "Each key may only appear once, i.e. there can only be one 'data' output, and no address may be duplicated.\n"
@@ -1302,8 +1305,7 @@ RPCMethod send()
 RPCMethod sendall()
 {
     return RPCMethod{"sendall",
-        "EXPERIMENTAL warning: this call may be changed in future releases.\n"
-        "\nSpend the value of all (or specific) confirmed UTXOs and unconfirmed change in the wallet to one or more recipients.\n"
+        "Spend the value of all (or specific) confirmed UTXOs and unconfirmed change in the wallet to one or more recipients.\n"
         "Unconfirmed inbound UTXOs and locked UTXOs will not be spent. Sendall will respect the avoid_reuse wallet flag.\n"
         "If your wallet contains many small inputs, either because it received tiny payments or as a result of accumulating change, consider using `send_max` to exclude inputs that are worth less than the fees needed to spend them.\n",
         {
