@@ -5,6 +5,7 @@
 #ifndef BITCOIN_TEST_FUZZ_UTIL_H
 #define BITCOIN_TEST_FUZZ_UTIL_H
 
+#include <univalue.h>
 #include <addresstype.h>
 #include <arith_uint256.h>
 #include <coins.h>
@@ -46,13 +47,17 @@ size_t CallOneOf(FuzzedDataProvider& fuzzed_data_provider, Callables... callable
 }
 
 template <typename Collection>
+auto PickIterator(FuzzedDataProvider& fuzzed_data_provider, Collection& col)
+{
+    const auto sz{col.size()};
+    assert(sz >= 1);
+    return std::next(col.begin(), fuzzed_data_provider.ConsumeIntegralInRange<decltype(sz)>(0, sz - 1));
+}
+
+template <typename Collection>
 auto& PickValue(FuzzedDataProvider& fuzzed_data_provider, Collection& col)
 {
-    auto sz{col.size()};
-    assert(sz >= 1);
-    auto it = col.begin();
-    std::advance(it, fuzzed_data_provider.ConsumeIntegralInRange<decltype(sz)>(0, sz - 1));
-    return *it;
+    return *PickIterator(fuzzed_data_provider, col);
 }
 
 template<typename B = uint8_t>
@@ -223,6 +228,8 @@ template <class Dur>
 [[nodiscard]] CTxDestination ConsumeTxDestination(FuzzedDataProvider& fuzzed_data_provider) noexcept;
 
 [[nodiscard]] CKey ConsumePrivateKey(FuzzedDataProvider& fuzzed_data_provider, std::optional<bool> compressed = std::nullopt) noexcept;
+
+[[nodiscard]] UniValue ConsumeUniValue(FuzzedDataProvider& fuzzed_data_provider) noexcept;
 
 template <typename T>
 [[nodiscard]] bool MultiplicationOverflow(const T i, const T j) noexcept

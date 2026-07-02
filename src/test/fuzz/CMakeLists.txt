@@ -94,6 +94,7 @@ add_executable(fuzz
   pow.cpp
   prevector.cpp
   primitives_transaction.cpp
+  private_broadcast.cpp
   process_message.cpp
   process_messages.cpp
   protocol.cpp
@@ -139,6 +140,10 @@ add_executable(fuzz
   vecdeque.cpp
   versionbits.cpp
 )
+
+if(ENABLE_IPC)
+  add_subdirectory(${PROJECT_SOURCE_DIR}/src/ipc/test/fuzz ipc)
+endif()
 
 add_windows_application_manifest(fuzz)
 
