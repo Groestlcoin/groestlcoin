@@ -71,7 +71,6 @@ add_library(bitcoin_consensus STATIC EXCLUDE_FROM_ALL
   consensus/merkle.cpp
   consensus/tx_check.cpp
   groestlcoin-hash.cpp
-  groestlcoin.cpp
   hash.cpp
   primitives/block.cpp
   primitives/transaction.cpp
