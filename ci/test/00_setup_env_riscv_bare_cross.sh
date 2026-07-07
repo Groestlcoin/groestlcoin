@@ -31,7 +31,7 @@ export GROESTLCOIN_CONFIG="-DCMAKE_C_COMPILER=/opt/riscv-ilp32/bin/riscv32-unkno
  -DIFADDR_LINKS_WITHOUT_LIBSOCKET=ON \
  "
 
-export BARE_METAL_RISCV="true"
-export RUN_UNIT_TESTS="false"
-export RUN_FUNCTIONAL_TESTS="false"
-export NO_DEPENDS="true"
+export BARE_METAL_RISCV=true
+export RUN_UNIT_TESTS=false
+export RUN_FUNCTIONAL_TESTS=false
+export NO_DEPENDS=true
