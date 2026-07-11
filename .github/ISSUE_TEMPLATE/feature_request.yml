@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        If you use AI tools when opening this issue, please read the [AI policy](https://github.com/bitcoin/bitcoin/blob/master/doc/AI_POLICY.md).
+        If you use AI tools when opening this issue, please read the [AI policy](https://github.com/groestlcoin/groestlcoin/blob/master/doc/AI_POLICY.md).
 
   - type: textarea
     id: feature

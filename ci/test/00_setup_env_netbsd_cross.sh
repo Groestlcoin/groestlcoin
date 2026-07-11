@@ -25,7 +25,7 @@ export DEP_OPTS="build_CC=clang build_CXX=clang++ \
  RANLIB=llvm-ranlib-${APT_LLVM_V} \
  STRIP=llvm-strip-${APT_LLVM_V}"
 export GOAL="install"
-export BITCOIN_CONFIG="\
+export GROESTLCOIN_CONFIG="\
  --preset=dev-mode \
  -DBUILD_GUI=OFF \
  -DREDUCE_EXPORTS=ON \
