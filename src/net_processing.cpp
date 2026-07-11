@@ -1908,11 +1908,13 @@ std::vector<CTransactionRef> PeerManagerImpl::AbortPrivateBroadcast(const uint25
 
 void PeerManagerImpl::AddToCompactExtraTransactions(const CTransactionRef& tx)
 {
-    if (m_opts.max_extra_txs <= 0)
-        return;
-    if (!vExtraTxnForCompact.size())
-        vExtraTxnForCompact.resize(m_opts.max_extra_txs);
-    vExtraTxnForCompact[vExtraTxnForCompactIt] = std::make_pair(tx->GetWitnessHash(), tx);
+    if (m_opts.max_extra_txs == 0) return;
+    if (vExtraTxnForCompact.size() < m_opts.max_extra_txs) {
+        if (vExtraTxnForCompact.empty()) vExtraTxnForCompact.reserve(m_opts.max_extra_txs);
+        vExtraTxnForCompact.emplace_back(tx->GetWitnessHash(), tx);
+    } else {
+        vExtraTxnForCompact[vExtraTxnForCompactIt] = std::make_pair(tx->GetWitnessHash(), tx);
+    }
     vExtraTxnForCompactIt = (vExtraTxnForCompactIt + 1) % m_opts.max_extra_txs;
 }
 
@@ -3792,7 +3794,7 @@ void PeerManagerImpl::ProcessMessage(Peer& peer, CNode& pfrom, const std::string
 
         // Attempt to initialize address relay for outbound peers and use result
         // to decide whether to send GETADDR, so that we don't send it to
-        // inbound or outbound block-relay-only peers.
+        // inbound, feelers, or outbound block-relay-only peers.
         bool send_getaddr{false};
         if (!pfrom.IsInboundConn()) {
             send_getaddr = SetupAddressRelay(pfrom, peer);
@@ -5723,6 +5725,11 @@ bool PeerManagerImpl::SetupAddressRelay(const CNode& node, Peer& peer)
     // connections to prevent providing adversaries with the additional
     // information of addr traffic to infer the link.
     if (node.IsBlockOnlyConn()) return false;
+
+    // We don't participate in addr relay with feeler connections because
+    // they are disconnected shortly after the handshake completes,
+    // before the node will receive the addr response.
+    if (node.IsFeelerConn()) return false;
 
     if (!peer.m_addr_relay_enabled.exchange(true)) {
         // During version message processing (non-block-relay-only outbound peers)

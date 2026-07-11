@@ -1,8 +1,9 @@
 <!--
 *** Please remove the following help text before submitting: ***
 
-Pull requests without a rationale and clear improvement may be closed
-immediately.
+Pull requests may be closed immediately if they:
+- do not have a rationale and clear improvement
+- do not adhere to doc/AI_POLICY.md
 -->
 
 <!--

@@ -14,6 +14,14 @@ purposes. As such, there are repository maintainers who are responsible for
 merging pull requests, the [release cycle](/doc/release-process.md), and
 moderation.
 
+Getting Started
+---------------
+
+New contributors are very welcome and needed.
+
+If you use AI tools while contributing, please read and follow the [AI
+policy](/doc/AI_POLICY.md). Contributors are responsible for understanding and
+explaining their own work in their own words.
 
 Contributor Workflow
 --------------------
