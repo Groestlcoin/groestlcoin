@@ -22,7 +22,6 @@ EXCLUDED_DIRS = ["contrib/devtools/groestlcoin-tidy/",
                 ] + SHARED_EXCLUDED_SUBTREES
 
 EXPECTED_BOOST_INCLUDES = [
-                           "boost/cstdlib.hpp",
                            "boost/multi_index/detail/hash_index_iterator.hpp",
                            "boost/multi_index/hashed_index.hpp",
                            "boost/multi_index/identity.hpp",
