@@ -102,7 +102,7 @@ FUZZ_TARGET(utxo_total_supply)
         LOCK(chainman.GetMutex());
         chainman.ActiveChainstate().ForceFlushStateToDisk(wipe_cache);
         utxo_stats = std::move(
-            *Assert(kernel::ComputeUTXOStats(kernel::CoinStatsHashType::NONE, &chainman.ActiveChainstate().CoinsDB(), chainman.m_blockman, {})));
+            *Assert(kernel::ComputeUTXOStats(kernel::CoinStatsHashType::NONE, chainman.ActiveChainstate().CoinsDB(), chainman.m_blockman, {})));
         // Check that miner can't print more money than they are allowed to
         assert(circulation == utxo_stats.total_amount);
     };
@@ -145,8 +145,7 @@ FUZZ_TARGET(utxo_total_supply)
 
     // Limit to avoid timeout, but enough to cover duplicate_coinbase_height
     // and CVE-2018-17144.
-    LIMITED_WHILE(fuzzed_data_provider.remaining_bytes(), 2'00)
-    {
+    LIMITED_WHILE (fuzzed_data_provider.remaining_bytes(), 2'00) {
         CallOneOf(
             fuzzed_data_provider,
             [&] {

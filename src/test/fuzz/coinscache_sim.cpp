@@ -207,17 +207,15 @@ struct OverlayFetchScope
 // Reuse a single global thread pool across fuzz iterations. Creating and destroying a pool every
 // iteration leaks memory, since iterations can run faster than the OS can tear down the threads.
 std::shared_ptr<ThreadPool> g_thread_pool{std::make_shared<ThreadPool>("cache_fuzz")};
-Mutex g_thread_pool_mutex;
 
-void StartPoolIfNeeded() EXCLUSIVE_LOCKS_REQUIRED(!g_thread_pool_mutex)
+void StartPoolIfNeeded()
 {
-    LOCK(g_thread_pool_mutex);
     if (!g_thread_pool->WorkersCount()) g_thread_pool->Start(DEFAULT_PREVOUTFETCH_THREADS);
 }
 
 } // namespace
 
-FUZZ_TARGET(coinscache_sim, .init = [] { static auto setup{MakeNoLogFileContext<>()}; }) EXCLUSIVE_LOCKS_REQUIRED(!g_thread_pool_mutex)
+FUZZ_TARGET(coinscache_sim, .init = [] { static auto setup{MakeNoLogFileContext<>()}; })
 {
     SeedRandomStateForTest(SeedRand::ZEROS);
     StartPoolIfNeeded();
@@ -270,7 +268,7 @@ FUZZ_TARGET(coinscache_sim, .init = [] { static auto setup{MakeNoLogFileContext<
     // Main simulation loop: read commands from the fuzzer input, and apply them
     // to both the real cache stack and the simulation.
     FuzzedDataProvider provider(buffer.data(), buffer.size());
-    LIMITED_WHILE(provider.remaining_bytes(), 10000) {
+    LIMITED_WHILE (provider.remaining_bytes(), 10000) {
         // Every operation (except "Change height") moves current height forward,
         // so it functions as a kind of epoch, making ~all UTXOs unique.
         ++current_height;
