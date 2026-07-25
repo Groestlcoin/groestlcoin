@@ -356,6 +356,7 @@ BASE_SCRIPTS = [
     'rpc_scanblocks.py',
     'tool_bitcoin.py',
     'p2p_sendtxrcncl.py',
+    'p2p_connection_limits.py',
     'rpc_scantxoutset.py',
     'feature_torcontrol.py',
     'feature_unsupported_utxo_db.py',
@@ -395,6 +396,7 @@ BASE_SCRIPTS = [
     'wallet_migration.py',
     'p2p_ibd_txrelay.py',
     'p2p_seednode.py',
+    'rpc_openrpc.py',
     # Don't append tests at the end to avoid merge conflicts
     # Put them in a random line within the section that fits their approximate run-time
 ]
