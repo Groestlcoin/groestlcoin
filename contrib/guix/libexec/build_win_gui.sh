@@ -81,11 +81,11 @@ mkdir -p "$DISTSRC"
           -DREDUCE_EXPORTS=ON \
           -DWITH_CCACHE=OFF
 
-    # Build Bitcoin Core
-    cmake --build build -j "$JOBS" --target bitcoin-qt
+    # Build Groestlcoin Core
+    cmake --build build -j "$JOBS" --target groestlcoin-qt
 
-    # Install built Bitcoin Core
-    cmake --install build --component bitcoin-qt
+    # Install built Groestlcoin Core
+    cmake --install build --component groestlcoin-qt
 )
 
 # shellcheck source=package.sh

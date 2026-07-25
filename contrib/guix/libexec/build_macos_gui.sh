@@ -65,12 +65,12 @@ mkdir -p "$DISTSRC"
           -DCMAKE_SKIP_RPATH=TRUE \
           -DREDUCE_EXPORTS=ON
 
-    # Build Bitcoin Core
-    cmake --build build -j "$JOBS" --target bitcoin-gui bitcoin-qt
+    # Build Groestlcoin Core
+    cmake --build build -j "$JOBS" --target groestlcoin-gui groestlcoin-qt
 
-    # Install built Bitcoin Core
-    cmake --install build --strip --component bitcoin-gui
-    cmake --install build --strip --component bitcoin-qt
+    # Install built Groestlcoin Core
+    cmake --install build --strip --component groestlcoin-gui
+    cmake --install build --strip --component groestlcoin-qt
 )
 
 # shellcheck source=package.sh

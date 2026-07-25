@@ -76,10 +76,10 @@ mkdir -p "$DISTSRC"
           -DREDUCE_EXPORTS=ON \
           -DWITH_CCACHE=OFF
 
-    # Build Bitcoin Core
+    # Build Groestlcoin Core
     cmake --build build -j "$JOBS"
 
-    # Install built Bitcoin Core
+    # Install built Groestlcoin Core
     cmake --install build
 )
 

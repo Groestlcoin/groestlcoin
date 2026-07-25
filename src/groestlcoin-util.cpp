@@ -166,7 +166,7 @@ static int GetChainParams(const std::vector<std::string>& args, std::string& str
     result.pushKV("chain", params.GetChainTypeString());
     result.pushKV("test_chain", params.IsTestChain());
     result.pushKV("genesis", HexStr(consensus.hashGenesisBlock));
-    result.pushKV("subsidy_halving_interval", consensus.nSubsidyHalvingInterval);
+    // result.pushKV("subsidy_halving_interval", consensus.nSubsidyHalvingInterval);
 
     if (consensus.signet_blocks) {
         UniValue signet{UniValue::VOBJ};
