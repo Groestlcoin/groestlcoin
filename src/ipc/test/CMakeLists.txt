@@ -2,11 +2,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://opensource.org/license/mit/.
 
-# Do not use generator expressions in test sources because the
-# SOURCES property is processed to gather test suite macros.
-target_sources(test_groestlcoin
-  PRIVATE
-    ipc_tests.cpp
-)
-
 target_link_libraries(test_groestlcoin bitcoin_ipc_test bitcoin_ipc)
+
+add_boost_test(${CMAKE_CURRENT_SOURCE_DIR}/ipc_tests.cpp)

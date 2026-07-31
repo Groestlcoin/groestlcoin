@@ -169,6 +169,7 @@ using node::VerifyLoadedChainstate;
 using util::Join;
 using util::ReplaceAll;
 using util::ToString;
+using util::TrimStringView;
 
 static constexpr bool DEFAULT_PROXYRANDOMIZE{true};
 static constexpr bool DEFAULT_REST_ENABLE{false};
@@ -716,6 +717,10 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
                    OptionsCategory::NODE_RELAY);
     argsman.AddArg("-minrelaytxfee=<amt>", strprintf("Fees (in %s/kvB) smaller than this are considered zero fee for relaying, mining and transaction creation (default: %s)",
         CURRENCY_UNIT, FormatMoney(DEFAULT_MIN_RELAY_TX_FEE)), ArgsManager::ALLOW_ANY, OptionsCategory::NODE_RELAY);
+    argsman.AddArg("-txsendrate=<n>",
+                   strprintf("Set the maximum ongoing rate for sending transactions to (inbound) peers (default: %u tx/s)",
+                             DEFAULT_TX_SEND_RATE),
+                   ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::NODE_RELAY);
     argsman.AddArg("-privatebroadcast",
                    strprintf(
                        "Broadcast transactions submitted via sendrawtransaction RPC using short-lived "
@@ -2139,7 +2144,15 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     connOptions.m_msgproc = node.peerman.get();
     connOptions.nSendBufferMaxSize = 1000 * args.GetIntArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000 * args.GetIntArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
-    connOptions.m_added_nodes = args.GetArgs("-addnode");
+    for (const std::string& added_node : args.GetArgs("-addnode")) {
+        // Such a value is not a valid connection target, but would otherwise be
+        // treated as one and retried indefinitely.
+        if (TrimStringView(added_node).empty()) {
+            LogWarning("Ignoring empty -addnode value");
+            continue;
+        }
+        connOptions.m_added_nodes.push_back(added_node);
+    }
     connOptions.nMaxOutboundLimit = *opt_max_upload;
     connOptions.m_peer_connect_timeout = peer_connect_timeout;
     connOptions.whitelist_forcerelay = args.GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY);
