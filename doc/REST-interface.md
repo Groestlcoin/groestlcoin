@@ -27,7 +27,7 @@ REST responses include `Cache-Control` headers by default:
   can change with active chain or node state and do not currently provide cache
   validators such as `ETag` or `Last-Modified`.
 
-If you front `bitcoind` with a reverse proxy or CDN such as Caddy or nginx with
+If you front `groestlcoind` with a reverse proxy or CDN such as Caddy or nginx with
 the headers-more module, you can override these defaults there. Keep overrides
 scoped to responses you know are safe to cache more aggressively.
 
