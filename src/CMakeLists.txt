@@ -169,10 +169,10 @@ if(ENABLE_WALLET)
   if(BUILD_WALLET_TOOL)
     add_executable(groestlcoin-wallet
       groestlcoin-wallet.cpp
+      groestlcoin-wallet-res.rc
       init/groestlcoin-wallet.cpp
       wallet/wallettool.cpp
     )
-    add_windows_resources(groestlcoin-wallet groestlcoin-wallet-res.rc)
     add_windows_application_manifest(groestlcoin-wallet)
     target_link_libraries(groestlcoin-wallet
       core_interface
@@ -310,8 +310,10 @@ endif()
 
 # Groestlcoin wrapper executable that can call other executables.
 if(BUILD_BITCOIN_BIN)
-  add_executable(groestlcoin bitcoin.cpp)
-  add_windows_resources(groestlcoin groestlcoin-res.rc)
+  add_executable(groestlcoin
+    bitcoin.cpp
+    groestlcoin-res.rc
+  )
   add_windows_application_manifest(groestlcoin)
   target_link_libraries(groestlcoin core_interface bitcoin_common bitcoin_util)
   install_binary_component(groestlcoin HAS_MANPAGE)
@@ -321,9 +323,9 @@ endif()
 if(BUILD_DAEMON)
   add_executable(groestlcoind
     groestlcoind.cpp
+    groestlcoind-res.rc
     init/groestlcoind.cpp
   )
-  add_windows_resources(groestlcoind groestlcoind-res.rc)
   add_windows_application_manifest(groestlcoind)
   target_link_libraries(groestlcoind
     core_interface
@@ -360,8 +362,11 @@ target_link_libraries(bitcoin_cli
 
 # Groestlcoin Core RPC client
 if(BUILD_CLI)
-  add_executable(groestlcoin-cli groestlcoin-cli.cpp init/basic.cpp)
-  add_windows_resources(groestlcoin-cli groestlcoin-cli-res.rc)
+  add_executable(groestlcoin-cli
+    groestlcoin-cli.cpp
+    groestlcoin-cli-res.rc
+    init/basic.cpp
+  )
   add_windows_application_manifest(groestlcoin-cli)
   target_link_libraries(groestlcoin-cli
     core_interface
@@ -375,8 +380,10 @@ endif()
 
 
 if(BUILD_TX)
-  add_executable(groestlcoin-tx groestlcoin-tx.cpp)
-  add_windows_resources(groestlcoin-tx groestlcoin-tx-res.rc)
+  add_executable(groestlcoin-tx
+    groestlcoin-tx.cpp
+    groestlcoin-tx-res.rc
+  )
   add_windows_application_manifest(groestlcoin-tx)
   target_link_libraries(groestlcoin-tx
     core_interface
@@ -389,8 +396,10 @@ endif()
 
 
 if(BUILD_UTIL)
-  add_executable(groestlcoin-util groestlcoin-util.cpp)
-  add_windows_resources(groestlcoin-util groestlcoin-util-res.rc)
+  add_executable(groestlcoin-util
+    groestlcoin-util.cpp
+    groestlcoin-util-res.rc
+  )
   add_windows_application_manifest(groestlcoin-util)
   target_link_libraries(groestlcoin-util
     core_interface

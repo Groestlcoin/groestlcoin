@@ -11,8 +11,8 @@
 /** Amount in gros (Can be negative) */
 typedef int64_t CAmount;
 
-/** The amount of satoshis in one GRS. */
-static constexpr CAmount COIN = 100000000;
+/** The amount of gros in one GRS. */
+inline constexpr CAmount COIN{100'000'000};
 
 /** No amount larger than this (in gro) is valid.
  *
@@ -23,7 +23,7 @@ static constexpr CAmount COIN = 100000000;
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
  * for the creation of coins out of thin air modification could lead to a fork.
  * */
-static constexpr CAmount MAX_MONEY = 105000000 * COIN; // GRS
+inline constexpr CAmount MAX_MONEY{105'000'000 * COIN}; // GRS
 inline bool MoneyRange(const CAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
 #endif // BITCOIN_CONSENSUS_AMOUNT_H

@@ -255,12 +255,12 @@ endif()
 
 add_subdirectory(locale)
 
-add_executable(groestlcoin-qt
+add_executable(groestlcoin-qt WIN32
   main.cpp
+  res/groestlcoin-qt-res.rc
   ../init/groestlcoin-qt.cpp
 )
 
-add_windows_resources(groestlcoin-qt res/groestlcoin-qt-res.rc)
 add_windows_application_manifest(groestlcoin-qt)
 
 target_link_libraries(groestlcoin-qt
@@ -271,12 +271,9 @@ target_link_libraries(groestlcoin-qt
 
 import_plugins(groestlcoin-qt)
 install_binary_component(groestlcoin-qt HAS_MANPAGE)
-if(WIN32)
-  set_target_properties(groestlcoin-qt PROPERTIES WIN32_EXECUTABLE TRUE)
-endif()
 
 if(ENABLE_IPC)
-  add_executable(groestlcoin-gui
+  add_executable(groestlcoin-gui WIN32
     main.cpp
     ../init/groestlcoin-gui.cpp
   )
@@ -288,9 +285,6 @@ if(ENABLE_IPC)
   )
   import_plugins(groestlcoin-gui)
   install_binary_component(groestlcoin-gui INTERNAL)
-  if(WIN32)
-    set_target_properties(groestlcoin-gui PROPERTIES WIN32_EXECUTABLE TRUE)
-  endif()
 endif()
 
 if(BUILD_GUI_TESTS)
