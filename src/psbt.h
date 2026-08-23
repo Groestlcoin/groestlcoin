@@ -18,6 +18,7 @@
 #include <streams.h>
 #include <uint256.h>
 #include <util/result.h>
+#include <util/expected.h>
 
 #include <optional>
 #include <bitset>
@@ -321,7 +322,6 @@ public:
     std::set<PSBTProprietary> m_proprietary;
     std::optional<int> sighash_type;
 
-    bool IsNull() const;
     void FillSignatureData(SignatureData& sigdata) const;
     void FromSignatureData(const SignatureData& sigdata);
     [[nodiscard]] bool Merge(const PSBTInput& input);
@@ -956,7 +956,6 @@ public:
     CAmount amount;
     CScript script;
 
-    bool IsNull() const;
     void FillSignatureData(SignatureData& sigdata) const;
     void FromSignatureData(const SignatureData& sigdata);
     [[nodiscard]] bool Merge(const PSBTOutput& output);
@@ -1254,12 +1253,14 @@ public:
     uint32_t tx_version;
     std::optional<uint32_t> fallback_locktime;
 
-    bool IsNull() const;
     uint32_t GetVersion() const;
 
     /** Merge psbt into this. The two psbts must have the same underlying CTransaction (i.e. the
       * same actual Groestlcoin transaction.) Returns true if the merge succeeded, false otherwise. */
     [[nodiscard]] bool Merge(const PartiallySignedTransaction& psbt);
+    /** Merge the global xpubs of psbt into this, keeping the existing origin for an xpub
+      * seen again with a different one, as the serialized records are keyed by xpub. */
+    void MergeGlobalXPubs(const PartiallySignedTransaction& psbt);
     bool AddInput(const PSBTInput& psbtin);
     bool AddOutput(const PSBTOutput& psbtout);
     std::optional<uint32_t> ComputeTimeLock() const;
@@ -1356,9 +1357,6 @@ public:
 
         // Used for duplicate key detection
         std::set<std::vector<unsigned char>> key_lookup;
-
-        // Track the global xpubs we have already seen. Just for sanity checking
-        std::set<CExtPubKey> global_xpubs;
 
         // Read global data
         bool found_sep = false;
@@ -1462,7 +1460,6 @@ public:
                     if (!xpub.pubkey.IsFullyValid()) {
                        throw std::ios_base::failure("Invalid pubkey");
                     }
-                    global_xpubs.insert(xpub);
                     // Read in the keypath from stream
                     KeyOriginInfo keypath;
                     DeserializeHDKeypath(s, keypath);
@@ -1646,7 +1643,7 @@ bool PSBTInputSignedAndVerified(const PartiallySignedTransaction& psbt, unsigned
  * txdata should be the output of PrecomputePSBTData (which can be shared across
  * multiple SignPSBTInput calls). If it is nullptr, a dummy signature will be created.
  **/
-[[nodiscard]] PSBTError SignPSBTInput(const SigningProvider& provider, PartiallySignedTransaction& psbt, int index, const PrecomputedTransactionData* txdata, const common::PSBTFillOptions& options, SignatureData* out_sigdata = nullptr);
+[[nodiscard]] util::Expected<void, PSBTError> SignPSBTInput(const SigningProvider& provider, PartiallySignedTransaction& psbt, int index, const PrecomputedTransactionData* txdata, const common::PSBTFillOptions& options, SignatureData* out_sigdata = nullptr);
 
 /**  Reduces the size of the PSBT by dropping unnecessary `non_witness_utxos` (i.e. complete previous transactions) from a psbt when all inputs are segwit v1. */
 void RemoveUnnecessaryTransactions(PartiallySignedTransaction& psbtx);

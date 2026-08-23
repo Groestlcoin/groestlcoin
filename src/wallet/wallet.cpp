@@ -76,10 +76,12 @@
 #include <cassert>
 #include <condition_variable>
 #include <exception>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <thread>
 #include <tuple>
+#include <utility>
 #include <variant>
 
 struct KeyOriginInfo;
@@ -566,36 +568,45 @@ static bool EncryptMasterKey(const SecureString& wallet_passphrase, const CKeyin
 {
     constexpr MillisecondsDouble target_time{100};
     CCrypter crypter;
+    CMasterKey updated_master_key{master_key};
 
     // Get the weighted average of iterations we can do in 100ms over 2 runs.
     for (int i = 0; i < 2; i++){
         auto start_time{NodeClock::now()};
-        crypter.SetKeyFromPassphrase(wallet_passphrase, master_key.vchSalt, master_key.nDeriveIterations, master_key.nDerivationMethod);
+        const bool key_set{crypter.SetKeyFromPassphrase(wallet_passphrase, updated_master_key.vchSalt, updated_master_key.nDeriveIterations, updated_master_key.nDerivationMethod)};
         auto elapsed_time{NodeClock::now() - start_time};
+        if (!key_set) {
+            return false;
+        }
 
         if (elapsed_time <= 0s) {
             // We are probably in a test with a mocked clock.
-            master_key.nDeriveIterations = CMasterKey::DEFAULT_DERIVE_ITERATIONS;
+            updated_master_key.nDeriveIterations = CMasterKey::DEFAULT_DERIVE_ITERATIONS;
             break;
         }
 
         // target_iterations : elapsed_iterations :: target_time : elapsed_time
-        unsigned int target_iterations = master_key.nDeriveIterations * target_time / elapsed_time;
-        // Get the weighted average with previous runs.
-        master_key.nDeriveIterations = (i * master_key.nDeriveIterations + target_iterations) / (i + 1);
+        const double target_iterations{updated_master_key.nDeriveIterations * target_time / elapsed_time};
+        if (target_iterations < 1 || target_iterations > std::numeric_limits<unsigned int>::max()) {
+            return false;
+        }
+        // Get the weighted average with previous runs. Use 64-bit math so the
+        // sum cannot wrap; the average of two unsigned int values fits in one.
+        updated_master_key.nDeriveIterations = (uint64_t{updated_master_key.nDeriveIterations} * i + static_cast<unsigned int>(target_iterations)) / (i + 1);
     }
 
-    if (master_key.nDeriveIterations < CMasterKey::DEFAULT_DERIVE_ITERATIONS) {
-        master_key.nDeriveIterations = CMasterKey::DEFAULT_DERIVE_ITERATIONS;
+    if (updated_master_key.nDeriveIterations < CMasterKey::DEFAULT_DERIVE_ITERATIONS) {
+        updated_master_key.nDeriveIterations = CMasterKey::DEFAULT_DERIVE_ITERATIONS;
     }
 
-    if (!crypter.SetKeyFromPassphrase(wallet_passphrase, master_key.vchSalt, master_key.nDeriveIterations, master_key.nDerivationMethod)) {
+    if (!crypter.SetKeyFromPassphrase(wallet_passphrase, updated_master_key.vchSalt, updated_master_key.nDeriveIterations, updated_master_key.nDerivationMethod)) {
         return false;
     }
-    if (!crypter.Encrypt(plain_master_key, master_key.vchCryptedKey)) {
+    if (!crypter.Encrypt(plain_master_key, updated_master_key.vchCryptedKey)) {
         return false;
     }
 
+    master_key = std::move(updated_master_key);
     return true;
 }
 
@@ -3536,11 +3547,11 @@ void CWallet::AddScriptPubKeyMan(const uint256& id, std::unique_ptr<ScriptPubKey
 
 LegacyDataSPKM* CWallet::GetOrCreateLegacyDataSPKM()
 {
-    SetupLegacyScriptPubKeyMan();
+    SetupLegacyDataSPKM();
     return GetLegacyDataSPKM();
 }
 
-void CWallet::SetupLegacyScriptPubKeyMan()
+void CWallet::SetupLegacyDataSPKM()
 {
     if (!m_internal_spk_managers.empty() || !m_external_spk_managers.empty() || !m_spk_managers.empty() || IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS)) {
         return;
@@ -3967,12 +3978,12 @@ util::Result<void> CWallet::ApplyMigrationData(WalletBatch& local_wallet_batch, 
         AddScriptPubKeyMan(id, std::move(desc_spkm));
     }
 
-    // Remove the LegacyScriptPubKeyMan from disk
+    // Remove the LegacyDataSPKM's records from disk
     if (!legacy_spkm->DeleteRecordsWithDB(local_wallet_batch)) {
         return util::Error{_("Error: cannot remove legacy wallet records")};
     }
 
-    // Remove the LegacyScriptPubKeyMan from memory
+    // Remove the LegacyDataSPKM from memory
     m_spk_managers.erase(legacy_spkm->GetID());
     m_external_spk_managers.clear();
     m_internal_spk_managers.clear();
@@ -4208,8 +4219,9 @@ bool DoMigration(CWallet& wallet, WalletContext& context, bilingual_str& error, 
                 FlatSigningProvider keys;
                 std::string parse_err;
                 std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /*require_checksum=*/ true);
-                assert(descs.size() == 1); // It shouldn't be possible to have the LegacyScriptPubKeyMan make an invalid descriptor or a multipath descriptors
-                assert(!descs.at(0)->IsRange()); // It shouldn't be possible to have LegacyScriptPubKeyMan make a ranged watchonly descriptor
+                // LegacyDataSPKM should not produce invalid, multipath, or ranged watch-only descriptors.
+                assert(descs.size() == 1);
+                assert(!descs.at(0)->IsRange());
 
                 // Add to the wallet
                 WalletDescriptor w_desc(std::move(descs.at(0)), creation_time, 0, 0, 0);
@@ -4247,8 +4259,9 @@ bool DoMigration(CWallet& wallet, WalletContext& context, bilingual_str& error, 
                 FlatSigningProvider keys;
                 std::string parse_err;
                 std::vector<std::unique_ptr<Descriptor>> descs = Parse(desc_str, keys, parse_err, /*require_checksum=*/ true);
-                assert(descs.size() == 1); // It shouldn't be possible to have the LegacyScriptPubKeyMan make an invalid descriptor or a multipath descriptors
-                assert(!descs.at(0)->IsRange()); // It shouldn't be possible to have LegacyScriptPubKeyMan make a ranged watchonly descriptor
+                // LegacyDataSPKM should not produce invalid, multipath, or ranged watch-only descriptors.
+                assert(descs.size() == 1);
+                assert(!descs.at(0)->IsRange());
 
                 // Add to the wallet
                 WalletDescriptor w_desc(std::move(descs.at(0)), creation_time, 0, 0, 0);
@@ -4262,7 +4275,7 @@ bool DoMigration(CWallet& wallet, WalletContext& context, bilingual_str& error, 
         }
     }
 
-    // Add the descriptors to wallet, remove LegacyScriptPubKeyMan, and cleanup txs and address book data
+    // Add the descriptors to the wallet, remove the LegacyDataSPKM, and clean up transactions and address book data
     return RunWithinTxn(wallet.GetDatabase(), /*process_desc=*/"apply migration process", [&](WalletBatch& batch) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet){
         if (auto res_migration = wallet.ApplyMigrationData(batch, *data); !res_migration) {
             error = util::ErrorString(res_migration);
@@ -4535,25 +4548,27 @@ void CWallet::TopUpCallback(const std::set<CScript>& spks, ScriptPubKeyMan* spkm
     CacheNewScriptPubKeys(spks, spkm);
 }
 
-std::set<CExtPubKey> CWallet::GetActiveHDPubKeys() const
+CWallet::HDPubKeyMap CWallet::GetHDPubKeys(HDKeyFilter filter) const
 {
     AssertLockHeld(cs_wallet);
 
     Assert(IsWalletFlagSet(WALLET_FLAG_DESCRIPTORS));
 
-    std::set<CExtPubKey> active_xpubs;
-    for (const auto& spkm : GetActiveScriptPubKeyMans()) {
-        const DescriptorScriptPubKeyMan* desc_spkm = dynamic_cast<DescriptorScriptPubKeyMan*>(spkm);
-        assert(desc_spkm);
+    HDPubKeyMap xpubs;
+    for (const auto& spkm : filter == HDKeyFilter::Active ? GetActiveScriptPubKeyMans() : GetAllScriptPubKeyMans()) {
+        auto* desc_spkm = Assert(dynamic_cast<DescriptorScriptPubKeyMan*>(spkm));
         LOCK(desc_spkm->cs_desc_man);
         WalletDescriptor w_desc = desc_spkm->GetWalletDescriptor();
+        if (filter == HDKeyFilter::UnusedKey && w_desc.descriptor->HasScripts()) continue;
 
         std::set<CPubKey> desc_pubkeys;
         std::set<CExtPubKey> desc_xpubs;
         w_desc.descriptor->GetPubKeys(desc_pubkeys, desc_xpubs);
-        active_xpubs.merge(std::move(desc_xpubs));
+        for (const CExtPubKey& xpub : desc_xpubs) {
+            xpubs[xpub].insert(desc_spkm);
+        }
     }
-    return active_xpubs;
+    return xpubs;
 }
 
 std::optional<CKey> CWallet::GetKey(const CKeyID& keyid) const
@@ -4567,6 +4582,14 @@ std::optional<CKey> CWallet::GetKey(const CKeyID& keyid) const
         if (std::optional<CKey> key = desc_spkm->GetKey(keyid)) {
             return key;
         }
+    }
+    return std::nullopt;
+}
+
+std::optional<CExtKey> CWallet::GetExtKey(const CExtPubKey& xpub) const
+{
+    if (std::optional<CKey> key = GetKey(xpub.pubkey.GetID())) {
+        return CExtKey{xpub, *key};
     }
     return std::nullopt;
 }

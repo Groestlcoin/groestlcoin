@@ -152,8 +152,7 @@ PartiallySignedTransaction ProcessPSBT(const std::string& psbt_string, const std
 
         // Look in the txindex
         if (g_txindex) {
-            uint256 block_hash;
-            g_txindex->FindTx(psbt_input.prev_txid, block_hash, tx);
+            if (auto result{g_txindex->FindTx(psbt_input.prev_txid)}) tx = result->tx;
         }
         // If we still don't have it look in the mempool
         if (!tx) {
@@ -196,7 +195,8 @@ PartiallySignedTransaction ProcessPSBT(const std::string& psbt_string, const std
         // We only actually care about those if our signing provider doesn't hide private
         // information, as is the case with `descriptorprocesspsbt`
         // Only error for mismatching sighash types as it is critical that the sighash to sign with matches the PSBT's
-        if (SignPSBTInput(provider, psbtx, /*index=*/i, &txdata, {.sighash_type = sighash_type, .finalize = finalize}, /*out_sigdata=*/nullptr) == common::PSBTError::SIGHASH_MISMATCH) {
+        const auto sign_result = SignPSBTInput(provider, psbtx, /*index=*/i, &txdata, {.sighash_type = sighash_type, .finalize = finalize}, /*out_sigdata=*/nullptr);
+        if (!sign_result.has_value() && sign_result.error() == common::PSBTError::SIGHASH_MISMATCH) {
             throw JSONRPCPSBTError(common::PSBTError::SIGHASH_MISMATCH);
         }
     }
@@ -1928,13 +1928,7 @@ static RPCMethod joinpsbts()
         for (const PSBTOutput& output : psbt.outputs) {
             merged_psbt.AddOutput(output);
         }
-        for (auto& xpub_pair : psbt.m_xpubs) {
-            if (!merged_psbt.m_xpubs.contains(xpub_pair.first)) {
-                merged_psbt.m_xpubs[xpub_pair.first] = xpub_pair.second;
-            } else {
-                merged_psbt.m_xpubs[xpub_pair.first].insert(xpub_pair.second.begin(), xpub_pair.second.end());
-            }
-        }
+        merged_psbt.MergeGlobalXPubs(psbt);
         merged_psbt.unknown.insert(psbt.unknown.begin(), psbt.unknown.end());
     }
 

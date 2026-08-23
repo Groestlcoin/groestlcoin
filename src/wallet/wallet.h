@@ -979,12 +979,12 @@ public:
     //! Get the wallet descriptors for a script.
     std::vector<WalletDescriptor> GetWalletDescriptors(const CScript& script) const;
 
-    //! Get the LegacyScriptPubKeyMan which is used for all types, internal, and external.
+    //! Get the LegacyDataSPKM used for all legacy output types and both internal and external chains.
     LegacyDataSPKM* GetLegacyDataSPKM() const;
     LegacyDataSPKM* GetOrCreateLegacyDataSPKM();
 
-    //! Make a Legacy(Data)SPKM and set it for all types, internal, and external.
-    void SetupLegacyScriptPubKeyMan();
+    //! Create a LegacyDataSPKM and set it for all legacy output types and both internal and external chains.
+    void SetupLegacyDataSPKM();
 
     bool WithEncryptionKey(std::function<bool (const CKeyingMaterial&)> cb) const override;
 
@@ -1066,8 +1066,8 @@ public:
     //! Get all of the descriptors from a legacy wallet
     std::optional<MigrationData> GetDescriptorsForLegacy(bilingual_str& error) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
-    //! Adds the ScriptPubKeyMans given in MigrationData to this wallet, removes LegacyScriptPubKeyMan,
-    //! and where needed, moves tx and address book entries to watchonly_wallet or solvable_wallet
+    //! Adds the ScriptPubKeyMans from MigrationData to this wallet, removes the LegacyDataSPKM,
+    //! and moves transaction and address book entries to watchonly_wallet or solvable_wallet as needed.
     util::Result<void> ApplyMigrationData(WalletBatch& local_wallet_batch, MigrationData& data) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     //! Whether the (external) signer performs R-value signature grinding
@@ -1078,12 +1078,23 @@ public:
 
     void TopUpCallback(const std::set<CScript>& spks, ScriptPubKeyMan* spkm) override;
 
-    //! Retrieve the xpubs in use by the active descriptors
-    std::set<CExtPubKey> GetActiveHDPubKeys() const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    //! Which descriptors GetHDPubKeys() should consider.
+    enum class HDKeyFilter {
+        Active,    //!< Only active descriptors
+        All,       //!< All descriptors
+        UnusedKey, //!< Only unused(KEY) descriptors
+    };
+    using HDPubKeyMap = std::map<CExtPubKey, std::set<DescriptorScriptPubKeyMan*>>;
+    //! Retrieve descriptor xpubs matching the requested filter.
+    HDPubKeyMap GetHDPubKeys(HDKeyFilter filter) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     //! Find the private key for the given key id from the wallet's descriptors, if available
     //! Returns nullopt when no descriptor has the key or if the wallet is locked.
     std::optional<CKey> GetKey(const CKeyID& keyid) const;
+
+    //! Reconstruct the extended private key for an HD xpub. Returns nullopt when
+    //! no descriptor has the private key, or the wallet is locked.
+    std::optional<CExtKey> GetExtKey(const CExtPubKey& xpub) const;
 
     //! Disconnect chain notifications and wait for all notifications to be processed
     void DisconnectChainNotifications();

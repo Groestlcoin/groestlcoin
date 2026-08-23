@@ -6,7 +6,6 @@
 #define BITCOIN_HTTPSERVER_H
 
 #include <atomic>
-#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -105,13 +104,15 @@ public:
      */
     void RemoveAll(std::string_view key);
     /**
+     * @param[in] reader A LineReader instance initialized with the client's receive buffer.
+     * @param[in] write  Whether or not to write the parsed data to the object after validation.
      * @returns false if LineReader hits the end of the buffer before reading an
      *                \n, meaning that we are still waiting on more data from the client.
      *          true  after reading an entire HTTP headers section, terminated
      *                by an empty line and \n.
      * @throws on exceeded read limit and on bad headers syntax (e.g. no ":" in a line)
      */
-    bool Read(util::LineReader& reader);
+    bool Read(util::LineReader& reader, bool write = true);
     std::string Stringify() const;
 
 private:
@@ -120,6 +121,9 @@ private:
      * https://httpwg.org/specs/rfc9110.html#rfc.section.5.2
      */
     std::vector<std::pair<std::string, std::string>> m_headers;
+
+    //! Track total bytes consumed in Read() for limit checks
+    size_t m_consumed{0};
 };
 
 struct HTTPVersion {
@@ -157,12 +161,12 @@ public:
     std::string m_body;
 
     //! Pointer to the client that made the request so we know who to respond to.
-    std::shared_ptr<HTTPRemoteClient> m_client;
+    std::weak_ptr<HTTPRemoteClient> m_client;
 
     //! Response headers may be set in advance before response body is known
     HTTPHeaders m_response_headers;
 
-    explicit HTTPRequest(std::shared_ptr<HTTPRemoteClient> client) : m_client{std::move(client)} {}
+    explicit HTTPRequest(const std::shared_ptr<HTTPRemoteClient>& client) : m_client{client} {}
     //! Construct with a null client for unit tests
     explicit HTTPRequest() : m_client{} {}
 
@@ -195,6 +199,27 @@ public:
     std::pair<bool, std::string> GetHeader(std::string_view hdr) const;
     std::string ReadBody() const { return m_body; }
     void WriteHeader(std::string&& hdr, std::string&& value);
+
+    enum class State {
+        Init,
+        NeedsHeaders,
+        NeedsBody,
+        Complete,
+        Error
+    };
+    State GetState() const { return m_state; }
+    void SetState(State state) { m_state = state; }
+
+    // If a large request is sent with "Transfer-encoding: chunked" we may
+    // read the chunk size in a separate I/O loop iteration than the chunk
+    // of data itself. Store the chunk size value here until the chunk is read.
+    std::optional<uint64_t> m_chunk_size;
+    // We may also read a large chunk over multiple loop iterations.
+    // Track the progress of the chunk here.
+    uint64_t m_chunk_read{0};
+
+private:
+    State m_state = State::Init;
 };
 
 class HTTPServer
@@ -306,7 +331,7 @@ private:
     /**
      * List of HTTPRemoteClients with connected sockets.
      * Connections will only be added and removed in the I/O thread, but
-     * shared pointers may be passed to worker threads to handle requests
+     * weak pointers may be passed to worker threads to handle requests
      * and send replies.
      */
     std::vector<std::shared_ptr<HTTPRemoteClient>> m_connected;
@@ -452,7 +477,7 @@ private:
      * Close underlying socket connections for flagged clients
      * by removing their shared pointer from m_connected. If an HTTPRemoteClient
      * is busy in a worker thread, its connection will be closed once that
-     * job is done and the HTTPRequest is out of scope.
+     * job is done.
      */
     void DisconnectClients();
 };
@@ -479,10 +504,9 @@ public:
     std::string m_recv_buffer{};
 
     //! Requests from a client must be processed in the order in which
-    //! they were received, blocking on a per-client basis. We won't
-    //! process the next request in the queue if we are currently busy
-    //! handling a previous request.
-    std::deque<std::unique_ptr<HTTPRequest>> m_req_queue;
+    //! they were received, blocking on a per-client basis. We read
+    //! one request at a time from the socket buffer then pass it to a worker.
+    std::unique_ptr<HTTPRequest> m_req;
 
     //! Set to true by the I/O thread when a request is popped off
     //! and passed to a worker thread, reset to false by the worker thread.
@@ -557,10 +581,11 @@ public:
 
     /**
      * Try to read an HTTP request from the receive buffer.
+     * Updates HTTPRequest.m_state and drains buffer on error.
      * @param[in]   req     A HTTPRequest to read into
-     * @returns true upon reading a complete request, otherwise false (may throw).
+     * @throws std::runtime_error if request is unreadable or violates protocol
      */
-    bool ReadRequest(HTTPRequest& req);
+    void ReadRequest(HTTPRequest& req);
 
     /**
      * Push data (if there is any) from client's m_send_buffer to the connected socket.

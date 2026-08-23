@@ -8,6 +8,7 @@ from decimal import Decimal
 from itertools import product
 from random import randbytes
 
+from test_framework.address import base58_to_byte
 from test_framework.blocktools import (
     MAX_STANDARD_TX_WEIGHT,
 )
@@ -28,6 +29,7 @@ from test_framework.psbt import (
     PSBT_GLOBAL_PROPRIETARY,
     PSBT_GLOBAL_UNSIGNED_TX,
     PSBT_GLOBAL_VERSION,
+    PSBT_GLOBAL_XPUB,
     PSBT_IN_RIPEMD160,
     PSBT_IN_SHA256,
     PSBT_IN_SIGHASH_TYPE,
@@ -358,6 +360,32 @@ class PSBTTest(BitcoinTestFramework):
             proprietary_entry(key=output_key_a, value=b"\xcc", identifier=b"out", subtype=5),
             proprietary_entry(key=output_key_b, value=b"\xff", identifier=b"out", subtype=6),
         ])
+
+    def test_combinepsbt_global_xpub_origin_conflict(self):
+        self.log.info("Test that combining PSBTs with conflicting origins for the same xpub keeps a single record")
+
+        tx = CTransaction()
+        tx.vin = [CTxIn(outpoint=COutPoint(hash=int('aa' * 32, 16), n=0), scriptSig=b"")]
+        tx.vout = [CTxOut(nValue=0, scriptPubKey=b"")]
+
+        xpub = "tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp"
+        xpub_data, xpub_version = base58_to_byte(xpub)
+        xpub_key = bytes([PSBT_GLOBAL_XPUB]) + bytes([xpub_version]) + xpub_data
+
+        def psbt_with_origin(fingerprint):
+            return PSBT(
+                g=PSBTMap({
+                    PSBT_GLOBAL_UNSIGNED_TX: tx.serialize(),
+                    xpub_key: fingerprint,
+                }),
+                i=[PSBTMap({})],
+                o=[PSBTMap({})],
+            ).to_base64()
+
+        combined = self.nodes[0].combinepsbt([psbt_with_origin(b"\x00\x00\x00\x00"), psbt_with_origin(b"\x11\x11\x11\x11")])
+        # The same xpub under both origins would serialize as duplicate keys, making the combined PSBT unparseable
+        decoded = self.nodes[0].decodepsbt(combined)
+        assert_equal(decoded["global_xpubs"], [{"xpub": xpub, "master_fingerprint": "00000000", "path": "m"}])
 
     def test_sighash_mismatch(self):
         self.log.info("Test sighash type mismatches")
@@ -1380,6 +1408,7 @@ class PSBTTest(BitcoinTestFramework):
         self.test_decodepsbt_musig2_input_output_types()
 
         self.test_combinepsbt_preserves_proprietary_fields()
+        self.test_combinepsbt_global_xpub_origin_conflict()
 
         self.log.info("Test that combining PSBTs with different transactions fails")
         tx = CTransaction()
@@ -1423,6 +1452,14 @@ class PSBTTest(BitcoinTestFramework):
 
         utxo = self.create_outpoints(self.nodes[0], outputs=[{address: 1}])[0]
         self.sync_all()
+
+        self.log.info("Test descriptorprocesspsbt updates PSBT outputs")
+        for has_input in [False, True]:
+            output_psbt = self.nodes[2].createpsbt([utxo] if has_input else [], {address: 1})
+            processed = self.nodes[2].descriptorprocesspsbt(psbt=output_psbt, descriptors=[descriptor], finalize=False)
+            decoded = self.nodes[2].decodepsbt(processed["psbt"])
+            assert_equal(len(decoded["inputs"]), int(has_input))
+            assert_equal(len(decoded["outputs"][0]["bip32_derivs"]), 1)
 
         psbt = self.nodes[2].createpsbt([utxo], {self.nodes[0].getnewaddress(): 0.99999})
         decoded = self.nodes[2].decodepsbt(psbt)
