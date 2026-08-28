@@ -38,11 +38,11 @@ jobs:
           - name: linux-32-bit
             host: i686-pc-linux-gnu
             os: ubuntu-24.04
-            packages: ""
+            packages: "gcc-multilib g++-multilib"
             check-security: false
             check-symbols: false
             dep-opts: ""
-            config-opts: "LDFLAGS=-static-libstdc++"
+            config-opts: "LDFLAGS=-static-libstdc++ CFLAGS=-m32 CXXFLAGS=-m32"
             goal: build
           - name: linux-64-bit
             host: x86_64-pc-linux-gnu
