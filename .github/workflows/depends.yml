@@ -41,8 +41,8 @@ jobs:
             packages: "gcc-multilib g++-multilib"
             check-security: false
             check-symbols: false
-            dep-opts: ""
-            config-opts: "LDFLAGS=-static-libstdc++ CFLAGS=-m32 CXXFLAGS=-m32"
+            dep-opts: "CC=gcc CXX=g++ AR=ar RANLIB=ranlib NM=nm STRIP=strip OBJCOPY=objcopy OBJDUMP=objdump CFLAGS=-m32 CXXFLAGS=-m32"
+            config-opts: "LDFLAGS=-static-libstdc++"
             goal: build
           - name: linux-64-bit
             host: x86_64-pc-linux-gnu
