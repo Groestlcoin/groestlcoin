@@ -13,6 +13,7 @@ from test_framework.blocktools import (
     MAX_STANDARD_TX_WEIGHT,
 )
 from test_framework.descriptors import descsum_create
+from test_framework.extendedkey import hardened
 from test_framework.key import H_POINT
 from test_framework.messages import (
     COutPoint,
@@ -40,6 +41,9 @@ from test_framework.psbt import (
     PSBT_IN_MUSIG2_PUB_NONCE,
     PSBT_IN_NON_WITNESS_UTXO,
     PSBT_IN_PROPRIETARY,
+    PSBT_IN_TAP_BIP32_DERIVATION,
+    PSBT_IN_TAP_INTERNAL_KEY,
+    PSBT_IN_TAP_LEAF_SCRIPT,
     PSBT_IN_WITNESS_UTXO,
     PSBT_IN_FINAL_SCRIPTWITNESS,
     PSBT_OUT_MUSIG2_PARTICIPANT_PUBKEYS,
@@ -47,8 +51,8 @@ from test_framework.psbt import (
     PSBT_OUT_TAP_TREE,
     PSBT_OUT_SCRIPT,
 )
-from test_framework.script import CScript, OP_TRUE, SIGHASH_ALL, SIGHASH_ANYONECANPAY
-from test_framework.script_util import MIN_STANDARD_TX_NONWITNESS_SIZE
+from test_framework.script import CScript, LEAF_VERSION_TAPSCRIPT, OP_TRUE, SIGHASH_ALL, SIGHASH_ANYONECANPAY, hash160
+from test_framework.script_util import MIN_STANDARD_TX_NONWITNESS_SIZE, output_key_to_p2tr_script
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_not_equal,
@@ -302,6 +306,25 @@ class PSBTTest(BitcoinTestFramework):
         assert "participant_pubkeys" in out_participant_pks
         assert_equal(out_participant_pks["participant_pubkeys"], [out_pubkey1.hex(), out_pubkey2.hex()])
 
+    def test_musig2_untrusted_derivation(self):
+        self.log.info("Test MuSig2 aggregate derivation from untrusted PSBT fields")
+        node = self.nodes[0]
+
+        script_pubkey = bytes.fromhex(H_POINT)
+        _, aggregate_pubkey = generate_keypair()
+        _, participant_pubkey = generate_keypair()
+
+        # Both have a matching aggregate fingerprint but cannot derive the script pubkey: 0 derives a different key, hardened(0) cannot be derived at all
+        for index in [0, hardened(0)]:
+            psbt = self.create_psbt(inputs={
+                PSBT_IN_WITNESS_UTXO: CTxOut(nValue=1, scriptPubKey=output_key_to_p2tr_script(script_pubkey)).serialize(),
+                bytes([PSBT_IN_TAP_BIP32_DERIVATION]) + script_pubkey: ser_compact_size(0) + hash160(aggregate_pubkey)[:4] + index.to_bytes(4, "little"),
+                PSBT_IN_TAP_INTERNAL_KEY: script_pubkey,
+                bytes([PSBT_IN_MUSIG2_PARTICIPANT_PUBKEYS]) + aggregate_pubkey: [participant_pubkey],
+            }).to_base64()
+            assert_equal(node.analyzepsbt(psbt)["inputs"][0]["is_final"], False)
+            assert_equal(node.finalizepsbt(psbt)["complete"], False)
+
     def test_combinepsbt_preserves_proprietary_fields(self):
         self.log.info("Test that combining PSBTs preserves proprietary fields")
 
@@ -386,6 +409,66 @@ class PSBTTest(BitcoinTestFramework):
         # The same xpub under both origins would serialize as duplicate keys, making the combined PSBT unparseable
         decoded = self.nodes[0].decodepsbt(combined)
         assert_equal(decoded["global_xpubs"], [{"xpub": xpub, "master_fingerprint": "00000000", "path": "m"}])
+
+    def test_combinepsbt_tap_leaf_script_conflict(self):
+        self.log.info("Test that combining PSBTs with conflicting leaf scripts for the same control block keeps a single record")
+
+        tx = CTransaction()
+        tx.vin = [CTxIn(outpoint=COutPoint(hash=int('aa' * 32, 16), n=0), scriptSig=b"")]
+        tx.vout = [CTxOut(nValue=0, scriptPubKey=b"")]
+
+        def psbt_with_leaf_scripts(*records):
+            return PSBT(
+                g=PSBTMap({PSBT_GLOBAL_UNSIGNED_TX: tx.serialize()}),
+                i=[PSBTMap({
+                    bytes([PSBT_IN_TAP_LEAF_SCRIPT]) + control_block: bytes(leaf_script) + bytes([LEAF_VERSION_TAPSCRIPT])
+                    for leaf_script, control_block in records
+                })],
+                o=[PSBTMap({})],
+            ).to_base64()
+
+        def combined_tap_scripts(psbts):
+            return self.nodes[0].decodepsbt(self.nodes[0].combinepsbt(psbts))["inputs"][0]["taproot_scripts"]
+
+        def tap_script(leaf_script, control_blocks):
+            return {"script": leaf_script.hex(), "leaf_ver": LEAF_VERSION_TAPSCRIPT, "control_blocks": [cb.hex() for cb in control_blocks]}
+
+        control_block = bytes([LEAF_VERSION_TAPSCRIPT]) + bytes.fromhex(H_POINT)
+        control_block_with_path = control_block + bytes(32)
+        control_block_with_longer_path = control_block + bytes(64)
+        leaf_script_a = CScript([OP_TRUE])
+        leaf_script_b = CScript([OP_TRUE, OP_TRUE])
+        leaf_script_c = CScript([OP_TRUE, OP_TRUE, OP_TRUE])
+
+        psbt_a = psbt_with_leaf_scripts((leaf_script_a, control_block))
+        psbt_b = psbt_with_leaf_scripts((leaf_script_b, control_block))
+        psbt_c = psbt_with_leaf_scripts((leaf_script_c, control_block))
+
+        # The same control block under two leaf scripts would serialize as duplicate keys
+        assert_equal(combined_tap_scripts([psbt_a, psbt_b]), [tap_script(leaf_script_a, [control_block])])
+        # Reversed, so the leaf script kept is decided by the argument order and not by its content
+        assert_equal(combined_tap_scripts([psbt_b, psbt_a]), [tap_script(leaf_script_b, [control_block])])
+        # A third PSBT conflicting with what the first merge kept is dropped the same way
+        assert_equal(combined_tap_scripts([psbt_a, psbt_b, psbt_c]), [tap_script(leaf_script_a, [control_block])])
+        # Combining a PSBT with itself leaves it untouched
+        assert_equal(self.nodes[0].combinepsbt([psbt_a, psbt_a]), psbt_a)
+
+        # Records that do not conflict are all kept, whether or not they share a leaf script
+        psbt_same_leaf = psbt_with_leaf_scripts((leaf_script_a, control_block_with_path))
+        assert_equal(combined_tap_scripts([psbt_a, psbt_same_leaf]), [tap_script(leaf_script_a, [control_block, control_block_with_path])])
+        psbt_other_leaf = psbt_with_leaf_scripts((leaf_script_b, control_block_with_path))
+        assert_equal(combined_tap_scripts([psbt_a, psbt_other_leaf]), [
+            tap_script(leaf_script_a, [control_block]),
+            tap_script(leaf_script_b, [control_block_with_path]),
+        ])
+
+        # Only the conflicting control block of an incoming leaf script is dropped, not all of them
+        psbt_leaf_a_two_blocks = psbt_with_leaf_scripts((leaf_script_a, control_block), (leaf_script_a, control_block_with_path))
+        psbt_leaf_b_two_blocks = psbt_with_leaf_scripts((leaf_script_b, control_block_with_path), (leaf_script_b, control_block_with_longer_path))
+        assert_equal(combined_tap_scripts([psbt_leaf_a_two_blocks, psbt_leaf_b_two_blocks]), [
+            tap_script(leaf_script_a, [control_block, control_block_with_path]),
+            tap_script(leaf_script_b, [control_block_with_longer_path]),
+        ])
 
     def test_sighash_mismatch(self):
         self.log.info("Test sighash type mismatches")
@@ -1158,6 +1241,45 @@ class PSBTTest(BitcoinTestFramework):
                 break
         assert shuffled
 
+        # Check that joining preserves global xpub and proprietary records
+        def global_xpub_key(extended_pubkey):
+            xpub_data, xpub_version = base58_to_byte(extended_pubkey)
+            return bytes([PSBT_GLOBAL_XPUB]) + bytes([xpub_version]) + xpub_data
+
+        xpub1 = "tpubD6NzVbkrYhZ4XgiXtGrdW5XDAPFCL9h7we1vwNCpn8tGbBcgfVYjXyhWo4E1xkh56hjod1RhGjxbaTLV3X4FyWuejifB9jusQ46QzG87VKp"
+        xpub_key1 = global_xpub_key(xpub1)
+        xpub_key2 = global_xpub_key("tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B")
+        xpub_value = b"\x00\x00\x00\x00"  # master key fingerprint with an empty derivation path
+        global_prop_key = bytes([PSBT_GLOBAL_PROPRIETARY]) + b"\x02\x01\x02\x00"  # identifier "0102", subtype 0
+        global_prop_value = b"\xde\xad\xbe\xef"
+
+        psbt1_obj = PSBT.from_base64(psbt1)
+        psbt1_obj.g.map[xpub_key1] = xpub_value
+        psbt1_obj.g.map[global_prop_key] = global_prop_value
+        psbt2_obj = PSBT.from_base64(psbt2)
+        psbt2_obj.g.map[xpub_key2] = xpub_value
+        joined_globals = PSBT.from_base64(self.nodes[0].joinpsbts([psbt1_obj.to_base64(), psbt2_obj.to_base64()]))
+        assert_equal(joined_globals.g.map[xpub_key1], xpub_value)
+        assert_equal(joined_globals.g.map[xpub_key2], xpub_value)
+        assert_equal(joined_globals.g.map[global_prop_key], global_prop_value)
+
+        # Same proprietary key in both PSBTs with different values: the first PSBT's value wins
+        collide_key = bytes([PSBT_GLOBAL_PROPRIETARY]) + b"\x02\x03\x04\x00"
+        psbt_first_obj = PSBT.from_base64(psbt1)
+        psbt_first_obj.g.map[collide_key] = b"\x11\x11\x11\x11"
+        psbt_second_obj = PSBT.from_base64(psbt2)
+        psbt_second_obj.g.map[collide_key] = b"\x22\x22\x22\x22"
+        joined_collision = PSBT.from_base64(self.nodes[0].joinpsbts([psbt_first_obj.to_base64(), psbt_second_obj.to_base64()]))
+        assert_equal(joined_collision.g.map[collide_key], b"\x11\x11\x11\x11")
+
+        # Same xpub with conflicting origins: the first PSBT's origin is kept, avoiding duplicate keys
+        conflict_first_obj = PSBT.from_base64(psbt1)
+        conflict_first_obj.g.map[xpub_key1] = xpub_value
+        conflict_second_obj = PSBT.from_base64(psbt2)
+        conflict_second_obj.g.map[xpub_key1] = b"\x11\x11\x11\x11"
+        joined_conflict = self.nodes[0].joinpsbts([conflict_first_obj.to_base64(), conflict_second_obj.to_base64()])
+        assert_equal(self.nodes[0].decodepsbt(joined_conflict)["global_xpubs"], [{"xpub": xpub1, "master_fingerprint": "00000000", "path": "m"}])
+
         # Newly created PSBT needs UTXOs and updating
         addr = self.nodes[1].getnewaddress("", "p2sh-segwit")
         utxo = self.create_outpoints(self.nodes[0], outputs=[{addr: 7}])[0]
@@ -1409,6 +1531,7 @@ class PSBTTest(BitcoinTestFramework):
 
         self.test_combinepsbt_preserves_proprietary_fields()
         self.test_combinepsbt_global_xpub_origin_conflict()
+        self.test_combinepsbt_tap_leaf_script_conflict()
 
         self.log.info("Test that combining PSBTs with different transactions fails")
         tx = CTransaction()
@@ -1500,6 +1623,7 @@ class PSBTTest(BitcoinTestFramework):
         self.test_psbt_roundtrip()
         self.test_psbt_version()
         self.test_psbt_with_invalid_signature()
+        self.test_musig2_untrusted_derivation()
 
 if __name__ == '__main__':
     PSBTTest(__file__).main()
