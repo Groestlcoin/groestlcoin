@@ -21,7 +21,7 @@ GROESTLCOIND_OPTS="${GROESTLCOIND_OPTS:-${GROESTLCOIN_OPTS}}"
 name="Groestlcoin Core Daemon"
 description="Groestlcoin cryptocurrency P2P network daemon"
 
-command="/usr/bin/groestlcoind"
+command="${GROESTLCOIND_BIN}"
 command_args="-pid=\"${GROESTLCOIND_PIDFILE}\" \
         -conf=\"${GROESTLCOIND_CONFIGFILE}\" \
         -datadir=\"${GROESTLCOIND_DATADIR}\" \
@@ -30,6 +30,7 @@ command_args="-pid=\"${GROESTLCOIND_PIDFILE}\" \
 
 required_files="${GROESTLCOIND_CONFIGFILE}"
 start_stop_daemon_args="-u ${GROESTLCOIND_USER} \
+            -g ${GROESTLCOIND_GROUP} \
             -N ${GROESTLCOIND_NICE} -w 2000"
 pidfile="${GROESTLCOIND_PIDFILE}"
 
