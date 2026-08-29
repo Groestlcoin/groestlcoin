@@ -540,7 +540,7 @@ static RPCMethod getblockfrompeer()
         RPCResult{RPCResult::Type::OBJ, "", /*optional=*/false, "", {}},
         RPCExamples{
             HelpExampleCli("getblockfrompeer", "\"000000000040ec74b9fe1d7fa4af97792904f80c5469f1a9460726cc4d2c5cbb\" 0")
-            + HelpExampleRpc("getblockfrompeer", "\"000000000040ec74b9fe1d7fa4af97792904f80c5469f1a9460726cc4d2c5cbb\" 0")
+            + HelpExampleRpc("getblockfrompeer", R"("000000000040ec74b9fe1d7fa4af97792904f80c5469f1a9460726cc4d2c5cbb", 0)")
         },
         [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue
 {

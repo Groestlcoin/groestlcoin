@@ -335,7 +335,7 @@ static RPCMethod addnode()
                 RPCResult{RPCResult::Type::NONE, "", ""},
                 RPCExamples{
                     HelpExampleCli("addnode", "\"192.168.0.6:1331\" \"onetry\" true")
-            + HelpExampleRpc("addnode", "\"192.168.0.6:1331\", \"onetry\" true")
+            + HelpExampleRpc("addnode", R"("192.168.0.6:1331", "onetry", true)")
                 },
         [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue
 {
@@ -410,12 +410,7 @@ static RPCMethod addconnection()
             }},
         RPCExamples{
             HelpExampleCli("addconnection", "\"192.168.0.6:1331\" \"outbound-full-relay\" true")
-            + HelpExampleRpc("addconnection", "\"192.168.0.6:1331\" \"outbound-full-relay\" true")
-        },
-        [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue
 {
-    if (Params().GetChainType() != ChainType::REGTEST) {
-        throw std::runtime_error("addconnection is for regression testing (-regtest mode) only.");
     }
 
     const std::string address = request.params[0].get_str();
@@ -1083,7 +1078,7 @@ static RPCMethod sendmsgtopeer()
         },
         RPCResult{RPCResult::Type::OBJ, "", "", std::vector<RPCResult>{}},
         RPCExamples{
-            HelpExampleCli("sendmsgtopeer", "0 \"addr\" \"ffffff\"") + HelpExampleRpc("sendmsgtopeer", "0 \"addr\" \"ffffff\"")},
+            HelpExampleCli("sendmsgtopeer", "0 \"addr\" \"ffffff\"") + HelpExampleRpc("sendmsgtopeer", R"(0, "addr", "ffffff")")},
         [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue {
             const NodeId peer_id{request.params[0].getInt<int64_t>()};
             const auto msg_type{self.Arg<std::string_view>("msg_type")};
