@@ -410,6 +410,12 @@ static RPCMethod addconnection()
             }},
         RPCExamples{
             HelpExampleCli("addconnection", "\"192.168.0.6:1331\" \"outbound-full-relay\" true")
+            + HelpExampleRpc("addconnection", R"("192.168.0.6:1331", "outbound-full-relay", true)")
+        },
+        [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue
+{
+    if (Params().GetChainType() != ChainType::REGTEST) {
+        throw std::runtime_error("addconnection is for regression testing (-regtest mode) only.");
 {
     }
 
