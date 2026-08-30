@@ -416,7 +416,6 @@ static RPCMethod addconnection()
 {
     if (Params().GetChainType() != ChainType::REGTEST) {
         throw std::runtime_error("addconnection is for regression testing (-regtest mode) only.");
-{
     }
 
     const std::string address = request.params[0].get_str();
