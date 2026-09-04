@@ -98,7 +98,8 @@ struct ConstevalFormatString {
     consteval ConstevalFormatString(const char* str) : fmt{str} { detail::CheckNumFormatSpecifiers<num_params>(fmt); }
 };
 
-void ReplaceAll(std::string& in_out, const std::string& search, const std::string& substitute);
+/// Replace every non-overlapping occurrence of `search` with `substitute`, treating both literally; the replacement text is not searched again.
+void ReplaceAll(std::string& in_out, std::string_view search, std::string_view substitute);
 
 /** Split a string on any char found in separators, returning a vector.
  *
@@ -232,14 +233,14 @@ inline std::string MakeUnorderedList(const std::vector<std::string>& items)
 }
 
 /**
- * Check if a string does not contain any embedded NUL (\0) characters
+ * Check if a string contains any embedded NUL (\0) characters
  */
-[[nodiscard]] inline bool ContainsNoNUL(std::string_view str) noexcept
+[[nodiscard]] inline bool ContainsNUL(std::string_view str) noexcept
 {
     for (auto c : str) {
-        if (c == 0) return false;
+        if (c == 0) return true;
     }
-    return true;
+    return false;
 }
 
 /**
