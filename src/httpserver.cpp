@@ -722,6 +722,17 @@ util::Expected<void, std::string> HTTPServer::BindAndStartListening(const CServi
                                           NetworkErrorString(WSAGetLastError()))};
     }
 
+#ifdef WIN32
+    // Prevent another application from binding to the same address and port and
+    // intercepting RPC credentials.
+    // SO_REUSEADDR on Windows is non-exclusive so another process could bind to
+    // the same port.
+    if (sock->SetSockOpt(SOL_SOCKET, SO_EXCLUSIVEADDRUSE, &SOCKET_OPTION_TRUE, sizeof(SOCKET_OPTION_TRUE)) == SOCKET_ERROR) {
+        return util::Unexpected{strprintf("Cannot set SO_EXCLUSIVEADDRUSE on %s listen socket: %s",
+                                          to.ToStringAddrPort(),
+                                          NetworkErrorString(WSAGetLastError()))};
+    }
+#else
     // Allow binding if the port is still in TIME_WAIT state after
     // the program was closed and restarted.
     if (sock->SetSockOpt(SOL_SOCKET, SO_REUSEADDR, &SOCKET_OPTION_TRUE, sizeof(SOCKET_OPTION_TRUE)) == SOCKET_ERROR) {
@@ -730,6 +741,7 @@ util::Expected<void, std::string> HTTPServer::BindAndStartListening(const CServi
                  to.ToStringAddrPort(),
                  NetworkErrorString(WSAGetLastError()));
     }
+#endif
 
     // some systems don't have IPV6_V6ONLY but are always v6only; others do have the option
     // and enable it by default or not. Try to enable it, if possible.
@@ -1003,7 +1015,20 @@ HTTPServer::IOReadiness HTTPServer::GenerateWaitSockets() const
         // never hold m_sock_mutex and m_send_mutex at the same time here.
         // MaybeSendBytesFromBuffer() locks m_send_mutex then m_sock_mutex, so nesting
         // them in the opposite order here would risk a lock-order inversion deadlock.
-        Sock::Event event = (http_client->ReadyToSend() ? Sock::SendEvent : Sock::RecvEvent);
+        Sock::Event event{0};
+        if (http_client->ReadyToSend()) {
+            event = Sock::SendEvent;
+        } else if (http_client->GetRequest() != nullptr || http_client->ReceiveBufferEmpty()) {
+            // Read from the socket when the parser has an incomplete request in
+            // progress (needs more bytes) or when the buffer is empty. If the
+            // buffer is non-empty but no parse is in progress, leave event=0:
+            // the client stays in the I/O map so TryReadRequest() runs first to
+            // consume buffered bytes before admitting more socket data. Excess
+            // pipelined data then backs up in the kernel socket buffer, applying
+            // TCP backpressure instead of accumulating without bound in m_recv_buffer.
+            event = Sock::RecvEvent;
+        }
+
         io_readiness.events_per_sock.emplace(sock, Sock::Events{event});
         io_readiness.httpclients_per_sock.emplace(sock, http_client);
     }
