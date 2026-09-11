@@ -27,7 +27,6 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <initializer_list>
 #include <iterator>
 #include <map>
 #include <span>

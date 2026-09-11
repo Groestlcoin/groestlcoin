@@ -7,6 +7,8 @@ on:
       - "ci/**/*.sh"
       - "contrib/windeploy/detached-sig-create.sh"
       - "contrib/macdeploy/detached-sig-create.sh"
+      - "test/*.py"
+      - "contrib/seeds/*.py"
 
 permissions:
   contents: write
