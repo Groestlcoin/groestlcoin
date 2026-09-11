@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <rpc/register.h> // IWYU pragma: associated
 #include <rpc/server.h>
 
 #include <addrman.h>
@@ -9,40 +10,56 @@
 #include <banman.h>
 #include <chainparams.h>
 #include <clientversion.h>
-#include <common/args.h>
 #include <core_io.h>
-#include <hash.h>
+#include <net.h>
 #include <net_permissions.h>
 #include <net_processing.h>
 #include <net_types.h>
+#include <netaddress.h>
 #include <netbase.h>
+#include <node/connection_types.h>
 #include <node/context.h>
-#ifdef ENABLE_EMBEDDED_ASMAP
-#include <node/data/ip_asn.dat.h>
-#endif
 #include <node/protocol_version.h>
 #include <node/warnings.h>
-#include <policy/settings.h>
+#include <policy/feerate.h>
 #include <protocol.h>
-#include <rpc/blockchain.h>
 #include <rpc/protocol.h>
+#include <rpc/request.h>
 #include <rpc/server_util.h>
 #include <rpc/util.h>
+#include <semaphore_grant.h>
 #include <sync.h>
+#include <tinyformat.h>
+#include <txmempool.h>
 #include <univalue.h>
-#include <util/asmap.h>
 #include <util/chaintype.h>
+#include <util/check.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/time.h>
-#include <util/translation.h>
 #include <validation.h>
+#ifdef ENABLE_EMBEDDED_ASMAP
+#include <common/args.h>
+#include <hash.h>
+#include <node/data/ip_asn.dat.h>
+#include <streams.h>
+#include <util/asmap.h>
+#include <util/fs.h>
+#endif
 
-#include <chrono>
+#include <atomic>
+#include <compare>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 using node::NodeContext;
@@ -182,7 +199,7 @@ static RPCMethod getpeerinfo()
                     {
                         {RPCResult::Type::STR, "permission_type", Join(NET_PERMISSIONS_DOC, ",\n") + ".\n"},
                     }},
-                    {RPCResult::Type::NUM, "minfeefilter", "The minimum fee rate for transactions this peer accepts"},
+                    {RPCResult::Type::STR_AMOUNT, "minfeefilter", "The minimum fee rate for transactions this peer accepts"},
                     {RPCResult::Type::OBJ_DYN, "bytessent_per_msg", "",
                     {
                         {RPCResult::Type::NUM, "msg", "The total bytes sent aggregated by message type\n"
@@ -293,16 +310,18 @@ static RPCMethod getpeerinfo()
         obj.pushKV("minfeefilter", ValueFromAmount(statestats.m_fee_filter_received));
 
         UniValue sendPerMsgType(UniValue::VOBJ);
-        for (const auto& i : stats.mapSendBytesPerMsgType) {
-            if (i.second > 0)
-                sendPerMsgType.pushKV(i.first, i.second);
+        for (const auto& [message_type, total_bytes] : stats.mapSendBytesPerMsgType) {
+            if (total_bytes > 0) {
+                sendPerMsgType.pushKVEnd(message_type, total_bytes);
+            }
         }
         obj.pushKV("bytessent_per_msg", std::move(sendPerMsgType));
 
         UniValue recvPerMsgType(UniValue::VOBJ);
-        for (const auto& i : stats.mapRecvBytesPerMsgType) {
-            if (i.second > 0)
-                recvPerMsgType.pushKV(i.first, i.second);
+        for (const auto& [message_type, total_bytes] : stats.mapRecvBytesPerMsgType) {
+            if (total_bytes > 0) {
+                recvPerMsgType.pushKVEnd(message_type, total_bytes);
+            }
         }
         obj.pushKV("bytesrecv_per_msg", std::move(recvPerMsgType));
         obj.pushKV("connection_type", ConnectionTypeAsString(stats.m_conn_type));
@@ -690,8 +709,8 @@ static RPCMethod getnetworkinfo()
                                 {RPCResult::Type::BOOL, "proxy_randomize_credentials", "Whether randomized credentials are used"},
                             }},
                         }},
-                        {RPCResult::Type::NUM, "relayfee", "minimum relay fee rate for transactions in " + CURRENCY_UNIT + "/kvB"},
-                        {RPCResult::Type::NUM, "incrementalfee", "minimum fee rate increment for mempool limiting or replacement in " + CURRENCY_UNIT + "/kvB"},
+                        {RPCResult::Type::STR_AMOUNT, "relayfee", "minimum relay fee rate for transactions in " + CURRENCY_UNIT + "/kvB"},
+                        {RPCResult::Type::STR_AMOUNT, "incrementalfee", "minimum fee rate increment for mempool limiting or replacement in " + CURRENCY_UNIT + "/kvB"},
                         {RPCResult::Type::ARR, "localaddresses", "list of local addresses",
                         {
                             {RPCResult::Type::OBJ, "", "",
@@ -723,40 +742,34 @@ static RPCMethod getnetworkinfo()
     obj.pushKV("subversion",    strSubVersion);
     obj.pushKV("protocolversion",PROTOCOL_VERSION);
     NodeContext& node = EnsureAnyNodeContext(request.context);
-    if (node.connman) {
-        ServiceFlags services = node.connman->GetLocalServices();
-        obj.pushKV("localservices", strprintf("%016x", services));
-        obj.pushKV("localservicesnames", GetServicesNames(services));
-    }
-    if (node.peerman) {
-        auto peerman_info{node.peerman->GetInfo()};
-        obj.pushKV("localrelay", !peerman_info.ignores_incoming_txs);
-        obj.pushKV("timeoffset", Ticks<std::chrono::seconds>(peerman_info.median_outbound_time_offset));
-        obj.pushKV("tx_send_rate", peerman_info.tx_send_rate);
-        auto buckjson = [&](const auto& buckinfo) {
-            UniValue b{UniValue::VOBJ};
-            b.pushKV("backlog", buckinfo.backlog_count);
-            b.pushKV("count_tok", buckinfo.count_bucket);
-            b.pushKV("size_tok", buckinfo.size_bucket);
-            return b;
-        };
-        UniValue invbuckets{UniValue::VOBJ};
-        invbuckets.pushKV("inbound", buckjson(peerman_info.inbound_bucket));
-        invbuckets.pushKV("outbound", buckjson(peerman_info.outbound_bucket));
-        obj.pushKV("inv_buckets", invbuckets);
-    }
-    if (node.connman) {
-        obj.pushKV("networkactive", node.connman->GetNetworkActive());
-        obj.pushKV("connections", node.connman->GetNodeCount(ConnectionDirection::Both));
-        obj.pushKV("connections_in", node.connman->GetNodeCount(ConnectionDirection::In));
-        obj.pushKV("connections_out", node.connman->GetNodeCount(ConnectionDirection::Out));
-    }
+    CConnman& connman = EnsureConnman(node);
+    ServiceFlags services = connman.GetLocalServices();
+    obj.pushKV("localservices", strprintf("%016x", services));
+    obj.pushKV("localservicesnames", GetServicesNames(services));
+    auto peerman_info{EnsurePeerman(node).GetInfo()};
+    obj.pushKV("localrelay", !peerman_info.ignores_incoming_txs);
+    obj.pushKV("timeoffset", Ticks<std::chrono::seconds>(peerman_info.median_outbound_time_offset));
+    obj.pushKV("tx_send_rate", peerman_info.tx_send_rate);
+    auto buckjson = [&](const auto& buckinfo) {
+        UniValue b{UniValue::VOBJ};
+        b.pushKV("backlog", buckinfo.backlog_count);
+        b.pushKV("count_tok", buckinfo.count_bucket);
+        b.pushKV("size_tok", buckinfo.size_bucket);
+        return b;
+    };
+    UniValue invbuckets{UniValue::VOBJ};
+    invbuckets.pushKV("inbound", buckjson(peerman_info.inbound_bucket));
+    invbuckets.pushKV("outbound", buckjson(peerman_info.outbound_bucket));
+    obj.pushKV("inv_buckets", invbuckets);
+    obj.pushKV("networkactive", connman.GetNetworkActive());
+    obj.pushKV("connections", connman.GetNodeCount(ConnectionDirection::Both));
+    obj.pushKV("connections_in", connman.GetNodeCount(ConnectionDirection::In));
+    obj.pushKV("connections_out", connman.GetNodeCount(ConnectionDirection::Out));
     obj.pushKV("networks",      GetNetworksInfo());
-    if (node.mempool) {
-        // Those fields can be deprecated, to be replaced by the getmempoolinfo fields
-        obj.pushKV("relayfee", ValueFromAmount(node.mempool->m_opts.min_relay_feerate.GetFeePerK()));
-        obj.pushKV("incrementalfee", ValueFromAmount(node.mempool->m_opts.incremental_relay_feerate.GetFeePerK()));
-    }
+    const CTxMemPool& mempool = EnsureAnyMemPool(request.context);
+    // Those fields can be deprecated, to be replaced by the getmempoolinfo fields
+    obj.pushKV("relayfee", ValueFromAmount(mempool.m_opts.min_relay_feerate.GetFeePerK()));
+    obj.pushKV("incrementalfee", ValueFromAmount(mempool.m_opts.incremental_relay_feerate.GetFeePerK()));
     UniValue localAddresses(UniValue::VARR);
     {
         LOCK(g_maplocalhost_mutex);

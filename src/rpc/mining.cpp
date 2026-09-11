@@ -6,6 +6,7 @@
 #include <bitcoin-build-config.h> // IWYU pragma: keep
 
 #include <interfaces/mining.h>
+#include <rpc/register.h> // IWYU pragma: associated
 
 #include <addresstype.h>
 #include <arith_uint256.h>
@@ -65,7 +66,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <initializer_list>
 #include <limits>
 #include <map>
 #include <memory>
@@ -606,7 +606,7 @@ static RPCMethod getprioritisedtransactions()
                 if (delta_info.in_mempool) {
                     result_inner.pushKV("modified_fee", *delta_info.modified_fee);
                 }
-                rpc_result.pushKV(delta_info.txid.GetHex(), std::move(result_inner));
+                rpc_result.pushKVEnd(delta_info.txid.GetHex(), std::move(result_inner));
             }
             return rpc_result;
         },

@@ -96,6 +96,26 @@ SHA256_SUMS = {
     "bcca36b5a2f1e83a4fd9888bc0016d3f46f9ef01238dc23a8e03f2f4ac3b9707": {"tag": "v25.0", "archive": "groestlcoin-25.0-x86_64-linux-gnu.tar.gz"},
     "01845651fa52c2d6aa41621c280024e2909ab2218e144328e94de952bc70fea0": {"tag": "v25.0", "archive": "groestlcoin-25.0-win64.zip"},
 
+    "69c4f39699efe7a6c112aa2570ad061e90ff1a0128d07df318d2f2df29083dff": {"tag": "v26.0", "archive": "groestlcoin-26.0-aarch64-linux-gnu.tar.gz"},
+    "882d3dd86f33908180557522c55bcee5b1969ecc9e34f8c3b907630c0c00cea5": {"tag": "v26.0", "archive": "groestlcoin-26.0-arm-linux-gnueabihf.tar.gz"},
+    "16ddf600f34a68cb70a90d3663d75e94a250f7953ad728a4e7ef2e638334d95b": {"tag": "v26.0", "archive": "groestlcoin-26.0-arm64-apple-darwin.tar.gz"},
+    "1111de073af333831f50aad7fef49126d37d49e00b3dcda64da25540bdf5d2b2": {"tag": "v26.0", "archive": "groestlcoin-26.0-powerpc64-linux-gnu.tar.gz"},
+    "316a7102fc0e2ad79f770a4e13a3620c06e3e2b3203314efff82b5fa2267feca": {"tag": "v26.0", "archive": "groestlcoin-26.0-powerpc64le-linux-gnu.tar.gz"},
+    "4756eb560f689b27f704722fe905730ed3bb2e9d22e7d5500f4b6ea9a6ff2b7c": {"tag": "v26.0", "archive": "groestlcoin-26.0-riscv64-linux-gnu.tar.gz"},
+    "88c6a2889689e3822a5cf294cb154a11f6e9cf86ad6a187cf7e0babae743d12a": {"tag": "v26.0", "archive": "groestlcoin-26.0-x86_64-apple-darwin.tar.gz"},
+    "0e24be6c094c1d7ae75d9d99b9bfb067e75200ed43fd8fde94d307a6bbd8bd72": {"tag": "v26.0", "archive": "groestlcoin-26.0-x86_64-linux-gnu.tar.gz"},
+    "12684c034d19dff620bfe374977bea031e6428e6a12e29a77587fe9f52abefee": {"tag": "v26.0", "archive": "groestlcoin-26.0-win64.zip"},
+
+    "95e1a4c4f4d50709df40e2d86c4b578db053d1cb475a3384862192c1298f9de6": {"tag": "v27.0", "archive": "groestlcoin-27.0-aarch64-linux-gnu.tar.gz"},
+    "61e29509efcd63e5acc666d0ed2d197d0448345549df168b0011f04d3081b760": {"tag": "v27.0", "archive": "groestlcoin-27.0-arm-linux-gnueabihf.tar.gz"},
+    "055a86eaa16ac0d7ef5c40a677365a2af03ed1739c5aff382c505d866f0dee07": {"tag": "v27.0", "archive": "groestlcoin-27.0-arm64-apple-darwin.tar.gz"},
+    "31de5fbc5a86a64cd2f795cc0c8daa0ccb0b329f12522035a87e81441ef2346f": {"tag": "v27.0", "archive": "groestlcoin-27.0-powerpc64-linux-gnu.tar.gz"},
+    "aa08e5bcc8a525440a6ed4b3d5eb0ac6dedb364d8411f71d64566b1542e2b6a2": {"tag": "v27.0", "archive": "groestlcoin-27.0-powerpc64le-linux-gnu.tar.gz"},
+    "feb4bde5c269f55d2d37012729bbf7859b9c0b0c39487347a9f1dfb1f1a2fcea": {"tag": "v27.0", "archive": "groestlcoin-27.0-riscv64-linux-gnu.tar.gz"},
+    "60ee077c9b05869a935c1db9022d6ad16e3b84c2a535a41398bb6f87679dc4a8": {"tag": "v27.0", "archive": "groestlcoin-27.0-x86_64-apple-darwin.tar.gz"},
+    "5189f036913e2033b5fe95ba8f3fc027e9c5bd286d2150e9133cd4a2fd69a7a0": {"tag": "v27.0", "archive": "groestlcoin-27.0-x86_64-linux-gnu.tar.gz"},
+    "f40e19f55408458ccd42c9cd605a7db5fbc894ba66c486f9ca252d45f5c98347": {"tag": "v27.0", "archive": "groestlcoin-27.0-win64.zip"},
+
     "092c6ff333a3defe2603b91c55aea6415e554a2bbc6abb3ad43ac712fa9b63b1": {"tag": "v28.0", "archive": "groestlcoin-28.0-aarch64-linux-gnu.tar.gz"},
     "a66172e939d79b50d8201ca925d6dd0cce0ca478b0a92fbd459d9533fd360812": {"tag": "v28.0", "archive": "groestlcoin-28.0-arm-linux-gnueabihf.tar.gz"},
     "37b21bccc6238f29320e4eca43ae3eb9541432f38f8dd7a7aba824633362ab1f": {"tag": "v28.0", "archive": "groestlcoin-28.0-arm64-apple-darwin.tar.gz"},
@@ -104,6 +124,33 @@ SHA256_SUMS = {
     "7a4bbe989c3165bb7bce57c12638f973b637ced319194ea20924804f718091ce": {"tag": "v28.0", "archive": "groestlcoin-28.0-x86_64-apple-darwin.tar.gz"},
     "540d5d7c6bb0449763567ea7c2559e124d61b82a6b2798701d5759458d9c21d7": {"tag": "v28.0", "archive": "groestlcoin-28.0-x86_64-linux-gnu.tar.gz"},
     "7a81e52c74612f77817f8ac01e3b249366520640ee2652bfb0a1c5f3af10f13b": {"tag": "v28.0", "archive": "groestlcoin-28.0-win64.zip"},
+
+    "43b67b0945eb63c26bf0106ce3e302d4fe0720900cd8658e84f5d7954899a2a8": {"tag": "v29.0", "archive": "groestlcoin-29.0-aarch64-linux-gnu.tar.gz"},
+    "62f380799bd28be32a66b1f28606039e5b6e683d001933de0440d4336ffa1477": {"tag": "v29.0", "archive": "groestlcoin-29.0-arm-linux-gnueabihf.tar.gz"},
+    "b9b66ac753a5d949858680be7c42930adb90182cc1b166748a3c831e9d1991db": {"tag": "v29.0", "archive": "groestlcoin-29.0-arm64-apple-darwin.tar.gz"},
+    "24383a61b48226e89388e9ba6c21f465361d878fa2abb7722559766bd738fc36": {"tag": "v29.0", "archive": "groestlcoin-29.0-powerpc64-linux-gnu.tar.gz"},
+    "0284ea53e3ca8ab0177bd2bb6f9c76a3a27ec2901e6c637b78f3976cbfdfd454": {"tag": "v29.0", "archive": "groestlcoin-29.0-riscv64-linux-gnu.tar.gz"},
+    "d4389fce59bd751a38c22abe8d207ad8e16e754330540fbdafad92c8821bac1b": {"tag": "v29.0", "archive": "groestlcoin-29.0-x86_64-apple-darwin.tar.gz"},
+    "e0b3e3d96caf908060779c0d9964c777ccc4b7364af54404ff1768e018e56768": {"tag": "v29.0", "archive": "groestlcoin-29.0-x86_64-linux-gnu.tar.gz"},
+    "948c6b9dcb230e709fc5a2f6958b03752db474a48a1e7f97e904cc4c1f91cec9": {"tag": "v29.0", "archive": "groestlcoin-29.0-win64-unsigned.zip"},
+
+    "adee758fbf08f87552542d532d7c1d96d9b4c809b8720af1fd7fdd67b25669e4": {"tag": "v30.2", "archive": "groestlcoin-30.2-aarch64-linux-gnu.tar.gz"},
+    "260f7a840d95b9e85a43c1bcfe98355fcd202fa3180ed5ed26fb491f126dab2e": {"tag": "v30.2", "archive": "groestlcoin-30.2-arm-linux-gnueabihf.tar.gz"},
+    "7a5e336ad42ceeaefdde8670161505708863cda5d4da97ce2788c49300c19209": {"tag": "v30.2", "archive": "groestlcoin-30.2-arm64-apple-darwin-unsigned.tar.gz"},
+    "9be261618a4a850d212595f4bed55b0094bf373b328ce9611f14b13266926407": {"tag": "v30.2", "archive": "groestlcoin-30.2-powerpc64-linux-gnu.tar.gz"},
+    "036b79a67645cc656df3515d624d71ed05ae6fa499f1baa93aa576ff100eb3d1": {"tag": "v30.2", "archive": "groestlcoin-30.2-riscv64-linux-gnu.tar.gz"},
+    "ec5b05cbf1fcf0b2112c0c3427d375aa37f696cde88e987a3b0c15ebad239279": {"tag": "v30.2", "archive": "groestlcoin-30.2-x86_64-apple-darwin-unsigned.tar.gz"},
+    "c9468275712edc055767378751d91bea9336f0cd24283858c6c142bf385d0395": {"tag": "v30.2", "archive": "groestlcoin-30.2-x86_64-linux-gnu.tar.gz"},
+    "18832e8a78da6b4813bc4ac33990b050f7d2c625e164fee27c4d78ebbda4e06d": {"tag": "v30.2", "archive": "groestlcoin-30.2-win64-unsigned.zip"},
+
+    "a6f7ce7eccd5bf9c9c8937975c0a85846e9d26ef1080c4667b37c2b0473e1d27": {"tag": "v31.0", "archive": "groestlcoin-31.0-aarch64-linux-gnu.tar.gz"},
+    "5d4c016cb9313ad34cf0cb31e75a61ce1830261d566bbae7db83e796a9f77816": {"tag": "v31.0", "archive": "groestlcoin-31.0-arm-linux-gnueabihf.tar.gz"},
+    "438d66162b2848f18b98462a4c4401d93c2de4a3c81a15269453f6e88bccc587": {"tag": "v31.0", "archive": "groestlcoin-31.0-arm64-apple-darwin-unsigned.tar.gz"},
+    "6648369c2e8341f56356824026a702da7877d18a580b927779bc2e0624962c59": {"tag": "v31.0", "archive": "groestlcoin-31.0-powerpc64-linux-gnu.tar.gz"},
+    "a2380233ce50d649a6d3ec3931146828e2525b6c9dd2528d6a7f055bd10ba0a7": {"tag": "v31.0", "archive": "groestlcoin-31.0-riscv64-linux-gnu.tar.gz"},
+    "3cafa93329c2792cce8bf9465d2d56477ee30016226fcc53c8380d30d8805853": {"tag": "v31.0", "archive": "groestlcoin-31.0-x86_64-apple-darwin-unsigned.tar.gz"},
+    "6f96ad11c7ebf67afda96d7ae299a0d2cb3c7366ed9f06dcf78536939d8b409a": {"tag": "v31.0", "archive": "groestlcoin-31.0-x86_64-linux-gnu.tar.gz"},
+    "60a69630bdaed9b8f222e4aabd05e40e3f28d2c64488dcb2844189e00121dd8f": {"tag": "v31.0", "archive": "groestlcoin-31.0-win64-unsigned.zip"},
 }
 
 
@@ -274,10 +321,15 @@ if __name__ == '__main__':
         depends/README.md for which a release exists.
         ''',
     )
+    previous_releases_path = os.getenv("PREVIOUS_RELEASES_DIR") or os.getcwd() + "/releases"
     parser.add_argument('-r', '--remove-dir', action='store_true',
                         help='remove existing directory.')
     parser.add_argument('-t', '--target-dir', action='store',
-                        help='target directory.', default='releases')
+                        default=previous_releases_path,
+                        help='target directory, defaults to '
+                        'environment\'s PREVIOUS_RELEASES_DIR if set, '
+                        'otherwise to "./releases".'
+                        )
     all_tags = sorted([*set([v['tag'] for v in SHA256_SUMS.values()])])
     parser.add_argument('tags', nargs='*', default=all_tags,
                         help='release tags. e.g.: v2.18.2 v2.20.1 '
