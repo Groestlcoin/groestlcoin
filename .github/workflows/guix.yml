@@ -111,9 +111,6 @@ jobs:
 
               chmod +x guix-install.sh
 
-              # Temporary workaround for broken ftpmirror.gnu.org/gnu/guix/ path
-              sed -i 's|https://ftpmirror.gnu.org/gnu/guix/|https://ftpmirror.gnu.org/guix/|g' guix-install.sh
-
               # Avoid "yes ... |" + pipefail broken-pipe issues:
               # feed a single newline; installer will continue non-interactively.
               if printf '\n' | sudo ./guix-install.sh; then
