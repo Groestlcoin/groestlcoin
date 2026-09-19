@@ -18,7 +18,7 @@ namespace kernel {
 using namespace util::hex_literals;
 
 inline const std::vector<uint8_t> SIGNET_DEFAULT_CHALLENGE{
-    "512103ad5e0edad18cb1f0fc0d28a3d4f1f3e445640337489abb10404f2d1e086be430210359ef5021964fe22d6f8e05b2463c9540ce96883fe3b278760f048f5189f2e6c452ae"_hex_v_u8};
+    "51210379156a07950b904a74e0d276e6d96bb61c4e0f89c9f69d3a5f75f161c9f8684051ae"_hex_v_u8};
 
 /**
  * Return the message start bytes for a signet: the first four bytes of the
