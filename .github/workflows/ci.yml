@@ -198,25 +198,13 @@ jobs:
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   windows-cross:
-    name: 'Windows-cross to x86_64, ${{ matrix.crt }}'
+    name: 'Windows-cross to x86_64'
     needs: record-frozen-commit
     runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-latest-x64-4x' || 'ubuntu-latest' }}
     if: ${{ vars.SKIP_BRANCH_PUSH != 'true' || github.event_name == 'pull_request' }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        crt: [msvcrt, ucrt]
-        include:
-          - crt: msvcrt
-            file-env: './ci/test/00_setup_env_win64_msvcrt.sh'
-            artifact-name: 'x86_64-w64-mingw32-executables'
-          - crt: ucrt
-            file-env: './ci/test/00_setup_env_win64.sh'
-            artifact-name: 'x86_64-w64-mingw32ucrt-executables'
-
     env:
-      FILE_ENV: ${{ matrix.file-env }}
+      FILE_ENV: './ci/test/00_setup_env_win64.sh'
       DANGER_CI_ON_HOST_FOLDERS: 1
 
     steps:
@@ -252,7 +240,7 @@ jobs:
       - name: Upload built executables
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.artifact-name }}-${{ github.run_id }}
+          name: x86_64-w64-mingw32ucrt-executables-${{ github.run_id }}
           path: |
             ${{ env.BASE_BUILD_DIR }}/bin/*.dll
             ${{ env.BASE_BUILD_DIR }}/bin/*.exe

@@ -487,11 +487,11 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
 
     init::AddLoggingArgs(argsman);
 
-    const auto defaultBaseParams = CreateBaseChainParams(ChainType::MAIN);
-    const auto testnetBaseParams = CreateBaseChainParams(ChainType::TESTNET);
-    const auto testnet4BaseParams = CreateBaseChainParams(ChainType::TESTNET4);
-    const auto signetBaseParams = CreateBaseChainParams(ChainType::SIGNET);
-    const auto regtestBaseParams = CreateBaseChainParams(ChainType::REGTEST);
+    const auto defaultBaseParams = CreateBaseChainParams(argsman, ChainType::MAIN);
+    const auto testnetBaseParams = CreateBaseChainParams(argsman, ChainType::TESTNET);
+    const auto testnet4BaseParams = CreateBaseChainParams(argsman, ChainType::TESTNET4);
+    const auto signetBaseParams = CreateBaseChainParams(argsman, ChainType::SIGNET);
+    const auto regtestBaseParams = CreateBaseChainParams(argsman, ChainType::REGTEST);
     const auto defaultChainParams = CreateChainParams(argsman, ChainType::MAIN);
     const auto testnetChainParams = CreateChainParams(argsman, ChainType::TESTNET);
     const auto testnet4ChainParams = CreateChainParams(argsman, ChainType::TESTNET4);
@@ -1659,7 +1659,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         // Netgroupman with or without it
         assert(!node.netgroupman);
         if (args.IsArgSet("-asmap") && !args.IsArgNegated("-asmap")) {
-            uint256 asmap_version{};
             if (!args.GetBoolArg("-asmap", false)) {
                 fs::path asmap_path = args.GetPathArg("-asmap");
                 if (!asmap_path.is_absolute()) {
@@ -1679,7 +1678,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                     InitError(strprintf(_("Could not parse asmap file %s"), fs::quoted(fs::PathToString(asmap_path))));
                     return false;
                 }
-                asmap_version = AsmapVersion(asmap);
                 node.netgroupman = std::make_unique<NetGroupManager>(NetGroupManager::WithLoadedAsmap(std::move(asmap)));
             } else {
                 #ifdef ENABLE_EMBEDDED_ASMAP
@@ -1690,7 +1688,6 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                         return false;
                     }
                     node.netgroupman = std::make_unique<NetGroupManager>(NetGroupManager::WithEmbeddedAsmap(asmap));
-                    asmap_version = AsmapVersion(asmap);
                     LogInfo("Opened asmap data (%zu bytes) from embedded byte array\n", asmap.size());
                 #else
                     // If there is no embedded data, fail and report it since
@@ -1699,7 +1696,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                     return false;
                 #endif
             }
-            LogInfo("Using asmap version %s for IP bucketing", HexStr(asmap_version));
+            LogInfo("Using asmap version %s for IP bucketing", HexStr(node.netgroupman->GetAsmapVersion()));
         } else {
             node.netgroupman = std::make_unique<NetGroupManager>(NetGroupManager::NoAsmap());
             LogInfo("Using /16 prefix for IP bucketing");

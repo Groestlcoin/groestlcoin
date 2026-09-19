@@ -10,8 +10,8 @@
 #include <consensus/merkle.h>
 #include <consensus/params.h>
 #include <crypto/hex_base.h>
-#include <hash.h>
 #include <kernel/messagestartchars.h>
+#include <kernel/signet.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
@@ -402,7 +402,7 @@ public:
         vSeeds.clear();
 
         if (!options.challenge) {
-            bin = "51210379156a07950b904a74e0d276e6d96bb61c4e0f89c9f69d3a5f75f161c9f8684051ae"_hex_v_u8;
+            bin = kernel::SIGNET_DEFAULT_CHALLENGE;
             vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_signet), std::end(chainparams_seed_signet));
             vSeeds.emplace_back("95.179.191.212");
             vSeeds.emplace_back("fe80::5400:1ff:feed:a3cc");
@@ -462,11 +462,7 @@ public:
 
         ApplyDeploymentOptions(options.dep_opts);
 
-        // message start is defined as the first 4 bytes of the sha256d of the block script
-        HashWriter h{};
-        h << consensus.signet_challenge;
-        uint256 hash = h.GetHash();
-        std::copy_n(hash.begin(), 4, pchMessageStart.begin());
+        pchMessageStart = kernel::GetSignetMessageStart(consensus.signet_challenge);
 
         nDefaultPort = 31331;
         nPruneAfterHeight = 10000000;
