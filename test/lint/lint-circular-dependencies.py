@@ -30,7 +30,6 @@ EXPECTED_CIRCULAR_DEPENDENCIES = (
     # Not expected, but not worth fixing right now
     "chain -> primitives/block -> groestlcoin -> chain",
     "consensus/merkle -> hash -> groestlcoin -> consensus/merkle",
-    "chainparams -> kernel/chainparams -> hash -> groestlcoin -> chainparams",
 )
 
 CODE_DIR = "src"
