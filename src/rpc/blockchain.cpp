@@ -1094,7 +1094,7 @@ static RPCMethod gettxoutsetinfo()
                     HelpExampleCli("gettxoutsetinfo", "") +
                     HelpExampleCli("gettxoutsetinfo", R"("none")") +
                     HelpExampleCli("gettxoutsetinfo", R"("none" 1000)") +
-                    HelpExampleCli("gettxoutsetinfo", R"("none" '"000000000040ec74b9fe1d7fa4af97792904f80c5469f1a9460726cc4d2c5cbb"')") +
+                    HelpExampleCli("gettxoutsetinfo", R"("none" 000000000040ec74b9fe1d7fa4af97792904f80c5469f1a9460726cc4d2c5cbb)") +
                     HelpExampleCli("-named gettxoutsetinfo", R"(hash_type='muhash' use_index='false')") +
                     HelpExampleRpc("gettxoutsetinfo", "") +
                     HelpExampleRpc("gettxoutsetinfo", R"("none")") +
@@ -2051,7 +2051,7 @@ static RPCMethod getblockstats()
                 {RPCResult::Type::NUM, "utxo_size_inc_actual", /*optional=*/true, "The increase/decrease in size for the utxo index, not counting unspendables"},
             }},
                 RPCExamples{
-                    HelpExampleCli("getblockstats", R"('"00000000000434d5b8d1c3308df7b6e3fd773657dfb28f5dd2f70854ef94cc66"' '["minfeerate","avgfeerate"]')") +
+                    HelpExampleCli("getblockstats", R"(00000000000434d5b8d1c3308df7b6e3fd773657dfb28f5dd2f70854ef94cc66 '["minfeerate","avgfeerate"]')") +
                     HelpExampleCli("getblockstats", R"(1000 '["minfeerate","avgfeerate"]')") +
                     HelpExampleRpc("getblockstats", R"("00000000000434d5b8d1c3308df7b6e3fd773657dfb28f5dd2f70854ef94cc66", ["minfeerate","avgfeerate"])") +
                     HelpExampleRpc("getblockstats", R"(1000, ["minfeerate","avgfeerate"])")

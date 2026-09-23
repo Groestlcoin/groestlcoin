@@ -151,6 +151,7 @@ BASE_SCRIPTS = [
     'p2p_sendheaders.py',
     'feature_config_args.py',
     'wallet_listtransactions.py',
+    'wallet_listrawtransactions.py',
     'wallet_miniscript.py',
     # vv Tests less than 30s vv
     'wallet_deprecated_rbf.py',
@@ -202,6 +203,7 @@ BASE_SCRIPTS = [
     'mempool_reorg.py',
     'p2p_block_sync.py --v1transport',
     'p2p_block_sync.py --v2transport',
+    'p2p_block_times.py',
     'wallet_createwallet.py --usecli',
     'wallet_createwallet.py',
     'wallet_reindex.py',
