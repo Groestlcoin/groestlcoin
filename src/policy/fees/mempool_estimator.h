@@ -30,12 +30,12 @@ struct RemovedMempoolTransactionInfo;
 
 // Fee rate estimate for confirmation target above this is not reliable,
 // as mempool conditions are likely to change.
-constexpr int MEMPOOL_FEE_ESTIMATOR_MAX_TARGET{2};
-constexpr std::chrono::seconds CACHE_LIFE{7};
+inline constexpr int MEMPOOL_FEE_ESTIMATOR_MAX_TARGET{2};
+inline constexpr std::chrono::seconds CACHE_LIFE{7};
 
 // Constants for mempool sanity checks.
-constexpr size_t MEMPOOL_HEALTH_WINDOW_BLOCKS = 6;
-constexpr double MEMPOOL_REPRESENTATION_THRESHOLD = 0.75;
+inline constexpr size_t MEMPOOL_HEALTH_WINDOW_BLOCKS{6};
+inline constexpr double MEMPOOL_REPRESENTATION_THRESHOLD{0.75};
 
 //! Weight statistics for a recently mined block, used to assess mempool coverage.
 struct MinedBlockStats {
@@ -135,6 +135,7 @@ public:
     //! Checks if recent mined blocks indicate a healthy mempool state.
     bool IsMempoolHealthy() const EXCLUSIVE_LOCKS_REQUIRED(!cs) { return GetMempoolHealth() == MempoolHealth::HEALTHY; }
     void FlushMinedBlockStats() EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    void MempoolLoadFailed() EXCLUSIVE_LOCKS_REQUIRED(!cs);
     //! Deserialize mined-block stats without taking ownership of file.
     bool Read(AutoFile& file) EXCLUSIVE_LOCKS_REQUIRED(!cs);
     //! Serialize mined-block stats without taking ownership of file.

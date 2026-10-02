@@ -13,11 +13,10 @@ export PIP_PACKAGES="--break-system-packages pycapnp"
 export USE_VALGRIND=1
 export NO_DEPENDS=1
 export GOAL="install"
-# GUI disabled, because it only passes with a DEBUG=1 depends build
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
  --preset=dev-mode \
- -DBUILD_GUI=OFF \
+ -DBUILD_GUI=OFF  `# GUI disabled, because it only passes with a DEBUG=1 depends build` \
  -DWITH_USDT=OFF \
  -DCMAKE_C_COMPILER=clang \
- -DCMAKE_CXX_COMPILER=clang++ \
-"
+ -DCMAKE_CXX_COMPILER=clang++
+export GROESTLCOIN_CONFIG

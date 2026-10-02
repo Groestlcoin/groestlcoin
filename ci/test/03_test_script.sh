@@ -232,7 +232,7 @@ fi
 
 if [[ "${RUN_IWYU}" == true ]]; then
   # TODO: Consider enforcing IWYU across the entire codebase.
-  FILES_WITH_ENFORCED_IWYU='/src/((bench|common|consensus|crypto|index|init|kernel|primitives|rpc|script|univalue/(lib|test)|util|zmq)/.*|node/(blockstorage|interfaces|miner|mining_args|utxo_snapshot)|test/fuzz/(kitchen_sink|minisketch|parse_univalue)|clientversion|core_io|rest|signet|init)\.cpp'
+  FILES_WITH_ENFORCED_IWYU='/src/((bench|common|consensus|crypto|index|init|kernel|primitives|rpc|script|univalue/(lib|test)|util|zmq)/.*|node/(block_template_manager|blockstorage|interfaces|miner|mining_args|utxo_snapshot)|test/fuzz/(kitchen_sink|minisketch|parse_univalue)|clientversion|core_io|rest|signet|init)\.cpp'
   jq --arg patterns "$FILES_WITH_ENFORCED_IWYU" 'map(select(.file | test($patterns)))' "${BASE_BUILD_DIR}/compile_commands.json" > "${BASE_BUILD_DIR}/compile_commands_iwyu_errors.json"
   jq --arg patterns "$FILES_WITH_ENFORCED_IWYU" 'map(select(.file | test($patterns) | not))' "${BASE_BUILD_DIR}/compile_commands.json" > "${BASE_BUILD_DIR}/compile_commands_iwyu_warnings.json"
 
@@ -240,9 +240,8 @@ if [[ "${RUN_IWYU}" == true ]]; then
 
   run_iwyu() {
     mv "${BASE_BUILD_DIR}/$1" "${BASE_BUILD_DIR}/compile_commands.json"
-    {
-      python3 /include-what-you-use/mapgen/iwyu-mapgen-clang-intrin.py --lang imp "$("clang-${IWYU_LLVM_V}" -print-resource-dir)/include" > "${BASE_BUILD_DIR}/clang.intrinsics.imp"
-      python3 /include-what-you-use/iwyu_tool.py \
+    python3 /include-what-you-use/mapgen/iwyu-mapgen-clang-intrin.py --lang imp "$("clang-${IWYU_LLVM_V}" -print-resource-dir)/include" > "${BASE_BUILD_DIR}/clang.intrinsics.imp"
+    python3 /include-what-you-use/iwyu_tool.py \
              -p "${BASE_BUILD_DIR}" "${MAKEJOBS}" -- \
              -Xiwyu --cxx17ns \
              -Xiwyu --mapping_file="${BASE_ROOT_DIR}/contrib/devtools/iwyu/groestlcoin.core.imp" \
@@ -253,8 +252,7 @@ if [[ "${RUN_IWYU}" == true ]]; then
              -Xiwyu --check_also='*/interfaces/*\.h' \
              -Xiwyu --check_also='*/primitives/transaction_identifier\.h' \
              -Xiwyu --check_also='*/rpc/protocol\.h' \
-             2>&1 || true
-    } | tee /tmp/iwyu_ci.out
+             2>&1 | tee /tmp/iwyu_ci.out
     python3 "/include-what-you-use/fix_includes.py" --nosafe_headers < /tmp/iwyu_ci.out
     python3 -c '
 import runpy
@@ -277,10 +275,10 @@ subprocess.run(["git", "restore", "--", *subtrees], check=True)
 fi
 
 if [ "$RUN_FUZZ_TESTS" = "true" ]; then
-  # shellcheck disable=SC2086
+  eval "FUZZ_TESTS_ARGS=($FUZZ_TESTS_CONFIG)"
   LD_LIBRARY_PATH="${DEPENDS_DIR}/${HOST}/lib" \
   "${BASE_BUILD_DIR}/test/fuzz/test_runner.py" \
-    ${FUZZ_TESTS_CONFIG} \
+    "${FUZZ_TESTS_ARGS[@]}" \
     "${MAKEJOBS}" \
     -l DEBUG \
     "${DIR_FUZZ_IN}" \

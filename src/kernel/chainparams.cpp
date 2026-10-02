@@ -180,6 +180,7 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
 
         bech32_hrp = "grs";
+        silent_payments_hrp = "grssp";
 
         vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_main), std::end(chainparams_seed_main));
 
@@ -270,6 +271,7 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "tgrs";
+        silent_payments_hrp = "tgrssp";
 
         vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_test), std::end(chainparams_seed_test));
 
@@ -366,6 +368,7 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "tgrs";
+        silent_payments_hrp = "tgrssp";
 
         vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_testnet4), std::end(chainparams_seed_testnet4));
 
@@ -483,6 +486,7 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "tgrs";
+        silent_payments_hrp = "tgrssp";
 
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;
@@ -572,6 +576,7 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
 
         bech32_hrp = "grsrt";
+        silent_payments_hrp = "grssprt";
 
         // Copied from Testnet4.
         m_headers_sync_params = HeadersSyncParams{

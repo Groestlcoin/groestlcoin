@@ -78,10 +78,12 @@ import os
 class PSBTTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 3
+        # Set a high -maxfeerate value for nodes' wallets; some tests require
+        # creating and broadcasting transactions with a high fee rate that exceeds the default.
         self.extra_args = [
             [],
-            ["-changetype=legacy"],
-            []
+            ["-changetype=legacy", "-maxfeerate=1"],
+            ["-maxfeerate=1"]
         ]
         # whitelist peers to speed up tx relay / mempool sync
         for args in self.extra_args:
@@ -721,6 +723,32 @@ class PSBTTest(BitcoinTestFramework):
 
         wallet.unloadwallet()
 
+    def test_sighash_single(self):
+        self.log.info("Test that SIGHASH_SINGLE won't sign an input with no matching output")
+        node = self.nodes[0]
+        node.createwallet("sighash_single")
+        wallet = node.get_wallet_rpc("sighash_single")
+        def_wallet = node.get_wallet_rpc(self.default_wallet_name)
+
+        for addr_type in ["legacy", "bech32", "bech32m"]:
+            addrs = [wallet.getnewaddress("", addr_type) for _ in range(2)]
+            for addr in addrs:
+                def_wallet.sendtoaddress(addr, 1)
+            self.generatetoaddress(node, 1, def_wallet.getnewaddress())
+            node.syncwithvalidationinterfacequeue()
+            ins = [{"txid": u["txid"], "vout": u["vout"]} for u in wallet.listunspent(addresses=addrs)]
+            assert_equal(len(ins), 2)
+
+            raw = node.createrawtransaction(ins, [{wallet.getnewaddress(): 1.9999}])
+            signed = wallet.walletprocesspsbt(node.converttopsbt(raw), True, "SINGLE")["psbt"]
+            state = wallet.analyzepsbt(signed)["inputs"]
+            # Output at index 0 exist, so input 0 signs and finalizes
+            assert state[0]["is_final"]
+            # No output at index 1, so SIGHASH_SINGLE won't sign input 1
+            assert not state[1]["is_final"]
+
+        wallet.unloadwallet()
+
     def assert_change_type(self, psbtx, expected_type):
         """Assert that the given PSBT has a change output with the given type."""
 
@@ -768,7 +796,8 @@ class PSBTTest(BitcoinTestFramework):
 
     def test_psbt_roundtrip(self):
         self.log.info("Test that PSBTs roundtrip when RPC does nothing")
-        utxo = self.nodes[0].listunspent()[0]
+        # Pick mature coinbase so unspent ordering do not affect the test behavior
+        utxo = next(out for out in self.nodes[0].listunspent() if out["amount"] == Decimal(50))
         for ver in [0, 2]:
             psbt = self.nodes[0].walletcreatefundedpsbt(inputs=[utxo], outputs=[{self.nodes[0].getnewaddress(): utxo["amount"] / 2}], psbt_version=ver)["psbt"]
 
@@ -784,7 +813,8 @@ class PSBTTest(BitcoinTestFramework):
 
     def test_psbt_version(self):
         tobump = self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(), 1)
-        utxo = self.nodes[0].listunspent()[0]
+        # Pick mature coinbase so unspent ordering do not affect the test behavior
+        utxo = next(out for out in self.nodes[0].listunspent() if out["amount"] == Decimal(50))
         outputs = [{self.nodes[0].getnewaddress(): utxo["amount"] / 2}]
         rawtx = self.nodes[0].createrawtransaction(inputs=[utxo], outputs=outputs)
         for ver in [0, 2]:
@@ -1036,7 +1066,7 @@ class PSBTTest(BitcoinTestFramework):
 
         self.log.info("Test invalid fee rate settings")
         for param, value in {("fee_rate", 100000), ("feeRate", 1)}:
-            assert_raises_rpc_error(-4, "Fee exceeds maximum configured by user (e.g. -maxtxfee, maxfeerate)",
+            assert_raises_rpc_error(-4, "Fee exceeds maximum configured by user (maxtxfee)",
                 self.nodes[1].walletcreatefundedpsbt, inputs, outputs, 0, {param: value, "add_inputs": True})
             assert_raises_rpc_error(-3, "Amount out of range",
                 self.nodes[1].walletcreatefundedpsbt, inputs, outputs, 0, {param: -1, "add_inputs": True})
@@ -1090,7 +1120,7 @@ class PSBTTest(BitcoinTestFramework):
         self.log.info("Test walletcreatefundedpsbt with too-high fee rate produces total fee well above -maxtxfee and raises RPC error")
         # previously this was silently capped at -maxtxfee
         for bool_add, outputs_array in {True: outputs, False: [{self.nodes[1].getnewaddress(): 1}]}.items():
-            msg = "Fee exceeds maximum configured by user (e.g. -maxtxfee, maxfeerate)"
+            msg = "Fee exceeds maximum configured by user (maxtxfee)"
             assert_raises_rpc_error(-4, msg, self.nodes[1].walletcreatefundedpsbt, inputs, outputs_array, 0, {"fee_rate": 1000000, "add_inputs": bool_add})
             assert_raises_rpc_error(-4, msg, self.nodes[1].walletcreatefundedpsbt, inputs, outputs_array, 0, {"feeRate": 1, "add_inputs": bool_add})
 
@@ -1170,7 +1200,7 @@ class PSBTTest(BitcoinTestFramework):
         self.nodes[0].sendrawtransaction(finalized)
         self.generate(self.nodes[0], 6)
 
-        # Test additional args in walletcreatepsbt
+        # Test additional args in walletcreatefundedpsbt
         # Make sure both pre-included and funded inputs
         # have the correct sequence numbers based on
         # replaceable arg
@@ -1785,6 +1815,7 @@ class PSBTTest(BitcoinTestFramework):
         if not self.options.usecli:
             self.test_sighash_mismatch()
         self.test_sighash_adding()
+        self.test_sighash_single()
         self.test_decodepsbt_long_sighash_type()
         self.test_combinepsbt_sighash_type()
         self.test_psbt_named_parameter_handling()

@@ -11,8 +11,8 @@ export CONTAINER_NAME=ci_native_fuzz_valgrind
 export PACKAGES="clang llvm libclang-rt-dev libboost-dev libsqlite3-dev valgrind libcapnp-dev capnproto"
 export NO_DEPENDS=1
 export GOAL="all"
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
  -DBUILD_FOR_FUZZING=ON \
  -DCMAKE_C_COMPILER=clang \
- -DCMAKE_CXX_COMPILER=clang++ \
-"
+ -DCMAKE_CXX_COMPILER=clang++
+export GROESTLCOIN_CONFIG

@@ -14,10 +14,10 @@ export CMAKE_GENERATOR="Ninja"
 export CI_OS_NAME="macos"
 export NO_DEPENDS=1
 export OSX_SDK=""
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
   --preset=dev-mode \
   -DWITH_USDT=OFF \
   -DREDUCE_EXPORTS=ON \
-  -DCMAKE_EXE_LINKER_FLAGS='-Wl,-stack_size -Wl,0x80000' \
-"
+  -DCMAKE_EXE_LINKER_FLAGS="-Wl,-stack_size -Wl,0x80000"
+export GROESTLCOIN_CONFIG
 export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests

@@ -18,8 +18,8 @@ export OSX_SDK_SHA256=9600fa93644df674ee916b5e2c8a6ba8dacf631996a65dc922d003b98b
 export RUN_UNIT_TESTS=false
 export RUN_FUNCTIONAL_TESTS=false
 export GOAL="deploy"
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
  --preset=dev-mode \
  -DWITH_USDT=OFF \
- -DREDUCE_EXPORTS=ON \
-"
+ -DREDUCE_EXPORTS=ON
+export GROESTLCOIN_CONFIG

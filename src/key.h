@@ -7,19 +7,25 @@
 #ifndef BITCOIN_KEY_H
 #define BITCOIN_KEY_H
 
+#include <attributes.h>
 #include <pubkey.h>
 #include <script/keyorigin.h>
 #include <serialize.h>
 #include <support/allocators/secure.h>
+#include <support/cleanse.h>
 #include <uint256.h>
 
+#include <array>
+#include <cassert>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 struct secp256k1_context_struct;
 typedef struct secp256k1_context_struct secp256k1_context;
+struct secp256k1_keypair;
 
 /**
  * CPrivKey is a serialized private key, with all parameters included
@@ -253,8 +259,22 @@ struct CExtKey {
         return key.GetPubKey().GetID().fingerprint();
     }
 
-    void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
-    void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
+    //! BIP32 serialization without the version bytes (BIP32_EXTKEY_SIZE bytes)
+    template <typename Stream>
+    void Serialize(Stream& s) const
+    {
+        assert(key.size() == 32);
+        s << nDepth << fingerprint << Using<BigEndianFormatter<4>>(nChild) << chaincode << uint8_t{0} << std::span{key.data(), key.size()};
+    }
+    template <typename Stream>
+    void Unserialize(Stream& s)
+    {
+        uint8_t key_prefix;
+        std::vector<unsigned char, secure_allocator<unsigned char>> ser_key(32);
+        s >> nDepth >> fingerprint >> Using<BigEndianFormatter<4>>(nChild) >> chaincode >> key_prefix >> std::span{ser_key};
+        key.Set(ser_key.begin(), ser_key.end(), true);
+        if ((nDepth == 0 && (nChild != 0 || fingerprint != KeyFingerprint{})) || key_prefix != 0) key = CKey();
+    }
     [[nodiscard]] bool Derive(CExtKey& out, unsigned int nChild) const;
     CExtPubKey Neuter() const;
     void SetSeed(std::span<const std::byte> seed);
@@ -300,6 +320,12 @@ public:
 
     friend KeyPair CKey::ComputeKeyPair(const uint256* merkle_root) const;
     [[nodiscard]] bool SignSchnorr(const uint256& hash, std::span<unsigned char> sig, const uint256& aux) const;
+
+    //! Pointer to this KeyPair's internal `secp256k1_keypair` data or nullptr if invalid.
+    const secp256k1_keypair* GetSecpKeypair() const LIFETIMEBOUND
+    {
+        return IsValid() ? reinterpret_cast<const secp256k1_keypair*>(m_keypair->data()) : nullptr;
+    }
 
     //! Check whether this keypair is valid.
     bool IsValid() const { return !!m_keypair; }

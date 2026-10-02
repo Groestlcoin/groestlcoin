@@ -12,10 +12,10 @@ export CI_BASE_PACKAGES="build-base musl-dev pkgconf curl ccache make ninja git 
 export PIP_PACKAGES="--break-system-packages pyzmq pycapnp"
 export DEP_OPTS="DEBUG=1"
 export GOAL="install"
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
  --preset=dev-mode \
  -DREDUCE_EXPORTS=ON \
- -DCMAKE_BUILD_TYPE=Debug \
-"
+ -DCMAKE_BUILD_TYPE=Debug
+export GROESTLCOIN_CONFIG
 export TEST_RUNNER_EXTRA="--v2transport --usecli --extended --exclude feature_dbcrash"  # Run extended tests under --usecli and --v2transport, but exclude the very slow dbcrash
 export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests

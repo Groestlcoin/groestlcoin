@@ -91,6 +91,19 @@ class SendallTest(BitcoinTestFramework):
         self.assert_balance_swept_completely(tx_from_wallet, pre_sendall_balance)
 
     @cleanup
+    def sendall_uppercase_address(self):
+        self.log.info("Testing sendall to an uppercase bech32 address without amount")
+        pre_sendall_balance = self.add_utxos([10, 11])
+        tx_from_wallet = self.test_sendall_success(sendall_args=[self.remainder_target.upper()])
+
+        self.assert_tx_has_outputs(tx=tx_from_wallet,
+            expected_outputs=[
+                {"address": self.remainder_target, "value": pre_sendall_balance + tx_from_wallet["fee"]}
+            ]
+        )
+        self.assert_balance_swept_completely(tx_from_wallet, pre_sendall_balance)
+
+    @cleanup
     def sendall_split(self):
         self.log.info("Testing sendall where two recipients have unspecified amount")
         pre_sendall_balance = self.add_utxos([1, 2, 3, 15])
@@ -431,6 +444,43 @@ class SendallTest(BitcoinTestFramework):
 
         assert_greater_than(higher_parent_feerate_amount, lower_parent_feerate_amount)
 
+    def reload_wallets(self):
+        loaded = self.nodes[0].listwallets()
+        for name in ["activewallet", self.default_wallet_name]:
+            if name not in loaded:
+                self.nodes[0].loadwallet(name)
+        self.wallet = self.nodes[0].get_wallet_rpc("activewallet")
+        self.def_wallet = self.nodes[0].get_wallet_rpc(self.default_wallet_name)
+
+    def assert_sendall_bump_fee_over_limit(self, *, fee_rate, error):
+        # Fund an unconfirmed parent below the spend feerate, so spending it needs a bump fee that,
+        # added to the child's own fee, pushes the total past the configured limit.
+        self.def_wallet.sendtoaddress(address=self.wallet.getnewaddress(), amount=17, fee_rate=20)
+        self.wallet.syncwithvalidationinterfacequeue()
+        unspent = self.wallet.listunspent(minconf=0)[0]
+        assert_equal(self.wallet.gettransaction(unspent["txid"])["confirmations"], 0)
+        assert_raises_rpc_error(-4, error, self.wallet.sendall,
+                                recipients=[self.remainder_target], inputs=[unspent], fee_rate=fee_rate)
+        self.generate(self.nodes[0], 1)
+
+    @cleanup
+    def sendall_fails_when_bump_fees_exceed_maxfeerate(self):
+        self.log.info("Test that sendall rejects a tx whose ancestor bump fees push the fee rate above -maxfeerate")
+        # fee_rate equals the default -maxfeerate (10000 sat/vB).
+        self.assert_sendall_bump_fee_over_limit(fee_rate=10000, error="Fee rate exceeds maximum configured by user (maxfeerate)")
+
+    @cleanup
+    def sendall_fails_when_bump_fees_exceed_maxtxfee(self):
+        self.log.info("Test that sendall rejects a tx whose ancestor bump fees push the total fee above -maxtxfee")
+        self.restart_node(0, extra_args=["-maxtxfee=0.0005"])
+        self.reload_wallets()
+        # Child fee stays under -maxtxfee; the bump fee pushes the total above it.
+        self.assert_sendall_bump_fee_over_limit(fee_rate=400, error="Fee exceeds maximum configured by user (maxtxfee)")
+        self.restart_node(0)
+        self.reload_wallets()
+        self.restart_node(0)
+        self.reload_wallets()
+
     @cleanup
     def sendall_anti_fee_sniping(self):
         self.log.info("Testing sendall does anti-fee-sniping when locktime is not specified")
@@ -485,6 +535,9 @@ class SendallTest(BitcoinTestFramework):
 
         # Basic sweep: everything to one address
         self.sendall_two_utxos()
+
+        # Sendall to an uppercase bech32 address
+        self.sendall_uppercase_address()
 
         # Split remainder to two addresses with equal amounts
         self.sendall_split()
@@ -542,6 +595,12 @@ class SendallTest(BitcoinTestFramework):
 
         # Sendall spends unconfirmed inputs if they are specified
         self.sendall_spends_unconfirmed_inputs_if_specified()
+
+        # Sendall rejects a tx whose ancestor bump fees push the fee rate above -maxfeerate
+        self.sendall_fails_when_bump_fees_exceed_maxfeerate()
+
+        # Sendall rejects a tx whose ancestor bump fees push the total fee above -maxtxfee
+        self.sendall_fails_when_bump_fees_exceed_maxtxfee()
 
         # Sendall does ancestor aware funding when spending an unconfirmed UTXO
         self.sendall_does_ancestor_aware_funding()

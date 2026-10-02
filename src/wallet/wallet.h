@@ -138,10 +138,15 @@ inline constexpr bool DEFAULT_DISABLE_WALLET = false;
 inline constexpr bool DEFAULT_WALLETCROSSCHAIN = false;
 //! -maxtxfee default
 inline constexpr CAmount DEFAULT_TRANSACTION_MAXFEE{COIN / 10};
+//! -maxfeerate default
+inline constexpr CFeeRate DEFAULT_MAX_TRANSACTION_FEERATE{COIN / 10};
 //! Discourage users to set fees higher than this amount (in satoshis) per kB
 inline constexpr CAmount HIGH_TX_FEE_PER_KB{COIN / 100};
 //! -maxtxfee will warn if called with a higher fee than this amount (in satoshis)
 inline constexpr CAmount HIGH_MAX_TX_FEE{100 * HIGH_TX_FEE_PER_KB};
+//! A warning will be emitted if -maxfeerate is set higher than this fee rate (in satoshis per kB).
+inline constexpr CFeeRate HIGH_MAX_TX_FEERATE{100 * HIGH_TX_FEE_PER_KB};
+
 //! Pre-calculated constants for input size estimation in *virtual size*
 inline constexpr size_t DUMMY_NESTED_P2WPKH_INPUT_SIZE = 91;
 
@@ -339,23 +344,6 @@ private:
     TxSpends mapTxSpends GUARDED_BY(cs_wallet);
     void AddToSpends(const COutPoint& outpoint, const Txid& txid) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     void AddToSpends(const CWalletTx& wtx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
-
-    /**
-     * Add a transaction to the wallet, or update it.  confirm.block_* should
-     * be set when the transaction was known to be included in a block.  When
-     * block_hash.IsNull(), then wallet state is not updated in AddToWallet, but
-     * notifications happen and cached balances are marked dirty.
-     *
-     * TODO: One exception to this is that the abandoned state is cleared under the
-     * assumption that any further notification of a transaction that was considered
-     * abandoned is an indication that it is not safe to be considered abandoned.
-     * Abandoned state should probably be more carefully tracked via different
-     * chain notifications or by checking mempool presence when necessary.
-     *
-     * Should be called with rescanning_old_block set to true, if the transaction is
-     * not discovered in real time, but during a rescan of old blocks.
-     */
-    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const SyncTxState& state, bool rescanning_old_block) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /** Mark a transaction (and its in-wallet descendants) as conflicting with a particular block. */
     void MarkConflicted(const uint256& hashBlock, int conflicting_height, const Txid& hashTx);
@@ -617,6 +605,23 @@ public:
      * @return the recently added wtx pointer or nullptr if there was a db write error.
      */
     CWalletTx* AddToWallet(CTransactionRef tx, const TxState& state, const UpdateWalletTxFn& update_wtx=nullptr, bool rescanning_old_block = false);
+
+    /**
+     * Add a transaction to the wallet, or update it.  confirm.block_* should
+     * be set when the transaction was known to be included in a block.  When
+     * block_hash.IsNull(), then wallet state is not updated in AddToWallet, but
+     * notifications happen and cached balances are marked dirty.
+     *
+     * TODO: One exception to this is that the abandoned state is cleared under the
+     * assumption that any further notification of a transaction that was considered
+     * abandoned is an indication that it is not safe to be considered abandoned.
+     * Abandoned state should probably be more carefully tracked via different
+     * chain notifications or by checking mempool presence when necessary.
+     *
+     * Should be called with rescanning_old_block set to true, if the transaction is
+     * not discovered in real time, but during a rescan of old blocks.
+     */
+    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const SyncTxState& state, bool rescanning_old_block) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     bool LoadToWallet(CWalletTx&& wtx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     void transactionAddedToMempool(const CTransactionRef& tx) override;
     void blockConnected(const kernel::ChainstateRole& role, const interfaces::BlockInfo& block) override;
@@ -715,9 +720,11 @@ public:
      * CWallet::TransactionChangeType for details).
      */
     std::optional<OutputType> m_default_change_type{};
-    /** Absolute maximum transaction fee (in satoshis) used by default for the wallet */
-    CAmount m_default_max_tx_fee{DEFAULT_TRANSACTION_MAXFEE};
+    /** Absolute maximum transaction fee (in satoshis) used by the wallet */
+    CAmount m_max_tx_fee{DEFAULT_TRANSACTION_MAXFEE};
 
+    /** Maximum transaction fee rate used for the wallet */
+    CFeeRate m_max_tx_fee_rate{DEFAULT_MAX_TRANSACTION_FEERATE};
     /** Number of pre-generated keys/scripts by each spkm (part of the look-ahead process, used to detect payments) */
     int64_t m_keypool_size{DEFAULT_KEYPOOL_SIZE};
 

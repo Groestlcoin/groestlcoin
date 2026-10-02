@@ -12,7 +12,7 @@ export CONTAINER_NAME=ci_s390x
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:26.04"
 export CI_IMAGE_PLATFORM="linux/s390x"
 export GOAL="install"
-export GROESTLCOIN_CONFIG="\
+printf -v GROESTLCOIN_CONFIG "%q " \
   --preset=dev-mode \
-  -DREDUCE_EXPORTS=ON \
-"
+  -DREDUCE_EXPORTS=ON
+export GROESTLCOIN_CONFIG

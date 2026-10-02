@@ -672,7 +672,8 @@ FilteredOutputGroups GroupOutputs(const CWallet& wallet,
                     filtered_groups[filter].Push(group, type, positive_only, /*insert_mixed=*/!positive_only);
                     accepted = true;
                 }
-                if (!accepted) ret_discarded_groups.emplace_back(group);
+                // The positive-only groups are a subset of the mixed ones, don't record them twice
+                if (!accepted && !positive_only) ret_discarded_groups.emplace_back(group);
             }
         }
     };
@@ -1417,8 +1418,13 @@ static util::Result<CreatedTransactionResult> CreateTransactionInternal(
         return util::Error{_("Transaction too large")};
     }
 
-    if (current_fee > wallet.m_default_max_tx_fee) {
+    if (current_fee > wallet.m_max_tx_fee) {
         return util::Error{TransactionErrorString(TransactionError::MAX_FEE_EXCEEDED)};
+    }
+
+    const int64_t tx_vsize{GetVirtualTransactionSize(*tx)};
+    if (current_fee > wallet.m_max_tx_fee_rate.GetFee(tx_vsize)) {
+        return util::Error{TransactionErrorString(TransactionError::MAX_FEE_RATE_EXCEEDED)};
     }
 
     if (gArgs.GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
