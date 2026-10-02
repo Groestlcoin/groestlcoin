@@ -50,7 +50,7 @@
           ((string-contains target "-linux-")
            (list bison
                  gawk
-                 (make-bitcoin-cross-toolchain target) ;; glibc 2.31 based
+                 (make-groestlcoin-cross-toolchain target) ;; glibc 2.31 based
                  pkg-config))
           ((string-contains target "darwin")
            (list zip))

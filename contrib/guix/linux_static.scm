@@ -4,5 +4,5 @@
  (append
   (let ((target (getenv "HOST")))
     (cond ((string-contains target "-linux-")
-           (list (make-bitcoin-cross-toolchain target)))
+           (list (make-groestlcoin-cross-toolchain target)))
           (else '())))))
