@@ -37,7 +37,7 @@ jobs:
         include:
           - name: linux-32-bit
             host: i686-pc-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: "gcc-multilib g++-multilib"
             check-security: false
             check-symbols: false
@@ -46,7 +46,7 @@ jobs:
             goal: build
           - name: linux-64-bit
             host: x86_64-pc-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: ""
             check-security: false
             check-symbols: false
@@ -56,7 +56,7 @@ jobs:
           - name: windows-64-bit
             host: x86_64-w64-mingw32
             arch: "i386"
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: cmake curl g++ git make pkg-config nsis g++-mingw-w64-x86-64-posix build-essential bsdmainutils wine-binfmt binfmt-support wine64 wine32
             postinstall: |
               sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
@@ -69,7 +69,7 @@ jobs:
             goal: build
           - name: macos-intel-64-bit
             host: x86_64-apple-darwin
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: clang lld llvm g++ zip curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso
             check-security: false
             check-symbols: false
@@ -79,7 +79,7 @@ jobs:
             sdk: 26.1.1-17B100
           - name: macos-arm-64-bit
             host: arm64-apple-darwin
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: clang lld llvm g++ zip curl bsdmainutils cmake libz-dev python3-setuptools libtinfo6 xorriso
             check-security: false
             check-symbols: false
@@ -89,7 +89,7 @@ jobs:
             sdk: 26.1.1-17B100
           - name: linux-arm-32-bit
             host: arm-linux-gnueabihf
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
             check-security: false
             check-symbols: false
@@ -98,7 +98,7 @@ jobs:
             goal: build
           - name: linux-arm-64-bit
             host: aarch64-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
             check-security: false
             check-symbols: false
@@ -107,7 +107,7 @@ jobs:
             goal: build
           - name: linux-power-64-bit
             host: powerpc64-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-powerpc64-linux-gnu binutils-powerpc64-linux-gnu
             check-security: false
             check-symbols: false
@@ -116,7 +116,7 @@ jobs:
             goal: build
           - name: linux-power-le-64-bit
             host: powerpc64le-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-powerpc64le-linux-gnu binutils-powerpc64le-linux-gnu
             check-security: false
             check-symbols: false
@@ -125,7 +125,7 @@ jobs:
             goal: build
           - name: linux-riscv-64-bit
             host: riscv64-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-riscv64-linux-gnu binutils-riscv64-linux-gnu
             check-security: false
             check-symbols: false
@@ -134,7 +134,7 @@ jobs:
             goal: build
           - name: linux-s390x
             host: s390x-linux-gnu
-            os: ubuntu-24.04
+            os: ubuntu-latest
             packages: g++-s390x-linux-gnu binutils-s390x-linux-gnu
             check-security: false
             check-symbols: false

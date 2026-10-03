@@ -7,7 +7,7 @@ on:
 
 jobs:
   guix:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 480
 
     strategy:
@@ -455,7 +455,7 @@ jobs:
 
   guix-attest:
     name: Guix attest (all hosts)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: guix
     timeout-minutes: 60
 
@@ -538,7 +538,7 @@ jobs:
 
   release:
     name: Release bundle (tags or manual)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs:
       - guix
       - guix-attest
