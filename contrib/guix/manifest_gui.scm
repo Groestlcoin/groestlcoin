@@ -5,10 +5,17 @@
              (gnu packages ninja)
              (gnu packages pkg-config)
              ((gnu packages python) #:select (python-minimal))
-             ((gnu packages python-xyz) #:select (python-lief))
+             ((gnu packages python-xyz) #:select (python-aiohttp python-lief))
              ((guix utils) #:select (substitute-keyword-arguments))
              ((guix packages) #:select (package package-arguments package-input-rewriting/spec))
              (toolchains))
+
+(define python-aiohttp-no-tests
+  (package
+    (inherit python-aiohttp)
+    (arguments
+     (substitute-keyword-arguments (package-arguments python-aiohttp)
+       ((#:tests? _ #t) #f)))))
 
 ;; python-lief and nsis-x86_64 transitively pull in packages whose
 ;; tests fail when building natively on riscv64:

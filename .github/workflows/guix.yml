@@ -311,7 +311,6 @@ jobs:
           TMP: /var/tmp/guix-tmp
           TEMP: /var/tmp/guix-tmp
           GIT_CONFIG_NOSYSTEM: "1"
-          ADDITIONAL_GUIX_TIMEMACHINE_FLAGS: "--without-tests=python-aiohttp"
           SUBSTITUTE_URLS: "https://bordeaux-singapore-mirror.cbaines.net https://bordeaux-us-east-mirror.cbaines.net https://mirrors.sjtug.sjtu.edu.cn/guix https://mirror.yandex.ru/mirrors/guix/ https://berlin.guix.gnu.org https://bordeaux.guix.gnu.org https://ci.guix.gnu.org https://hydra-guix-129.guix.gnu.org https://berlin-guix.jing.rocks https://bordeaux-guix.jing.rocks https://mirrors.sjtug.sjtu.edu.cn/guix-bordeaux"
 
         run: |
