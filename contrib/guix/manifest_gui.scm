@@ -5,7 +5,8 @@
              (gnu packages ninja)
              (gnu packages pkg-config)
              ((gnu packages python) #:select (python-minimal))
-             ((gnu packages python-xyz) #:select (python-aiohttp python-lief))
+             ((gnu packages python-web) #:select (python-aiohttp))
+             ((gnu packages python-xyz) #:select (python-lief))
              ((guix utils) #:select (substitute-keyword-arguments))
              ((guix packages) #:select (package package-arguments package-input-rewriting/spec))
              (toolchains))
@@ -49,6 +50,7 @@
         ;; Packaging scripts
         python-minimal ;; 3.12
         ;; Tests
+        python-aiohttp-no-tests
         python-lief-no-riscv64-failing-tests) ;; 0.17.6
   (let ((target (getenv "HOST")))
     (cond ((string-suffix? "-mingw32" target)
