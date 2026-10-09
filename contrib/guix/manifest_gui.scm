@@ -18,6 +18,13 @@
      (substitute-keyword-arguments (package-arguments python-aiohttp)
        ((#:tests? _ #t) #f)))))
 
+;; Rewrite python-aiohttp dependencies to skip its test suite.
+(define (rewrite-aiohttp-inputs p)
+  ((package-input-rewriting/spec
+    `(("python-aiohttp" .
+       ,(lambda (_p) python-aiohttp-no-tests))))
+   p))
+
 ;; python-lief and nsis-x86_64 transitively pull in packages whose
 ;; tests fail when building natively on riscv64:
 ;; - python-lief: python-psutil, python-pytest-xprocess, python-sh
@@ -42,25 +49,26 @@
    nsis-x86_64))
 
 (packages->manifest
- (append
-  (list ;; Compression and archiving
-        xz
-        ;; Build tools
-        ninja
-        ;; Packaging scripts
-        python-minimal ;; 3.12
-        ;; Tests
-        python-aiohttp-no-tests
-        python-lief-no-riscv64-failing-tests) ;; 0.17.6
-  (let ((target (getenv "HOST")))
-    (cond ((string-suffix? "-mingw32" target)
-           (list nsis-x86_64-no-riscv64-failing-tests
-                 zip))
-          ((string-contains target "-linux-")
-           (list bison
-                 gawk
-                 (make-groestlcoin-cross-toolchain target) ;; glibc 2.31 based
-                 pkg-config))
-          ((string-contains target "darwin")
-           (list zip))
-          (else '())))))
+ (map rewrite-aiohttp-inputs
+  (append
+   (list ;; Compression and archiving
+         xz
+         ;; Build tools
+         ninja
+         ;; Packaging scripts
+         python-minimal ;; 3.12
+         ;; Python packages
+         python-aiohttp-no-tests
+         python-lief-no-riscv64-failing-tests)
+   (let ((target (getenv "HOST")))
+     (cond ((string-suffix? "-mingw32" target)
+            (list nsis-x86_64-no-riscv64-failing-tests
+                  zip))
+           ((string-contains target "-linux-")
+            (list bison
+                  gawk
+                  (make-groestlcoin-cross-toolchain target)
+                  pkg-config))
+           ((string-contains target "darwin")
+            (list zip))
+           (else '()))))))
