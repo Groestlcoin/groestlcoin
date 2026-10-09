@@ -16,6 +16,7 @@ import platform
 import pdb
 import random
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -231,6 +232,10 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         check_json_precision()
         export_env_build_path(self.config)
+
+        sanitizer_env = runpy.run_path(Path(self.config["environment"]["BUILDDIR"]) / "test" / "with_sanitizer_env.py", )["sanitizer_env"]
+        for name, value in sanitizer_env().items():
+            os.environ.setdefault(name, value)
 
         self.options.cachedir = os.path.abspath(self.options.cachedir)
 
@@ -962,7 +967,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             self.stop_nodes()
             self.nodes = []
 
-            cache_path = cache_node_dir / self.chain
+            cache_path = cache_node.chain_path
 
             (cache_path / "wallets").rmdir()  # Do not cache empty wallets dir
             shutil.rmtree(cache_path / "fees")  # Do not cache fees dat files

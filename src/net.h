@@ -31,6 +31,7 @@
 #include <sync.h>
 #include <uint256.h>
 #include <util/check.h>
+#include <util/not_null.h>
 #include <util/sock.h>
 #include <util/threadinterrupt.h>
 
@@ -686,7 +687,7 @@ class CNode
 public:
     /** Transport serializer/deserializer. The receive side functions are only called under cs_vRecv, while
      * the sending side functions are only called under cs_vSend. */
-    const std::unique_ptr<Transport> m_transport;
+    const util::NotNullUniquePtr<Transport> m_transport;
 
     const NetPermissionFlags m_permission_flags;
 

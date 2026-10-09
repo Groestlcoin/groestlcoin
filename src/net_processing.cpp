@@ -123,6 +123,8 @@ static constexpr int STALE_RELAY_AGE_LIMIT = 30 * 24 * 60 * 60;
 static constexpr int HISTORICAL_BLOCK_AGE = 7 * 24 * 60 * 60;
 /** Time between pings automatically sent out for latency probing and keepalive */
 static constexpr auto PING_INTERVAL{2min};
+/** Time to wait for a pong after the last block a peer delivered, before applying the ping timeout */
+static constexpr auto POST_BLOCK_PONG_GRACE{1min};
 /** The maximum number of entries in a locator */
 static const unsigned int MAX_LOCATOR_SZ = 101;
 /** The maximum number of entries in an 'inv' protocol message */
@@ -201,8 +203,6 @@ static constexpr double MAX_ADDR_RATE_PER_SECOND{0.1};
  *  based increments won't go above this, but the MAX_ADDR_TO_SEND increment following GETADDR
  *  is exempt from this limit). */
 static constexpr size_t MAX_ADDR_PROCESSING_TOKEN_BUCKET{MAX_ADDR_TO_SEND};
-/** For private broadcast, send a transaction to this many peers. */
-static constexpr size_t NUM_PRIVATE_BROADCAST_PER_TX{3};
 /** Private broadcast connections must complete within this time. Disconnect the peer if it takes longer. */
 static constexpr auto PRIVATE_BROADCAST_MAX_CONNECTION_LIFETIME{3min};
 
@@ -820,10 +820,7 @@ private:
     /** Send a version message to a peer */
     void PushNodeVersion(CNode& pnode, const Peer& peer);
 
-    /** Send a ping message every PING_INTERVAL or if requested via RPC (peer.m_ping_queued is true).
-     *  May mark the peer to be disconnected if a ping has timed out.
-     *  We use mockable time for ping timeouts, so setmocktime may cause pings
-     *  to time out. */
+    /** Send a ping message every PING_INTERVAL or if requested via RPC (peer.m_ping_queued is true). */
     void MaybeSendPing(CNode& node_to, Peer& peer, NodeClock::time_point now);
 
     /** Send `addr` messages on a regular schedule. */
@@ -1747,7 +1744,7 @@ void PeerManagerImpl::ReattemptInitialBroadcast(CScheduler& scheduler)
 
 void PeerManagerImpl::ReattemptPrivateBroadcast(CScheduler& scheduler)
 {
-    // Remove stale transactions that are no longer relevant (e.g. already in
+    // Resolve stale transactions that are no longer relevant (e.g. already in
     // the mempool or mined) and count the remaining ones.
     size_t num_for_rebroadcast{0};
     const auto stale_txs = m_tx_for_private_broadcast.GetStale();
@@ -1757,6 +1754,7 @@ void PeerManagerImpl::ReattemptPrivateBroadcast(CScheduler& scheduler)
             LOCK(cs_main);
             auto mempool_acceptable = m_chainman.ProcessTransaction(stale_tx, /*test_accept=*/true);
             if (mempool_acceptable.m_result_type == MempoolAcceptResult::ResultType::VALID) {
+                if (!m_tx_for_private_broadcast.TryGrantRetry(stale_tx)) continue;
                 LogDebug(BCLog::PRIVBROADCAST,
                          "Reattempting broadcast of stale txid=%s wtxid=%s",
                          stale_tx->GetHash().ToString(), stale_tx->GetWitnessHash().ToString());
@@ -1765,7 +1763,7 @@ void PeerManagerImpl::ReattemptPrivateBroadcast(CScheduler& scheduler)
                 LogDebug(BCLog::PRIVBROADCAST, "Giving up broadcast attempts for txid=%s wtxid=%s: %s",
                          stale_tx->GetHash().ToString(), stale_tx->GetWitnessHash().ToString(),
                          mempool_acceptable.m_state.ToString());
-                m_tx_for_private_broadcast.Remove(stale_tx);
+                m_tx_for_private_broadcast.MarkResolved(stale_tx);
             }
         }
 
@@ -1845,11 +1843,18 @@ void PeerManagerImpl::FinalizeNode(const CNode& node)
         LOCK(m_headers_presync_mutex);
         m_headers_presync_stats.erase(nodeid);
     }
-    if (node.IsPrivateBroadcastConn() &&
-        !m_tx_for_private_broadcast.DidNodeConfirmReception(nodeid) &&
-        m_tx_for_private_broadcast.HavePendingTransactions()) {
-
-        m_connman.m_private_broadcast.NumToOpenAdd(1);
+    if (node.IsPrivateBroadcastConn()) {
+        m_tx_for_private_broadcast.NodeDisconnected(nodeid);
+        // We consider a transaction sent to a peer if we sent them an INV.
+        // Normally they should request the transaction with GETDATA, but this may
+        // not happen if they are already aware of the transaction.
+        // If we didn't send them an INV, schedule a new connection to compensate
+        // for this send failure. Whether we sent them an INV is not readily
+        // available here, so use fSuccessfullyConnected because INV is sent right
+        // after a successful handshake when there is a pending transaction.
+        if (!node.fSuccessfullyConnected && m_tx_for_private_broadcast.HavePendingTransactions()) {
+            m_connman.m_private_broadcast.NumToOpenAdd(1);
+        }
     }
     LogDebug(BCLog::NET, "Cleared nodestate for peer=%d\n", nodeid);
 }
@@ -1991,11 +1996,9 @@ std::vector<CTransactionRef> PeerManagerImpl::AbortPrivateBroadcast(const uint25
     for (const auto& tx_info : snapshot) {
         const CTransactionRef& tx{tx_info.tx};
         if (tx->GetHash().ToUint256() != id && tx->GetWitnessHash().ToUint256() != id) continue;
-        if (const auto peer_acks{m_tx_for_private_broadcast.Remove(tx)}) {
+        if (const auto remaining_sends{m_tx_for_private_broadcast.Remove(tx)}) {
             removed_txs.push_back(tx);
-            if (NUM_PRIVATE_BROADCAST_PER_TX > *peer_acks) {
-                connections_cancelled += (NUM_PRIVATE_BROADCAST_PER_TX - *peer_acks);
-            }
+            connections_cancelled += *remaining_sends;
         }
     }
     m_connman.m_private_broadcast.NumToOpenSub(connections_cancelled);
@@ -2498,8 +2501,8 @@ node::TransactionError PeerManagerImpl::InitiateTxBroadcastPrivate(const CTransa
     const auto txstr{strprintf("txid=%s, wtxid=%s", tx->GetHash().ToString(), tx->GetWitnessHash().ToString())};
     switch (m_tx_for_private_broadcast.Add(tx)) {
     case PrivateBroadcast::AddResult::Added:
-        LogDebug(BCLog::PRIVBROADCAST, "Requesting %d new connections due to %s", NUM_PRIVATE_BROADCAST_PER_TX, txstr);
-        m_connman.m_private_broadcast.NumToOpenAdd(NUM_PRIVATE_BROADCAST_PER_TX);
+        LogDebug(BCLog::PRIVBROADCAST, "Requesting %d new connections due to %s", PrivateBroadcast::INITIAL_CONNECTION_COUNT, txstr);
+        m_connman.m_private_broadcast.NumToOpenAdd(PrivateBroadcast::INITIAL_CONNECTION_COUNT);
         return node::TransactionError::OK;
     case PrivateBroadcast::AddResult::AlreadyPresent:
         LogDebug(BCLog::PRIVBROADCAST, "Ignoring unnecessary request to schedule an already scheduled transaction: %s", txstr);
@@ -4724,15 +4727,10 @@ void PeerManagerImpl::ProcessMessage(Peer& peer, CNode& pfrom, const std::string
         const uint256& hash = peer.m_wtxid_relay ? wtxid.ToUint256() : txid.ToUint256();
         AddKnownTx(peer, hash);
 
-        if (const auto num_broadcasted{m_tx_for_private_broadcast.Remove(ptx)}) {
+        if (m_tx_for_private_broadcast.MarkResolved(ptx)) {
             LogDebug(BCLog::PRIVBROADCAST, "Received our privately broadcast transaction (txid=%s) from the "
-                                           "network from %s; stopping private broadcast attempts",
+                                           "network from %s",
                      txid.ToString(), pfrom.LogPeer());
-            if (NUM_PRIVATE_BROADCAST_PER_TX > num_broadcasted.value()) {
-                // Not all of the initial NUM_PRIVATE_BROADCAST_PER_TX connections were needed.
-                // Tell CConnman it does not need to start the remaining ones.
-                m_connman.m_private_broadcast.NumToOpenSub(NUM_PRIVATE_BROADCAST_PER_TX - num_broadcasted.value());
-            }
         }
 
         LOCK2(cs_main, m_tx_download_mutex);
@@ -5704,17 +5702,6 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
 
 void PeerManagerImpl::MaybeSendPing(CNode& node_to, Peer& peer, NodeClock::time_point now)
 {
-    if (m_connman.ShouldRunInactivityChecks(node_to, now) &&
-        peer.m_ping_nonce_sent &&
-        now > peer.m_ping_start.load() + TIMEOUT_INTERVAL)
-    {
-        // The ping timeout is using mocktime. To disable the check during
-        // testing, increase -peertimeout.
-        LogDebug(BCLog::NET, "ping timeout: %fs, %s", Ticks<SecondsDouble>(now - peer.m_ping_start.load()), node_to.DisconnectMsg());
-        node_to.fDisconnect = true;
-        return;
-    }
-
     bool pingSend = false;
 
     if (peer.m_ping_queued) {
@@ -6110,9 +6097,6 @@ bool PeerManagerImpl::SendMessages(CNode& node)
 
     MaybeSendPing(node, peer, now);
 
-    // MaybeSendPing may have marked peer for disconnection
-    if (node.fDisconnect) return true;
-
     MaybeSendAddr(node, peer, current_time);
 
     MaybeSendSendHeaders(node, peer);
@@ -6481,6 +6465,21 @@ bool PeerManagerImpl::SendMessages(CNode& node)
                 node.fDisconnect = true;
                 return true;
             }
+        }
+        // If the peer failed to answer our ping in time, disconnect due to timeout.
+        // Skip the check while it is serving us blocks and let the block download timeout above govern
+        // instead. Once the last new block was received, give the peer a grace period to answer the ping.
+        if (state.vBlocksInFlight.empty() &&
+            now > NodeSeconds{node.m_last_block_time.load()} + POST_BLOCK_PONG_GRACE &&
+            m_connman.ShouldRunInactivityChecks(node, now) &&
+            peer.m_ping_nonce_sent &&
+            now > peer.m_ping_start.load() + TIMEOUT_INTERVAL)
+        {
+            // The ping timeout is using mocktime. To disable the check during
+            // testing, increase -peertimeout.
+            LogDebug(BCLog::NET, "ping timeout: %fs, %s", Ticks<SecondsDouble>(now - peer.m_ping_start.load()), node.DisconnectMsg());
+            node.fDisconnect = true;
+            return true;
         }
         // Check for headers sync timeouts
         if (state.fSyncStarted && peer.m_headers_sync_timeout < std::chrono::microseconds::max()) {

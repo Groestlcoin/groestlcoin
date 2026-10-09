@@ -7,12 +7,10 @@
 export LC_ALL=C.UTF-8
 
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:26.04"
-export CONTAINER_NAME=ci_native_valgrind
 export PACKAGES="clang llvm libclang-rt-dev valgrind python3-zmq libboost-dev libzmq3-dev libsqlite3-dev libcapnp-dev capnproto python3-pip"
 export PIP_PACKAGES="--break-system-packages pycapnp"
 export USE_VALGRIND=1
 export NO_DEPENDS=1
-export GOAL="install"
 printf -v GROESTLCOIN_CONFIG "%q " \
  --preset=dev-mode \
  -DBUILD_GUI=OFF  `# GUI disabled, because it only passes with a DEBUG=1 depends build` \

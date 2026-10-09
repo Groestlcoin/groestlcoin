@@ -32,7 +32,6 @@ add_library(groestlcoinkernel
   ../groestlcoin-hash.cpp
   ../groestlcoin.cpp
   ../hash.cpp
-  ../logging.cpp
   ../node/blockstorage.cpp
   ../node/chainstate.cpp
   ../node/utxo_snapshot.cpp

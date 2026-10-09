@@ -359,7 +359,7 @@ jobs:
             timeout-minutes: 120
             file-env: './ci/test/00_setup_env_native_msan.sh'
 
-          - name: 'riscv32 bare metal, static libbitcoin_consensus'
+          - name: 'riscv32 bare metal, static libgroestlcoin_consensus'
             warp-runner: 'warp-ubuntu-latest-x64-8x'
             fallback-runner: 'ubuntu-latest'
             timeout-minutes: 120
@@ -395,7 +395,7 @@ jobs:
         run: sed -i "s|\${INSTALL_BCC_TRACING_TOOLS}|true|g" ./ci/test/00_setup_env_native_asan.sh
 
       - name: Set mmap_rnd_bits
-        if: ${{ env.CONTAINER_NAME == 'ci_native_tsan' || env.CONTAINER_NAME == 'ci_native_msan' }}
+        if: ${{ env.CONTAINER_NAME == 'ci_native_tsan' || env.CONTAINER_NAME == 'ci_native_msan' || env.CONTAINER_NAME == 'ci_native_fuzz_with_msan' }}
         # Prevents crashes due to high ASLR entropy
         run: sudo sysctl -w vm.mmap_rnd_bits=28
 

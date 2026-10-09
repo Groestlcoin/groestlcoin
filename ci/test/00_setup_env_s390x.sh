@@ -8,10 +8,12 @@ export LC_ALL=C.UTF-8
 
 export HOST=s390x-linux-gnu
 export PACKAGES="python3-zmq"
-export CONTAINER_NAME=ci_s390x
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:26.04"
 export CI_IMAGE_PLATFORM="linux/s390x"
-export GOAL="install"
+# bind tests excluded for now: under qemu-user, s390x userspace reads socket
+# information produced by the x86 host kernel with a different byte order.
+export TEST_RUNNER_EXTRA="--exclude rpc_bind --exclude feature_bind_extra"
+export RUN_FUNCTIONAL_TESTS=false
 printf -v GROESTLCOIN_CONFIG "%q " \
   --preset=dev-mode \
   -DREDUCE_EXPORTS=ON

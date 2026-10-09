@@ -634,23 +634,15 @@ cmake -B build -DSANITIZERS=address,undefined
 cmake -B build -DSANITIZERS=thread
 ```
 
-If you are compiling with GCC you will typically need to install corresponding
-"san" libraries to actually compile with these flags, e.g. libasan for the
-address sanitizer, libtsan for the thread sanitizer, and libubsan for the
-undefined sanitizer. If you are missing required libraries, the build
-will fail with a linker error when testing the sanitizer flags.
-
 The test suite should pass cleanly with the `thread` and `undefined` sanitizers. You
-may need to use a suppressions file, see `test/sanitizer_suppressions`. They may be
-used as follows:
+may use `build/test/with_sanitizer_env.py` to apply the project's default
+sanitizer options and suppressions:
 ```bash
-export LSAN_OPTIONS="suppressions=$(pwd)/test/sanitizer_suppressions/lsan"
-export TSAN_OPTIONS="suppressions=$(pwd)/test/sanitizer_suppressions/tsan:halt_on_error=1:second_deadlock_stack=1"
-export UBSAN_OPTIONS="suppressions=$(pwd)/test/sanitizer_suppressions/ubsan:print_stacktrace=1:halt_on_error=1:report_error_type=1"
+build/test/with_sanitizer_env.py ctest --test-dir build
 ```
 
-See the CI config for more examples, and upstream documentation for more information
-about any additional options.
+Any sanitizer option set in the environment takes precedence over the default, e.g.
+`ASAN_OPTIONS=detect_leaks=0 build/test/with_sanitizer_env.py ctest --test-dir build`.
 
 Not all sanitizer options can be enabled at the same time, e.g. trying to build
 with `-DSANITIZERS=address,thread` will fail in the build as
@@ -802,6 +794,11 @@ logging messages. They should be used as follows:
   severe problems that the node admin should address, but are not
   severe enough to warrant shutting down the node (e.g., system time
   appears to be wrong, unknown soft fork appears to have activated).
+
+- `LogWarnThenDebug(BCLog::CATEGORY, fmt, params...)` should be used
+  for errors that indicate a systematic problem that should be addressed
+  (and thus warrant a warning) but are likely to occur frequently if they
+  occur at all, so later occurrences are demoted to debug level.
 
 - `LogTrace(BCLog::CATEGORY, fmt, params...)` should be used in place of
   `LogDebug` for log messages that would be unusable on a production

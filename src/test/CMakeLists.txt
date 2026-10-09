@@ -129,6 +129,7 @@ add_executable(test_groestlcoin
   txvalidationcache_tests.cpp
   uint256_tests.cpp
   util_check_tests.cpp
+  util_not_null_tests.cpp
   util_expected_tests.cpp
   util_string_tests.cpp
   util_tests.cpp

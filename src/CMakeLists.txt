@@ -124,6 +124,7 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   groestlcoin-hash.cpp
   groestlcoin.cpp
   init/common.cpp
+  ipc/listen.cpp
   kernel/chainparams.cpp
   key.cpp
   key_io.cpp
