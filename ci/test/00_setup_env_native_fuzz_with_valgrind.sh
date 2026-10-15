@@ -9,7 +9,11 @@ export LC_ALL=C.UTF-8
 export CI_IMAGE_NAME_TAG="mirror.gcr.io/ubuntu:26.04"
 export PACKAGES="clang llvm libclang-rt-dev libboost-dev libsqlite3-dev valgrind libcapnp-dev capnproto"
 export NO_DEPENDS=1
-export GOAL="all"
+export RUN_UNIT_TESTS=false
+export RUN_FUNCTIONAL_TESTS=false
+export RUN_FUZZ_TESTS=false
+export FUZZ_TESTS_CONFIG="--valgrind"
+export BUILD_TARGETS="all"
 printf -v GROESTLCOIN_CONFIG "%q " \
  -DBUILD_FOR_FUZZING=ON \
  -DCMAKE_C_COMPILER=clang \

@@ -12,23 +12,22 @@ Previous releases are required by this test, see test/README.md.
 
 from test_framework.blocktools import COINBASE_MATURITY
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.wallet import (
-    MiniWallet,
-    MiniWalletMode,
-)
+from test_framework.util import assert_equal
+from test_framework.wallet import MiniWallet
 
 
 class MempoolCompatibilityTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
         self.setup_clean_chain = True
+        self.extra_args = [["-persistmempoolv1=1"], []]
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_previous_releases()
 
     def setup_network(self):
-        self.add_nodes(self.num_nodes, versions=[
-            200100,  # Last release without unbroadcast serialization and without XOR
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, versions=[
+            310000,  # Any release with -persistmempoolv1
             None,
         ])
         self.start_nodes()
@@ -37,45 +36,40 @@ class MempoolCompatibilityTest(BitcoinTestFramework):
         self.log.info("Test that mempool.dat is compatible between versions")
 
         old_node, new_node = self.nodes
-        assert "unbroadcastcount" not in old_node.getmempoolinfo()
-        new_wallet = MiniWallet(new_node, mode=MiniWalletMode.RAW_P2PK)
-        self.generate(new_wallet, 1, sync_fun=self.no_op)
-        self.generate(new_node, COINBASE_MATURITY, sync_fun=self.no_op)
-        # Sync the nodes to ensure old_node has the block that contains the coinbase that new_wallet will spend.
-        # Otherwise, because coinbases are only valid in a block and not as loose txns, if the nodes aren't synced
-        # unbroadcasted_tx won't pass old_node's `MemPoolAccept::PreChecks`.
+        new_wallet = MiniWallet(new_node)
         self.connect_nodes(0, 1)
-        self.sync_blocks()
+        self.generate(new_wallet, 1)
+        self.generate(new_node, COINBASE_MATURITY)
 
         self.log.info("Add a transaction to mempool on old node and shutdown")
         old_tx_hash = new_wallet.send_self_transfer(from_node=old_node)["txid"]
         assert old_tx_hash in old_node.getrawmempool()
-        self.stop_node(0)
-        self.stop_node(1)
+        self.stop_nodes()
 
         self.log.info("Move mempool.dat from old to new node")
         old_node_mempool = old_node.chain_path / "mempool.dat"
         new_node_mempool = new_node.chain_path / "mempool.dat"
-        new_node_mempool.unlink()
-        old_node_mempool.rename(new_node_mempool)
+        old_node_mempool.replace(new_node_mempool)
 
         self.log.info("Start new node and verify mempool contains the tx")
-        self.start_node(1, extra_args=["-persistmempoolv1=1"])
+        # The old node wrote the legacy v1 format (-persistmempoolv1), so this covers reading it
+        self.start_node(1)
         assert old_tx_hash in new_node.getrawmempool()
 
         self.log.info("Add unbroadcasted tx to mempool on new node and shutdown")
         unbroadcasted_tx_hash = new_wallet.send_self_transfer(from_node=new_node)['txid']
         assert unbroadcasted_tx_hash in new_node.getrawmempool()
-        assert new_node.getmempoolentry(unbroadcasted_tx_hash)['unbroadcast']
+        assert_equal(new_node.getmempoolentry(unbroadcasted_tx_hash)["unbroadcast"], True)
         self.stop_node(1)
 
         self.log.info("Move mempool.dat from new to old node")
         new_node_mempool.rename(old_node_mempool)
 
-        self.log.info("Start old node again and verify mempool contains both txs")
-        self.start_node(0, ['-nowallet'])
+        self.log.info("Start old node again and verify mempool contains the txs and the unbroadcast set")
+        self.start_node(0)
         assert old_tx_hash in old_node.getrawmempool()
         assert unbroadcasted_tx_hash in old_node.getrawmempool()
+        assert_equal(old_node.getmempoolentry(unbroadcasted_tx_hash)["unbroadcast"], True)
 
 
 if __name__ == "__main__":
