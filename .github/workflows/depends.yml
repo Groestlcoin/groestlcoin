@@ -194,7 +194,7 @@ jobs:
 
       - name: Build Groestlcoin
         run: |
-          cmake -B ${{ matrix.goal }} --toolchain `pwd`/depends/${{ matrix.host }}/toolchain.cmake -DREDUCE_EXPORTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake -B ${{ matrix.goal }} --toolchain `pwd`/depends/${{ matrix.host }}/toolchain.cmake -DREDUCE_EXPORTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_FLAGS="-D_WIN32_WINNT=0x0A00" -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0A00"
           cmake --build ${{ matrix.goal }} -j $CMAKEJOBS
           cmake --install ${{ matrix.goal }} --prefix `pwd`/depends/${{ matrix.host }}
 
