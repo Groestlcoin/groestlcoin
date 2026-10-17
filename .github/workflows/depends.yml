@@ -56,7 +56,7 @@ jobs:
           - name: windows-64-bit
             host: x86_64-w64-mingw32
             arch: "i386"
-            os: ubuntu-latest
+            os: ubuntu-26.04
             packages: cmake curl g++ git make pkg-config nsis g++-mingw-w64-x86-64-posix build-essential bsdmainutils wine-binfmt binfmt-support wine64 wine32
             postinstall: |
               sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
