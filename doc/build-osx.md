@@ -16,7 +16,7 @@ macOS comes with a built-in Terminal located in:
 ### 1. Xcode Command Line Tools
 
 The Xcode Command Line Tools are a collection of build tools for macOS.
-Version 16.2 (or higher) of these tools must be
+Version 26.3 (or higher) of these tools must be
 [installed](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools)
 in order to build Groestlcoin Core from source.
 
@@ -121,12 +121,7 @@ For more information on ZMQ, see: [zmq.md](zmq.md)
 
 #### Test Suite Dependencies
 
-There is an included test suite that is useful for testing code changes when developing.
-To run the test suite (recommended), you will need to have Python 3 installed:
-
-``` bash
-brew install python
-```
+See [`test/README.md`](/test/README.md#dependencies-and-prerequisites).
 
 ---
 

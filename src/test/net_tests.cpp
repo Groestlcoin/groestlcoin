@@ -227,10 +227,10 @@ BOOST_AUTO_TEST_CASE(cnetaddr_basic)
         "pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscryd\0wtf.onion", 66}));
 
     // TOR, bogus length
-    BOOST_CHECK(!addr.SetSpecial(std::string{"mfrggzak.onion"}));
+    BOOST_CHECK(!addr.SetSpecial("mfrggzak.onion"));
 
     // TOR, invalid base32
-    BOOST_CHECK(!addr.SetSpecial(std::string{"mf*g zak.onion"}));
+    BOOST_CHECK(!addr.SetSpecial("mf*g zak.onion"));
 
     // I2P
     const char* i2p_addr = "UDHDrtrcetjm5sxzskjyr5ztpeszydbh4dpl3pl4utgqqw2v4jna.b32.I2P";
@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE(cnetaddr_basic)
         !addr.SetSpecial("pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscsad.b32.i2p"));
 
     // I2P, invalid base32
-    BOOST_CHECK(!addr.SetSpecial(std::string{"tp*szydbh4dp.b32.i2p"}));
+    BOOST_CHECK(!addr.SetSpecial("tp*szydbh4dp.b32.i2p"));
 
     // Internal
     addr.SetInternal("esffpp");
@@ -1690,6 +1690,70 @@ BOOST_AUTO_TEST_CASE(private_broadcast_version_does_not_update_addrman_services)
 
     BOOST_CHECK_EQUAL(m_node.addrman->Select().first.nServices, NODE_NONE);
     m_node.peerman->FinalizeNode(node);
+}
+
+BOOST_AUTO_TEST_CASE(only_non_inbound_version_message_promotes_addr_to_tried)
+{
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+
+    const CNetAddr source{LookupHost("2.3.4.5", /*fAllowLookup=*/false).value()};
+    const CAddress addr_outbound{Lookup("5.6.7.8", 8333, /*fAllowLookup=*/false).value(), NODE_NONE};
+    const CAddress addr_inbound{Lookup("6.7.8.9", 8333, /*fAllowLookup=*/false).value(), NODE_NONE};
+    // Good() returns false for an address it does not already know, so each entry must
+    // first exist before its handshake for the promotion to happen. Adding addr_inbound
+    // only after addr_outbound has moved to tried avoids a possible collision in the new
+    // table.
+    BOOST_REQUIRE(m_node.addrman->Add({addr_outbound}, source));
+    BOOST_REQUIRE_EQUAL(m_node.addrman->Size(/*net=*/std::nullopt, /*in_new=*/true), 1U);
+    BOOST_REQUIRE_EQUAL(m_node.addrman->Size(/*net=*/std::nullopt, /*in_new=*/false), 0U);
+
+    auto& connman = static_cast<ConnmanTestMsg&>(*m_node.connman);
+    // An outbound peer's address is moved from the new to the tried table.
+    // Good() is called when the VERSION message is processed, so the handshake
+    // does not need to be completed with a VERACK.
+    CNode node_outbound{/*id=*/0,
+                        /*sock=*/nullptr,
+                        /*addrIn=*/addr_outbound,
+                        /*nKeyedNetGroupIn=*/0,
+                        /*nLocalHostNonceIn=*/0,
+                        /*addrBindIn=*/CService{},
+                        /*addrNameIn=*/"",
+                        /*conn_type_in=*/ConnectionType::OUTBOUND_FULL_RELAY,
+                        /*inbound_onion=*/false,
+                        /*network_key=*/0};
+    connman.Handshake(node_outbound,
+                      /*successfully_connected=*/false,
+                      /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+                      /*local_services=*/NODE_NONE,
+                      /*version=*/PROTOCOL_VERSION,
+                      /*relay_txs=*/true);
+
+    BOOST_REQUIRE(!node_outbound.fDisconnect);
+    BOOST_CHECK(m_node.addrman->FindAddressEntry(addr_outbound).value().tried);
+    m_node.peerman->FinalizeNode(node_outbound);
+
+    // An inbound peer's address stays in the new table.
+    BOOST_REQUIRE(m_node.addrman->Add({addr_inbound}, source));
+    CNode node_inbound{/*id=*/1,
+                       /*sock=*/nullptr,
+                       /*addrIn=*/addr_inbound,
+                       /*nKeyedNetGroupIn=*/0,
+                       /*nLocalHostNonceIn=*/0,
+                       /*addrBindIn=*/CService{},
+                       /*addrNameIn=*/"",
+                       /*conn_type_in=*/ConnectionType::INBOUND,
+                       /*inbound_onion=*/false,
+                       /*network_key=*/0};
+    connman.Handshake(node_inbound,
+                      /*successfully_connected=*/false,
+                      /*remote_services=*/ServiceFlags(NODE_NETWORK | NODE_WITNESS),
+                      /*local_services=*/NODE_NONE,
+                      /*version=*/PROTOCOL_VERSION,
+                      /*relay_txs=*/true);
+
+    BOOST_REQUIRE(!node_inbound.fDisconnect);
+    BOOST_CHECK(!m_node.addrman->FindAddressEntry(addr_inbound).value().tried);
+    m_node.peerman->FinalizeNode(node_inbound);
 }
 
 BOOST_AUTO_TEST_CASE(addlocal_onlynet_externalip)
