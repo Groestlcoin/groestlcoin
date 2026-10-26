@@ -482,7 +482,7 @@ else()
   try_append_cxx_flags("-Wredundant-decls" TARGET warn_interface SKIP_LINK)
   try_append_cxx_flags("-Wunused-const-variable" TARGET warn_interface SKIP_LINK)
   try_append_cxx_flags("-Wunused-exception-parameter" TARGET warn_interface SKIP_LINK)
-  try_append_cxx_flags("-Wunused-macros" TARGET warn_interface SKIP_LINK)
+  # try_append_cxx_flags("-Wunused-macros" TARGET warn_interface SKIP_LINK) // GRS
   try_append_cxx_flags("-Wunused-member-function" TARGET warn_interface SKIP_LINK)
   try_append_cxx_flags("-Wunused-template" TARGET warn_interface SKIP_LINK)
   try_append_cxx_flags("-Wdate-time" TARGET warn_interface SKIP_LINK)
