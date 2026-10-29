@@ -1,4 +1,4 @@
-Groestlcoin Core version 32.0 is now available from:
+Groestlcoin Core version 32.1 is now available from:
 
   <https://www.groestlcoin.org/groestlcoin-core-wallet/>
 
@@ -95,6 +95,8 @@ P2P and network changes
 - Explicitly configured `-maxconnections` values remain unchanged, but the new
   inbound transaction-relay limit still applies. To retain the previous
   connection limits, use `-maxconnections=125 -inboundrelaypercent=100`.
+`-maxconnections` now clamps values above 2,000 with a warning to reduce
+  crash risk at very high peer counts.
 
 Mempool
 -------
