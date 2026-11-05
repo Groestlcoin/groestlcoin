@@ -216,6 +216,13 @@ BOOST_AUTO_TEST_CASE(cnetaddr_basic)
     BOOST_CHECK(!addr.IsAddrV1Compatible());
     BOOST_CHECK_EQUAL(addr.ToStringAddr(), torv3_addr);
 
+    // TORv3, mixed case
+    const char* torv3_addr_mixed_case = "PG6Mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscryd.ONION";
+    BOOST_REQUIRE(addr.SetSpecial(torv3_addr_mixed_case));
+    BOOST_REQUIRE(addr.IsValid());
+    BOOST_REQUIRE(addr.IsTor());
+    BOOST_CHECK_EQUAL(addr.ToStringAddr(), ToLower(torv3_addr_mixed_case));
+
     // TORv3, broken, with wrong checksum
     BOOST_CHECK(!addr.SetSpecial("pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscsad.onion"));
 
@@ -684,7 +691,7 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
     auto chosen_local_addr = GetLocalAddrForPeer(peer_out);
     BOOST_REQUIRE(chosen_local_addr);
     const CService expected{peer_us_addr, bind_port};
-    BOOST_CHECK(*chosen_local_addr == expected);
+    BOOST_CHECK_EQUAL(*chosen_local_addr, expected);
 
     // Create a peer with a routable IPv4 address (inbound).
     in_addr peer_in_in_addr;
@@ -705,7 +712,7 @@ BOOST_AUTO_TEST_CASE(get_local_addr_for_peer_port)
     // Without the fix peer_us:8333 is chosen instead of the proper peer_us:peer_us.GetPort().
     chosen_local_addr = GetLocalAddrForPeer(peer_in);
     BOOST_REQUIRE(chosen_local_addr);
-    BOOST_CHECK(*chosen_local_addr == peer_us);
+    BOOST_CHECK_EQUAL(*chosen_local_addr, peer_us);
 
     m_node.args->ForceSetArg("-bind", "");
 }
@@ -996,11 +1003,11 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
 
     // one local clearnet address - advertise to all but privacy peers
     AddLocal(addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv4) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_teredo) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_cjdns) == addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv4), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv6), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv6_tunnel), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_teredo), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_cjdns), addr_ipv4);
     BOOST_CHECK(!GetLocalAddress(*peer_onion).IsValid());
     BOOST_CHECK(!GetLocalAddress(*peer_i2p).IsValid());
     RemoveLocal(addr_ipv4);
@@ -1013,8 +1020,8 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
     BOOST_CHECK(!GetLocalAddress(*peer_ipv6_tunnel).IsValid());
     BOOST_CHECK(!GetLocalAddress(*peer_teredo).IsValid());
     BOOST_CHECK(!GetLocalAddress(*peer_cjdns).IsValid());
-    BOOST_CHECK(GetLocalAddress(*peer_onion) == addr_onion);
-    BOOST_CHECK(GetLocalAddress(*peer_i2p) == addr_i2p);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_onion), addr_onion);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_i2p), addr_i2p);
     RemoveLocal(addr_onion);
     RemoveLocal(addr_i2p);
 
@@ -1026,13 +1033,13 @@ BOOST_AUTO_TEST_CASE(advertise_local_address)
     AddLocal(addr_onion);
     AddLocal(addr_i2p);
     AddLocal(addr_cjdns);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv4) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6) == addr_ipv6);
-    BOOST_CHECK(GetLocalAddress(*peer_ipv6_tunnel) == addr_ipv6);
-    BOOST_CHECK(GetLocalAddress(*peer_teredo) == addr_ipv4);
-    BOOST_CHECK(GetLocalAddress(*peer_onion) == addr_onion);
-    BOOST_CHECK(GetLocalAddress(*peer_i2p) == addr_i2p);
-    BOOST_CHECK(GetLocalAddress(*peer_cjdns) == addr_cjdns);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv4), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv6), addr_ipv6);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_ipv6_tunnel), addr_ipv6);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_teredo), addr_ipv4);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_onion), addr_onion);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_i2p), addr_i2p);
+    BOOST_CHECK_EQUAL(GetLocalAddress(*peer_cjdns), addr_cjdns);
     RemoveLocal(addr_ipv4);
     RemoveLocal(addr_ipv6);
     RemoveLocal(addr_ipv6_tunnel);
@@ -1327,7 +1334,7 @@ public:
         BOOST_CHECK(ret[0] == 0);
         for (unsigned i = 0; i < 12; ++i) {
             if (i < m_type.size()) {
-                BOOST_CHECK(ret[1 + i] == m_type[i]);
+                BOOST_CHECK(ret[1 + i] == uint8_t(m_type[i]));
             } else {
                 BOOST_CHECK(ret[1 + i] == 0);
             }

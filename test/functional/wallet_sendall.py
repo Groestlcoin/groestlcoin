@@ -259,6 +259,22 @@ class SendallTest(BitcoinTestFramework):
             inputs=[foreign_utxo])
 
     @cleanup
+    def sendall_fails_on_duplicate_input(self):
+        self.log.info("Test sendall fails if the same UTXO is given twice in inputs")
+        self.add_utxos([17, 4])
+        utxo = self.wallet.listunspent()[0]
+        txcount_before = self.wallet.getwalletinfo()["txcount"]
+        nonmempool_before = self.wallet.getbalances()["mine"]["nonmempool"]
+
+        assert_raises_rpc_error(-8,
+                "Invalid parameter, duplicated input: {}:{}".format(utxo["txid"], utxo["vout"]),
+                self.wallet.sendall, recipients=[self.remainder_target], inputs=[utxo, utxo])
+        assert_equal(self.wallet.getwalletinfo()["txcount"], txcount_before)
+        assert_equal(self.wallet.getbalances()["mine"]["nonmempool"], nonmempool_before)
+        assert_equal(sum(c["txid"] == utxo["txid"] and c["vout"] == utxo["vout"]
+                         for c in self.wallet.listunspent()), 1)
+
+    @cleanup
     def sendall_fails_on_no_address(self):
         self.log.info("Test sendall fails because no address is provided")
         self.add_utxos([19, 2])
@@ -281,6 +297,14 @@ class SendallTest(BitcoinTestFramework):
             self.wallet.sendall,
             recipients=[self.remainder_target],
             inputs=[utxo], send_max=True)
+
+    @cleanup
+    def sendall_fails_on_invalid_options(self):
+        self.log.info("Test sendall fails on unknown options or options of the wrong type")
+        assert_raises_rpc_error(-3, "Unexpected key add_to_wllt",
+                self.wallet.sendall, recipients=[self.remainder_target], options={"add_to_wllt": "false"})
+        assert_raises_rpc_error(-3, "JSON value of type string for field add_to_wallet is not of expected type bool",
+                self.wallet.sendall, recipients=[self.remainder_target], options={"add_to_wallet": "false"})
 
     @cleanup
     def sendall_fails_on_high_fee(self):
@@ -566,11 +590,17 @@ class SendallTest(BitcoinTestFramework):
         # Fails for the right reasons on missing or previously spent UTXOs
         self.sendall_fails_on_missing_input()
 
+        # Sendall fails when the same input is given twice
+        self.sendall_fails_on_duplicate_input()
+
         # Sendall fails when no address is provided
         self.sendall_fails_on_no_address()
 
         # Sendall fails when using send_max while specifying inputs
         self.sendall_fails_on_specific_inputs_with_send_max()
+
+        # Sendall fails on unknown options or options of the wrong type
+        self.sendall_fails_on_invalid_options()
 
         # Sendall fails when providing a fee that is too high
         self.sendall_fails_on_high_fee()

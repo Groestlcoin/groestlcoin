@@ -12,6 +12,7 @@
 #include <rpc/rawtransaction_util.h>
 #include <rpc/util.h>
 #include <script/script.h>
+#include <util/hasher.h>
 #include <util/rbf.h>
 #include <util/translation.h>
 #include <util/vector.h>
@@ -23,6 +24,8 @@
 #include <wallet/wallet.h>
 
 #include <univalue.h>
+
+#include <unordered_set>
 
 using common::FeeModeFromString;
 using common::FeeModesDetail;
@@ -1384,8 +1387,26 @@ RPCMethod sendall()
             pwallet->BlockUntilSyncedToCurrentChain();
 
             UniValue options{request.params[4].isNull() ? UniValue::VOBJ : request.params[4]};
+            RPCTypeCheckObj(options,
+                {
+                    {"add_to_wallet", UniValueType(UniValue::VBOOL)},
+                    {"fee_rate", UniValueType()},
+                    {"include_watching", UniValueType(UniValue::VBOOL)},
+                    {"inputs", UniValueType(UniValue::VARR)},
+                    {"locktime", UniValueType(UniValue::VNUM)},
+                    {"lock_unspents", UniValueType(UniValue::VBOOL)},
+                    {"psbt", UniValueType(UniValue::VBOOL)},
+                    {"send_max", UniValueType(UniValue::VBOOL)},
+                    {"minconf", UniValueType(UniValue::VNUM)},
+                    {"maxconf", UniValueType(UniValue::VNUM)},
+                    {"version", UniValueType(UniValue::VNUM)},
+                    {"conf_target", UniValueType(UniValue::VNUM)},
+                    {"estimate_mode", UniValueType(UniValue::VSTR)},
+                    {"replaceable", UniValueType(UniValue::VBOOL)},
+                    {"solving_data", UniValueType(UniValue::VOBJ)},
+                },
+                /*fAllowNull=*/true, /*fStrict=*/true);
             InterpretFeeEstimationInstructions(/*conf_target=*/request.params[1], /*estimate_mode=*/request.params[2], /*fee_rate=*/request.params[3], options);
-            PreventOutdatedOptions(options);
 
 
             std::set<CTxDestination> addresses_without_amount;
@@ -1472,7 +1493,12 @@ RPCMethod sendall()
             } else if (options.exists("inputs") && (options.exists("minconf") || options.exists("maxconf"))) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot combine minconf or maxconf with specific inputs.");
             } else if (options.exists("inputs")) {
+                std::unordered_set<COutPoint, SaltedOutpointHasher> seen_inputs;
+                seen_inputs.reserve(rawTx.vin.size());
                 for (const CTxIn& input : rawTx.vin) {
+                    if (!seen_inputs.insert(input.prevout).second) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, duplicated input: %s:%d", input.prevout.hash.ToString(), input.prevout.n));
+                    }
                     if (pwallet->IsSpent(input.prevout)) {
                         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not available. UTXO (%s:%d) was already spent.", input.prevout.hash.ToString(), input.prevout.n));
                     }

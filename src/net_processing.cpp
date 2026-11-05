@@ -2049,7 +2049,7 @@ void PeerManagerImpl::MaybePunishNodeForBlock(NodeId nodeid, const BlockValidati
             // Discourage outbound (but not inbound) peers if on an invalid chain.
             // Exempt HB compact block peers. Manual connections are always protected from discouragement.
             if (peer && !via_compact_block && !peer->m_is_inbound) {
-                if (peer) Misbehaving(*peer, message);
+                Misbehaving(*peer, message);
                 return;
             }
             break;
@@ -3467,7 +3467,8 @@ void PeerManagerImpl::ProcessPackageResult(const node::PackageToValidate& packag
                 }
                 case MempoolAcceptResult::ResultType::MEMPOOL_ENTRY:
                 {
-                    // AlreadyHaveTx() should be catching transactions that are already in mempool.
+                    // AlreadyHaveTx() catches a parent that is already in the mempool, and
+                    // Find1P1CPackage() skips children that are.
                     Assume(false);
                     break;
                 }

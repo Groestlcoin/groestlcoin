@@ -36,7 +36,6 @@ from test_framework.util import (
     assert_equal,
     assert_greater_than,
     assert_raises_rpc_error,
-    sync_txindex,
 )
 from test_framework.wallet import (
     getnewdestination,
@@ -83,6 +82,7 @@ class RawTransactionsTest(BitcoinTestFramework):
     def run_test(self):
         self.wallet = MiniWallet(self.nodes[0])
 
+        self.test_getrawtransaction_block_data_errors()
         self.getrawtransaction_tests()
         self.createrawtransaction_tests()
         self.sendrawtransaction_tests()
@@ -90,6 +90,22 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.decoderawtransaction_tests()
         self.transaction_version_number_tests()
         self.getrawtransaction_verbosity_tests()
+
+    def test_getrawtransaction_block_data_errors(self):
+        node = self.nodes[0]
+        self.log.info("Test getrawtransaction with a header-only block")
+        block = self.generateblock(node, output="raw(55)", transactions=[], submit=False)
+        node.submitheader(block["hex"][:160])
+
+        assert_raises_rpc_error(-1, "Block not available (not fully downloaded)", node.getrawtransaction, txid="a" * 64, blockhash=block["hash"])
+
+        self.log.info("Test getrawtransaction when block data cannot be read")
+        blk_dat = node.blocks_path / "blk00000.dat"
+        blk_dat_moved = node.blocks_path / "blk00000.dat.moved"
+        blk_dat.rename(blk_dat_moved)
+        assert_raises_rpc_error(-1, "I/O error reading block data", node.getrawtransaction, txid="a" * 64, blockhash=node.getblockhash(1))
+        blk_dat_moved.rename(blk_dat)
+
 
     def getrawtransaction_tests(self):
         tx = self.wallet.send_self_transfer(from_node=self.nodes[0])
@@ -104,7 +120,6 @@ class RawTransactionsTest(BitcoinTestFramework):
             self.log.info(f"Test getrawtransaction {'with' if txindex_enabled else 'without'} -txindex")
 
             if txindex_enabled:
-                sync_txindex(self, node)
                 # With -txindex.
                 # 1. valid parameters - only supply txid
                 assert_equal(node.getrawtransaction(txId), tx['hex'])
