@@ -172,6 +172,20 @@ static void PreventOutdatedOptions(const UniValue& options)
     }
 }
 
+static const UniValue& GetOptionWithAlias(
+    const UniValue& options,
+    const std::string& canonical_name,
+    const std::string& deprecated_name)
+{
+    if (options.exists(canonical_name) && options.exists(deprecated_name)) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Use %s (%s is deprecated). Do not set both.", canonical_name, deprecated_name));
+    }
+    if (options.exists(deprecated_name)) {
+        return options[deprecated_name];
+    }
+    return options[canonical_name];
+}
+
 UniValue SendMoney(CWallet& wallet, const CCoinControl &coin_control, std::vector<CRecipient> &recipients, std::optional<std::string> comment, std::optional<std::string> comment_to, bool verbose)
 {
     EnsureWalletIsUnlocked(wallet);
@@ -330,12 +344,12 @@ RPCMethod sendtoaddress()
     address_amounts.pushKV(address, request.params[1]);
 
     std::set<int> sffo_set;
-    if (!request.params[4].isNull() && request.params[4].get_bool()) {
+    if (self.Arg<bool>("subtractfeefromamount")) {
         sffo_set.insert(0);
     }
 
     std::vector<CRecipient> recipients{CreateRecipients(ParseOutputs(address_amounts), sffo_set)};
-    const bool verbose{request.params[10].isNull() ? false : request.params[10].get_bool()};
+    const bool verbose{self.Arg<bool>("verbose")};
 
     return SendMoney(*pwallet, coin_control, recipients, comment, comment_to, verbose);
 },
@@ -431,7 +445,7 @@ RPCMethod sendmany()
             ParseOutputs(sendTo),
             InterpretSubtractFeeFromOutputInstructions(request.params[4], sendTo.getKeys())
     );
-    const bool verbose{request.params[9].isNull() ? false : request.params[9].get_bool()};
+    const bool verbose{self.Arg<bool>("verbose")};
 
     return SendMoney(*pwallet, coin_control, recipients, comment, /*comment_to=*/std::nullopt, verbose);
 },
@@ -527,7 +541,7 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
         }
 
         if (options.exists("changeAddress") || options.exists("change_address")) {
-            const std::string change_address_str = (options.exists("change_address") ? options["change_address"] : options["changeAddress"]).get_str();
+            const std::string change_address_str = GetOptionWithAlias(options, "change_address", "changeAddress").get_str();
             CTxDestination dest = DecodeDestination(change_address_str);
 
             if (!IsValidDestination(dest)) {
@@ -538,7 +552,7 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
         }
 
         if (options.exists("changePosition") || options.exists("change_position")) {
-            int pos = (options.exists("change_position") ? options["change_position"] : options["changePosition"]).getInt<int>();
+            int pos = GetOptionWithAlias(options, "change_position", "changePosition").getInt<int>();
             if (pos < 0 || (unsigned int)pos > recipients.size()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "changePosition out of bounds");
             }
@@ -557,7 +571,7 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
         }
 
         if (options.exists("lockUnspents") || options.exists("lock_unspents")) {
-            lockUnspents = (options.exists("lock_unspents") ? options["lock_unspents"] : options["lockUnspents"]).get_bool();
+            lockUnspents = GetOptionWithAlias(options, "lock_unspents", "lockUnspents").get_bool();
         }
 
         if (options.exists("include_unsafe")) {
@@ -716,7 +730,7 @@ RPCMethod fundrawtransaction()
         "fundrawtransaction",
         "If the transaction has no inputs, they will be automatically selected to meet its out value.\n"
                 "It will add at most one change output to the outputs.\n"
-                "No existing outputs will be modified unless \"subtractFeeFromOutputs\" is specified.\n"
+                "No existing outputs will be modified unless \"subtract_fee_from_outputs\" is specified.\n"
                 "Note that inputs which were signed may need to be resigned after completion since in/outputs have been added.\n"
                 "The inputs added will not be signed, use signrawtransactionwithkey\n"
                 "or signrawtransactionwithwallet for that.\n"
@@ -739,14 +753,14 @@ RPCMethod fundrawtransaction()
                                                           "If that happens, you will need to fund the transaction with different inputs and republish it."},
                             {"minconf", RPCArg::Type::NUM, RPCArg::Default{0}, "If add_inputs is specified, require inputs with at least this many confirmations."},
                             {"maxconf", RPCArg::Type::NUM, RPCArg::Optional::OMITTED, "If add_inputs is specified, require inputs with at most this many confirmations."},
-                            {"changeAddress", RPCArg::Type::STR, RPCArg::DefaultHint{"automatic"}, "The groestlcoin address to receive the change"},
-                            {"changePosition", RPCArg::Type::NUM, RPCArg::DefaultHint{"random"}, "The index of the change output"},
+                            {"change_address|changeAddress", RPCArg::Type::STR, RPCArg::DefaultHint{"automatic"}, "The groestlcoin address to receive the change"},
+                            {"change_position|changePosition", RPCArg::Type::NUM, RPCArg::DefaultHint{"random"}, "The index of the change output"},
                             {"change_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -changetype"}, "The output type to use. Only valid if changeAddress is not specified. Options are " + FormatAllOutputTypes() + "."},
                             {"includeWatching", RPCArg::Type::BOOL, RPCArg::Default{false}, "(DEPRECATED) No longer used"},
-                            {"lockUnspents", RPCArg::Type::BOOL, RPCArg::Default{false}, "Lock selected unspent outputs"},
+                            {"lock_unspents|lockUnspents", RPCArg::Type::BOOL, RPCArg::Default{false}, "Lock selected unspent outputs"},
                             {"fee_rate", RPCArg::Type::AMOUNT, RPCArg::DefaultHint{"not set, fall back to wallet fee estimation"}, "Specify a fee rate in " + CURRENCY_ATOM + "/vB."},
                             {"feeRate", RPCArg::Type::AMOUNT, RPCArg::DefaultHint{"not set, fall back to wallet fee estimation"}, "Specify a fee rate in " + CURRENCY_UNIT + "/kvB."},
-                            {"subtractFeeFromOutputs", RPCArg::Type::ARR, RPCArg::Default{UniValue::VARR}, "The integers.\n"
+                            {"subtract_fee_from_outputs|subtractFeeFromOutputs", RPCArg::Type::ARR, RPCArg::Default{UniValue::VARR}, "The output indices to subtract the fee from.\n"
                                                           "The fee will be equally deducted from the amount of each specified output.\n"
                                                           "Those recipients will receive less groestlcoins than you enter in their corresponding amount field.\n"
                                                           "If no outputs are specified here, the sender pays the fee.",
@@ -824,7 +838,8 @@ RPCMethod fundrawtransaction()
     std::vector<std::string> dummy(destinations.size(), "dummy");
     std::vector<CRecipient> recipients = CreateRecipients(
             destinations,
-            InterpretSubtractFeeFromOutputInstructions(options["subtractFeeFromOutputs"], dummy)
+            InterpretSubtractFeeFromOutputInstructions(
+                GetOptionWithAlias(options, "subtract_fee_from_outputs", "subtractFeeFromOutputs"), dummy)
     );
     CCoinControl coin_control;
     // Automatically select (additional) coins. Can be overridden by options.add_inputs.
@@ -1155,7 +1170,7 @@ static RPCMethod bumpfee_helper(std::string method_name)
 
         result.pushKV("txid", txid.GetHex());
     } else {
-        PartiallySignedTransaction psbtx(mtx, psbt_version);
+        PartiallySignedTransaction psbtx{mtx, psbt_version};
         bool complete = false;
         const auto err{pwallet->FillPSBT(psbtx, {.sign = false, .bip32_derivs = true}, complete)};
         CHECK_NONFATAL(!err);
@@ -1672,9 +1687,9 @@ RPCMethod walletprocesspsbt()
     std::optional<int> nHashType = ParseSighashString(request.params[2]);
 
     // Fill transaction with our data and also sign
-    bool sign = request.params[1].isNull() ? true : request.params[1].get_bool();
-    bool bip32derivs = request.params[3].isNull() ? true : request.params[3].get_bool();
-    bool finalize = request.params[4].isNull() ? true : request.params[4].get_bool();
+    const bool sign{self.Arg<bool>("sign")};
+    const bool bip32derivs{self.Arg<bool>("bip32derivs")};
+    const bool finalize{self.Arg<bool>("finalize")};
     bool complete = true;
 
     if (sign) EnsureWalletIsUnlocked(*pwallet);
@@ -1745,14 +1760,14 @@ RPCMethod walletcreatefundedpsbt()
                                                           "If that happens, you will need to fund the transaction with different inputs and republish it."},
                             {"minconf", RPCArg::Type::NUM, RPCArg::Default{0}, "If add_inputs is specified, require inputs with at least this many confirmations."},
                             {"maxconf", RPCArg::Type::NUM, RPCArg::Optional::OMITTED, "If add_inputs is specified, require inputs with at most this many confirmations."},
-                            {"changeAddress", RPCArg::Type::STR, RPCArg::DefaultHint{"automatic"}, "The groestlcoin address to receive the change"},
-                            {"changePosition", RPCArg::Type::NUM, RPCArg::DefaultHint{"random"}, "The index of the change output"},
+                            {"change_address|changeAddress", RPCArg::Type::STR, RPCArg::DefaultHint{"automatic"}, "The groestlcoin address to receive the change"},
+                            {"change_position|changePosition", RPCArg::Type::NUM, RPCArg::DefaultHint{"random"}, "The index of the change output"},
                             {"change_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -changetype"}, "The output type to use. Only valid if changeAddress is not specified. Options are " + FormatAllOutputTypes() + "."},
                             {"includeWatching", RPCArg::Type::BOOL, RPCArg::Default{false}, "(DEPRECATED) No longer used"},
-                            {"lockUnspents", RPCArg::Type::BOOL, RPCArg::Default{false}, "Lock selected unspent outputs"},
+                            {"lock_unspents|lockUnspents", RPCArg::Type::BOOL, RPCArg::Default{false}, "Lock selected unspent outputs"},
                             {"fee_rate", RPCArg::Type::AMOUNT, RPCArg::DefaultHint{"not set, fall back to wallet fee estimation"}, "Specify a fee rate in " + CURRENCY_ATOM + "/vB."},
                             {"feeRate", RPCArg::Type::AMOUNT, RPCArg::DefaultHint{"not set, fall back to wallet fee estimation"}, "Specify a fee rate in " + CURRENCY_UNIT + "/kvB."},
-                            {"subtractFeeFromOutputs", RPCArg::Type::ARR, RPCArg::Default{UniValue::VARR}, "The outputs to subtract the fee from.\n"
+                            {"subtract_fee_from_outputs|subtractFeeFromOutputs", RPCArg::Type::ARR, RPCArg::Default{UniValue::VARR}, "The outputs to subtract the fee from.\n"
                                                           "The fee will be equally deducted from the amount of each specified output.\n"
                                                           "Those recipients will receive less groestlcoins than you enter in their corresponding amount field.\n"
                                                           "If no outputs are specified here, the sender pays the fee.",
@@ -1805,7 +1820,8 @@ RPCMethod walletcreatefundedpsbt()
     outputs = NormalizeOutputs(request.params[1]);
     std::vector<CRecipient> recipients = CreateRecipients(
             ParseOutputs(outputs),
-            InterpretSubtractFeeFromOutputInstructions(options["subtractFeeFromOutputs"], outputs.getKeys())
+            InterpretSubtractFeeFromOutputInstructions(
+                GetOptionWithAlias(options, "subtract_fee_from_outputs", "subtractFeeFromOutputs"), outputs.getKeys())
     );
     // Automatically select coins, unless at least one is manually selected. Can
     // be overridden by options.add_inputs.
@@ -1817,18 +1833,15 @@ RPCMethod walletcreatefundedpsbt()
     auto txr = FundTransaction(wallet, rawTx, recipients, options, coin_control, /*override_min_fee=*/true);
 
     // Make a blank psbt
-    uint32_t psbt_version = 2;
-    if (!request.params[6].isNull()) {
-        psbt_version = request.params[6].getInt<int>();
-    }
+    const uint32_t psbt_version{self.Arg<uint32_t>("psbt_version")};
     if (psbt_version != 2 && psbt_version != 0) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "The PSBT version can only be 2 or 0");
     }
 
     PartiallySignedTransaction psbtx(CMutableTransaction(*txr.tx), psbt_version);
 
-    // Fill transaction with out data but don't sign
-    bool bip32derivs = request.params[4].isNull() ? true : request.params[4].get_bool();
+    // Fill transaction with our data but don't sign
+    const bool bip32derivs{self.Arg<bool>("bip32derivs")};
     bool complete = true;
     const auto err{wallet.FillPSBT(psbtx, {.sign = false, .bip32_derivs = bip32derivs}, complete)};
     if (err) {

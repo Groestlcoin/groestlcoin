@@ -29,7 +29,7 @@ defaults:
 jobs:
   test-each-commit:
     name: 'test ancestor commits'
-    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-latest-x64-8x' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'bitcoin/bitcoin' && 'warp-ubuntu-2604-x64-8x' || 'ubuntu-26.04' }}
     env:
       TEST_RUNNER_PORT_MIN: "14000"  # Use a larger port range to avoid colliding with other CI services.
     if: github.event_name == 'pull_request' && github.event.pull_request.commits != 1
@@ -95,7 +95,7 @@ jobs:
           git config user.email "ci@example.com"
           git config user.name "CI"
       - run: |
-          sudo apt-get update
+          sudo apt-get update --error-on=any
           sudo apt-get install clang mold ccache build-essential cmake ninja-build pkgconf python3-zmq libboost-dev libsqlite3-dev systemtap-sdt-dev libzmq3-dev qt6-base-dev qt6-tools-dev qt6-l10n-tools libqrencode-dev capnproto libcapnp-dev -y
           sudo pip3 install --break-system-packages pycapnp
       - name: Compile and run tests

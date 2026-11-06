@@ -10,7 +10,7 @@ Groestlcoin Core requires one of the following compilers.
 
 | Toolchain | Minimum required |
 | --- | --- |
-| [Clang](https://clang.llvm.org) | [17.0](https://github.com/bitcoin/bitcoin/pull/33555) |
+| [Clang](https://clang.llvm.org) | [19.0](https://github.com/bitcoin/bitcoin/pull/36036) |
 | [GCC](https://gcc.gnu.org) | [12.1](https://github.com/bitcoin/bitcoin/pull/33842) |
 | [Xcode CLT](/doc/build-osx.md) | [26.3](https://github.com/bitcoin/bitcoin/pull/36287) |
 | [Visual Studio (with clang-cl)](/doc/build-windows-native.md) | [18.7](https://github.com/bitcoin/bitcoin/pull/31507) |
@@ -36,7 +36,7 @@ Groestlcoin Core requires one of the following compilers.
 
 | Dependency | Releases | Minimum required |
 | --- | --- | --- |
-| [Cap'n Proto](../depends/packages/native_capnp.mk) ([IPC](multiprocess.md)) | [link](https://capnproto.org/) | [0.7.1](https://github.com/bitcoin/bitcoin/pull/33241) |
+| [Cap'n Proto](../depends/packages/native_capnp.mk) ([IPC](multiprocess.md)) | [link](https://capnproto.org/) | [0.9.2](https://github.com/bitcoin/bitcoin/pull/36747) (1.0 with Clang) |
 | [libmultiprocess](../depends/packages/native_libmultiprocess.mk) ([IPC](multiprocess.md)) | [link](https://github.com/bitcoin-core/libmultiprocess/tags) | [v7.0-pre1](https://github.com/bitcoin/bitcoin/pull/33517) |
 | Python (scripts, tests) | [link](https://www.python.org) | [3.10](https://github.com/bitcoin/bitcoin/pull/30527) |
 | [Qt](../depends/packages/qt.mk) (gui) | [link](https://download.qt.io/archive/qt/) | [6.2](https://github.com/bitcoin/bitcoin/pull/30997) |

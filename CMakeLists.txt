@@ -515,6 +515,13 @@ try_append_cxx_flags("-Wtrailing-whitespace=any" TARGET warn_interface SKIP_LINK
 try_append_cxx_flags("-Wunused-parameter" TARGET warn_interface SKIP_LINK
   IF_CHECK_PASSED "-Wno-unused-parameter"
 )
+# Lambda attributes (e.g. [[noreturn]]) before the parameter list are a C++23
+# extension intentionally used in C++20 builds for compatibility with
+# -Wmissing-noreturn. Suppress the extension warning rather than removing the
+# attributes or working around them.
+try_append_cxx_flags("-Wc++23-lambda-attributes" TARGET warn_interface SKIP_LINK
+  IF_CHECK_PASSED "-Wno-c++23-lambda-attributes"
+)
 
 configure_file(cmake/script/Coverage.cmake Coverage.cmake USE_SOURCE_PERMISSIONS COPYONLY)
 configure_file(cmake/script/CoverageFuzz.cmake CoverageFuzz.cmake USE_SOURCE_PERMISSIONS COPYONLY)
