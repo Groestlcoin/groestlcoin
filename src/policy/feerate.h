@@ -63,7 +63,13 @@ public:
 
     /// Return the fee in satoshis for a vsize of 1000 vbytes. (Rounds down)
     CAmount GetFeePerK() const;
+
+    friend std::strong_ordering operator<=>(const CFeeRate& a, const CFeeRate& b) noexcept
+    {
+        return ByRatio{a.m_feerate} <=> ByRatio{b.m_feerate};
+    }
     friend bool operator==(const CFeeRate& a, const CFeeRate& b) noexcept
+    {
         return ByRatio{a.m_feerate} == ByRatio{b.m_feerate};
     }
     CFeeRate& operator+=(const CFeeRate& a) {
