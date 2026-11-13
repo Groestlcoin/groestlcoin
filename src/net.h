@@ -7,26 +7,19 @@
 #define BITCOIN_NET_H
 
 #include <bip324.h>
-#include <chainparams.h>
-#include <common/bloom.h>
-#include <compat/compat.h>
-#include <consensus/amount.h>
 #include <crypto/siphash.h>
 #include <hash.h>
 #include <groestlcoin.h>
 #include <i2p.h>
-#include <kernel/messagestartchars.h>
 #include <net_permissions.h>
+#include <net_types.h>
 #include <netaddress.h>
 #include <netbase.h>
-#include <netgroup.h>
 #include <node/connection_types.h>
 #include <node/protocol_version.h>
-#include <policy/feerate.h>
 #include <protocol.h>
 #include <random.h>
 #include <semaphore_grant.h>
-#include <span.h>
 #include <streams.h>
 #include <sync.h>
 #include <uint256.h>
@@ -34,9 +27,13 @@
 #include <util/not_null.h>
 #include <util/sock.h>
 #include <util/threadinterrupt.h>
+#include <util/time.h>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -45,16 +42,23 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <semaphore>
+#include <span>
+#include <string>
 #include <string_view>
 #include <thread>
+#include <tuple>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 class AddrMan;
 class BanMan;
 class CChainParams;
+class CKey;
 class CNode;
 class CScheduler;
+class NetGroupManager;
 struct bilingual_str;
 
 /** Time after which to disconnect, after waiting for a ping response (or inactivity). */
@@ -106,8 +110,6 @@ inline constexpr size_t DEFAULT_MAXSENDBUFFER    = 1 * 1000;
 
 inline constexpr bool DEFAULT_V2_TRANSPORT{true};
 
-typedef int64_t NodeId;
-
 struct AddedNodeParams {
     std::string m_added_node;
     bool m_use_v2transport;
@@ -120,7 +122,6 @@ struct AddedNodeInfo {
     bool fInbound;
 };
 
-class CNodeStats;
 class CClientUIInterface;
 
 struct CSerializedNetMsg {

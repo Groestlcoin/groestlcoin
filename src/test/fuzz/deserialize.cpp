@@ -8,6 +8,7 @@
 #include <blockencodings.h>
 #include <blockfilter.h>
 #include <chain.h>
+#include <chainparams.h>
 #include <coins.h>
 #include <common/args.h>
 #include <compressor.h>
@@ -29,6 +30,7 @@
 #include <test/fuzz/util.h>
 #include <test/util/setup_common.h>
 #include <undo.h>
+#include <util/check.h>
 
 #include <cstdint>
 #include <exception>

@@ -10,12 +10,13 @@
 #include <addrdb.h>
 #include <addrman.h>
 #include <banman.h>
-#include <clientversion.h>
+#include <chainparams.h>
 #include <common/args.h>
 #include <common/netif.h>
 #include <compat/compat.h>
 #include <consensus/consensus.h>
-#include <crypto/sha256.h>
+#include <crypto/common.h>
+#include <crypto/hex_base.h>
 #include <i2p.h>
 #include <key.h>
 #include <logging.h>
@@ -23,11 +24,18 @@
 #include <net_permissions.h>
 #include <netaddress.h>
 #include <netbase.h>
+#include <netgroup.h>
 #include <node/eviction.h>
 #include <node/interface_ui.h>
+#include <prevector.h>
 #include <protocol.h>
+#include <pubkey.h>
 #include <random.h>
 #include <scheduler.h>
+#include <serialize.h>
+#include <span.h>
+#include <tinyformat.h>
+#include <util/btcsignals.h>
 #include <util/fs.h>
 #include <util/overflow.h>
 #include <util/sock.h>
@@ -41,12 +49,17 @@
 #include <memory>
 #include <algorithm>
 #include <array>
-#include <cmath>
+#include <compare>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <functional>
+#include <ios>
 #include <list>
 #include <optional>
+#include <ranges>
+#include <ratio>
+#include <set>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -239,7 +252,9 @@ static int GetnScore(const CService& addr)
 [[nodiscard]] static bool IsPeerAddrLocalGood(CNode *pnode)
 {
     CService addrLocal = pnode->GetAddrLocal();
-    return fDiscover && pnode->addr.IsRoutable() && addrLocal.IsRoutable() &&
+    // Tor/I2P peers can't see our clearnet address and the Tor/I2P address won't fit in addrMe (addrv1). so ignore it.
+    return fDiscover && !pnode->IsConnectedThroughPrivacyNet() &&
+           pnode->addr.IsRoutable() && addrLocal.IsRoutable() &&
            g_reachable_nets.Contains(addrLocal);
 }
 

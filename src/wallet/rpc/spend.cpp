@@ -69,12 +69,12 @@ static void InterpretFeeEstimationInstructions(const UniValue& conf_target, cons
     }
 }
 
-std::set<int> InterpretSubtractFeeFromOutputInstructions(const UniValue& sffo_instructions, const std::vector<std::string>& destinations)
+std::set<int> InterpretSubtractFeeFromOutputInstructions(const UniValue* sffo_instructions, const std::vector<std::string>& destinations)
 {
     std::set<int> sffo_set;
-    if (sffo_instructions.isNull()) return sffo_set;
+    if (!sffo_instructions || sffo_instructions->isNull()) return sffo_set;
 
-    for (const auto& sffo : sffo_instructions.getValues()) {
+    for (const auto& sffo : sffo_instructions->getValues()) {
         int pos{-1};
         if (sffo.isStr()) {
             auto it = find(destinations.begin(), destinations.end(), sffo.get_str());
@@ -172,19 +172,10 @@ static void PreventOutdatedOptions(const UniValue& options)
     }
 }
 
-static const UniValue& GetOptionWithAlias(
+const UniValue* GetOptionWithAlias(
     const UniValue& options,
     const std::string& canonical_name,
-    const std::string& deprecated_name)
-{
-    if (options.exists(canonical_name) && options.exists(deprecated_name)) {
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Use %s (%s is deprecated). Do not set both.", canonical_name, deprecated_name));
-    }
-    if (options.exists(deprecated_name)) {
-        return options[deprecated_name];
-    }
-    return options[canonical_name];
-}
+    const std::string& deprecated_name);
 
 UniValue SendMoney(CWallet& wallet, const CCoinControl &coin_control, std::vector<CRecipient> &recipients, std::optional<std::string> comment, std::optional<std::string> comment_to, bool verbose)
 {
@@ -443,7 +434,7 @@ RPCMethod sendmany()
 
     std::vector<CRecipient> recipients = CreateRecipients(
             ParseOutputs(sendTo),
-            InterpretSubtractFeeFromOutputInstructions(request.params[4], sendTo.getKeys())
+            InterpretSubtractFeeFromOutputInstructions(&request.params[4], sendTo.getKeys())
     );
     const bool verbose{self.Arg<bool>("verbose")};
 
@@ -540,9 +531,8 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
             coinControl.m_allow_other_inputs = options["add_inputs"].get_bool();
         }
 
-        if (options.exists("changeAddress") || options.exists("change_address")) {
-            const std::string change_address_str = GetOptionWithAlias(options, "change_address", "changeAddress").get_str();
-            CTxDestination dest = DecodeDestination(change_address_str);
+        if (const UniValue* change_address = GetOptionWithAlias(options, "change_address", "changeAddress")) {
+            CTxDestination dest{DecodeDestination(change_address->get_str())};
 
             if (!IsValidDestination(dest)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Change address must be a valid bitcoin address");
@@ -551,8 +541,8 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
             coinControl.destChange = dest;
         }
 
-        if (options.exists("changePosition") || options.exists("change_position")) {
-            int pos = GetOptionWithAlias(options, "change_position", "changePosition").getInt<int>();
+        if (const UniValue* change_position_option = GetOptionWithAlias(options, "change_position", "changePosition")) {
+            int pos = change_position_option->getInt<int>();
             if (pos < 0 || (unsigned int)pos > recipients.size()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "changePosition out of bounds");
             }
@@ -570,8 +560,8 @@ CreatedTransactionResult FundTransaction(CWallet& wallet, const CMutableTransact
             }
         }
 
-        if (options.exists("lockUnspents") || options.exists("lock_unspents")) {
-            lockUnspents = GetOptionWithAlias(options, "lock_unspents", "lockUnspents").get_bool();
+        if (const UniValue* lock_unspents = GetOptionWithAlias(options, "lock_unspents", "lockUnspents")) {
+            lockUnspents = lock_unspents->get_bool();
         }
 
         if (options.exists("include_unsafe")) {
@@ -1075,7 +1065,7 @@ static RPCMethod bumpfee_helper(std::string method_name)
         UniValue options = request.params[1];
         RPCTypeCheckObj(options,
             {
-                {"confTarget", UniValueType(UniValue::VNUM)},
+                {"confTarget", UniValueType(UniValue::VNUM)}, // Deprecated, undocumented alias.
                 {"conf_target", UniValueType(UniValue::VNUM)},
                 {"fee_rate", UniValueType()}, // will be checked by AmountFromValue() in SetFeeEstimateMode()
                 {"replaceable", UniValueType(UniValue::VBOOL)},
@@ -1085,6 +1075,10 @@ static RPCMethod bumpfee_helper(std::string method_name)
                 {"psbt_version", UniValueType(UniValue::VNUM)},
             },
             true, true);
+
+        if (options.exists("confTarget") && !pwallet->chain().rpcEnableDeprecated("confTarget")) {
+            throw JSONRPCError(RPC_METHOD_DEPRECATED, "DEPRECATION WARNING: Use conf_target (confTarget is deprecated and will be removed in the next release). To use it, start the RPC server with the `-deprecatedrpc=confTarget`.");
+        }
 
         if (options.exists("confTarget") && options.exists("conf_target")) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "confTarget and conf_target options should not both be set. Use conf_target (confTarget is deprecated).");
@@ -1295,7 +1289,7 @@ RPCMethod send()
             outputs = NormalizeOutputs(request.params[0]);
             std::vector<CRecipient> recipients = CreateRecipients(
                     ParseOutputs(outputs),
-                    InterpretSubtractFeeFromOutputInstructions(options["subtract_fee_from_outputs"], outputs.getKeys())
+                    InterpretSubtractFeeFromOutputInstructions(&options["subtract_fee_from_outputs"], outputs.getKeys())
             );
             CCoinControl coin_control;
             coin_control.m_version = self.Arg<uint32_t>("version");
