@@ -8,7 +8,6 @@
 
 #include <bip324.h>
 #include <crypto/siphash.h>
-#include <hash.h>
 #include <groestlcoin.h>
 #include <i2p.h>
 #include <net_permissions.h>
