@@ -5,10 +5,10 @@
 #include <qt/bitcoinunits.h>
 
 #include <consensus/amount.h>
+#include <util/check.h>
 
 #include <QStringList>
 
-#include <cassert>
 
 static constexpr auto MAX_DIGITS_BTC = 16;
 
@@ -36,7 +36,7 @@ QString BitcoinUnits::longName(Unit unit)
     case Unit::uGRS: return QString::fromUtf8("µGRS (groestls)");
     case Unit::GRO: return QString("Gro (gro)");
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 QString BitcoinUnits::shortName(Unit unit)
@@ -47,7 +47,7 @@ QString BitcoinUnits::shortName(Unit unit)
     case Unit::uGRS: return QString("groestls");
     case Unit::GRO: return QString("gro");
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 QString BitcoinUnits::description(Unit unit)
@@ -58,7 +58,7 @@ QString BitcoinUnits::description(Unit unit)
     case Unit::uGRS: return QString("Micro-Groestlcoins (groestls) (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
     case Unit::GRO: return QString("Gro (gro) (1 / 100" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 qint64 BitcoinUnits::factor(Unit unit)
@@ -69,7 +69,7 @@ qint64 BitcoinUnits::factor(Unit unit)
     case Unit::uGRS: return 100;
     case Unit::GRO: return 1;
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 int BitcoinUnits::decimals(Unit unit)
@@ -80,7 +80,7 @@ int BitcoinUnits::decimals(Unit unit)
     case Unit::uGRS: return 2;
     case Unit::GRO: return 0;
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 QString BitcoinUnits::format(Unit unit, const CAmount& nIn, bool fPlus, SeparatorStyle separators, bool justify)
@@ -237,7 +237,7 @@ qint8 ToQint8(BitcoinUnit unit)
     case BitcoinUnit::uGRS: return 2;
     case BitcoinUnit::GRO: return 3;
     } // no default case, so the compiler can warn about missing cases
-    assert(false);
+    AssertUnreachable();
 }
 
 BitcoinUnit FromQint8(qint8 num)
@@ -248,7 +248,7 @@ BitcoinUnit FromQint8(qint8 num)
     case 2: return BitcoinUnit::uGRS;
     case 3: return BitcoinUnit::GRO;
     }
-    assert(false);
+    AssertUnreachable();
 }
 } // namespace
 
