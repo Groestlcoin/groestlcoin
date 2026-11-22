@@ -9,10 +9,12 @@
 #
 
 # Source function library.
+# shellcheck disable=SC1091
 . /etc/init.d/functions
 
 # you can override defaults in /etc/sysconfig/groestlcoind, see below
 if [ -f /etc/sysconfig/groestlcoind ]; then
+        # shellcheck disable=SC1091
         . /etc/sysconfig/groestlcoind
 fi
 
@@ -30,10 +32,11 @@ groestlcoind_opts=${GROESTLCOIND_OPTS--disablewallet}
 
 start() {
     echo -n $"Starting $prog: "
+    # shellcheck disable=SC2086
     daemon $DAEMONOPTS $groestlcoind $groestlcoind_opts
     RETVAL=$?
     echo
-    [ $RETVAL -eq 0 ] && touch $lockfile
+    [ $RETVAL -eq 0 ] && touch "$lockfile"
     return $RETVAL
 }
 
@@ -42,7 +45,7 @@ stop() {
     killproc $prog -t600
     RETVAL=$?
     echo
-    [ $RETVAL -eq 0 ] && rm -f $lockfile
+    [ $RETVAL -eq 0 ] && rm -f "$lockfile"
     return $RETVAL
 }
 
