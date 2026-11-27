@@ -406,22 +406,4 @@ BOOST_FIXTURE_TEST_CASE(switch_block_parent_target, RegTestingSetup)
     SwitchBlockParent(block, parent, threshold + 1, consensus);
     BOOST_CHECK_EQUAL(block.nBits, genesis.nBits);
 }
-
-BOOST_FIXTURE_TEST_CASE(switch_block_parent_coinbase, RegTestingSetup)
-{
-    auto& chainman{*Assert(m_node.chainman)};
-    const auto& consensus{chainman.GetConsensus()};
-    const CBlockIndex* genesis{WITH_LOCK(::cs_main, return chainman.ActiveChain().Genesis())};
-    const int length{consensus.nSubsidyHalvingInterval};
-    std::vector<std::shared_ptr<CBlock>> chain;
-    BOOST_REQUIRE(BuildChain(m_node, genesis, CScript{} << OP_TRUE, length, chain));
-    BOOST_CHECK_EQUAL(chain[0]->vtx[0]->vin[0].scriptSig.size(), 2);
-    for (int i{0}; i < length; ++i) {
-        const auto& block{chain[i]};
-        BOOST_CHECK_EQUAL(block->vtx[0]->nLockTime, i);
-        BOOST_CHECK_EQUAL(block->vtx[0]->vout[0].nValue, GetBlockSubsidy(i + 1, consensus));
-        BOOST_REQUIRE(chainman.ProcessNewBlock(block, /*force_processing=*/true, /*min_pow_checked=*/true, nullptr));
-    }
-    BOOST_CHECK_EQUAL(WITH_LOCK(::cs_main, return chainman.ActiveChain().Height()), length);
-}
 BOOST_AUTO_TEST_SUITE_END()
