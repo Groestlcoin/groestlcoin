@@ -50,6 +50,13 @@ pub fn lint_copyright_doc() -> LintResult {
                 ":(exclude)test/functional/test_framework/authproxy.py",
                 // Empty Python package marker files.
                 ":(exclude,glob)**/__init__.py",
+                // External copyright
+                ":(exclude)src/groestlcoin-hash.cpp",
+                ":(exclude)src/groestlcoin.cpp",
+                ":(exclude)src/groestlcoin.h",
+                ":(exclude)src/sphlib/groestl.cpp",
+                ":(exclude)src/sphlib/sph_groestl.h",
+                ":(exclude)src/sphlib/sph_types.h",
             ]),
     )
     .expect("Git should be callable");
