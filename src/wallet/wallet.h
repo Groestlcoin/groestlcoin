@@ -226,7 +226,7 @@ public:
     ReserveDestination(const ReserveDestination&) = delete;
     ReserveDestination& operator=(const ReserveDestination&) = delete;
 
-    //! Destructor. If a key has been reserved and not KeepKey'ed, it will be returned to the keypool
+    //! Destructor. If a key has been reserved and not kept (see KeepDestination()), it will be returned to the keypool
     ~ReserveDestination()
     {
         ReturnDestination();
@@ -326,7 +326,7 @@ private:
     /** The next scheduled rebroadcast of wallet transactions. */
     NodeClock::time_point m_next_resend{GetDefaultNextResend()};
     /** Whether this wallet will submit newly created transactions to the node's mempool and
-     * prompt rebroadcasts (see ResendWalletTransactions()). */
+     * prompt rebroadcasts (see ResubmitWalletTransactions()). */
     bool fBroadcastTransactions = false;
     // Local time that the tip block was received. Used to schedule wallet rebroadcasts.
     std::atomic<int64_t> m_best_block_time {0};
@@ -1053,9 +1053,10 @@ public:
     util::Expected<CExtPubKey, WalletError> AddHDKey(const std::optional<CExtKey>& key);
 
     /** Move all records from the BDB database to a new SQLite database for storage.
-     * The original BDB file will be deleted and replaced with a new SQLite file.
+     * The new database is built in a temporary directory and then moved into place, replacing the original one.
      * A backup is not created.
-     * May crash if something unexpected happens in the filesystem.
+     * Returns false, with the original database untouched, if the new one can't be built. Once the original
+     * database may have been erased or replaced, failures throw instead, so the caller restores the backup.
      */
     bool MigrateToSQLite(bilingual_str& error) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
@@ -1104,31 +1105,6 @@ public:
  * their transactions. Actual rebroadcast schedule is managed by the wallets themselves.
  */
 void MaybeResendWalletTxs(WalletContext& context);
-
-
-//! Add wallet name to persistent configuration so it will be loaded on startup.
-bool AddWalletSetting(interfaces::Chain& chain, const std::string& wallet_name);
-
-//! Remove wallet name from persistent configuration so it will not be loaded on startup.
-bool RemoveWalletSetting(interfaces::Chain& chain, const std::string& wallet_name);
-
-struct MigrationResult {
-    std::string wallet_name;
-    std::optional<std::string> watchonly_wallet_name;
-    std::optional<std::string> solvables_wallet_name;
-    std::shared_ptr<CWallet> wallet;
-    std::shared_ptr<CWallet> watchonly_wallet;
-    std::shared_ptr<CWallet> solvables_wallet;
-    fs::path backup_path;
-};
-
-//! Do all steps to migrate a legacy wallet to a descriptor wallet
-[[nodiscard]] util::Result<MigrationResult> MigrateLegacyToDescriptor(const std::string& wallet_name, const SecureString& passphrase, WalletContext& context, bool load_wallet = true);
-//! Requirement: The wallet provided to this function must be isolated, with no attachment to the node's context.
-[[nodiscard]] util::Result<MigrationResult> MigrateLegacyToDescriptor(std::shared_ptr<CWallet> local_wallet, const SecureString& passphrase, WalletContext& context, bool load_wallet = true);
-
-//! Determine the path that the wallet is stored in
-util::Result<fs::path> GetWalletPath(const std::string& name);
 } // namespace wallet
 
 #endif // BITCOIN_WALLET_WALLET_H

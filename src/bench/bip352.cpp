@@ -19,6 +19,7 @@
 #include <variant>
 #include <vector>
 
+namespace {
 enum class InputType {
     P2PKH,           // legacy pubkey-hash
     P2SH_P2WPKH,     // nested segwitv0 witness-pubkey-hash
@@ -26,6 +27,7 @@ enum class InputType {
     P2TR,            // segwitv1, taproot script-path spend (covers more extraction logic than key-path)
     P2PKH_WorstCase, // legacy pubkey-hash, with scriptSig malleated for worst-case performance (see below)
 };
+} // namespace
 
 // The extraction doesn't verify signatures, so dummy ones with realistic sizes suffice.
 static const std::vector<unsigned char> DUMMY_ECDSA_SIG(71, 0x01);   // low-R/low-S DER signature (following BIP-461) + sighash byte
@@ -50,12 +52,12 @@ static void GetPubKeyBench(benchmark::Bench& bench, InputType input_type)
         const CScript redeem_script{GetScriptForDestination(WitnessV0KeyHash{pubkey})};
         spk = GetScriptForDestination(ScriptHash{redeem_script});
         txin.scriptSig = CScript() << ToByteVector(redeem_script);
-        txin.scriptWitness.stack = {DUMMY_ECDSA_SIG, ToByteVector(pubkey)};
+        txin.scriptWitness = CScriptWitness{{DUMMY_ECDSA_SIG, ToByteVector(pubkey)}};
         break;
     }
     case InputType::P2WPKH:
         spk = GetScriptForDestination(WitnessV0KeyHash{pubkey});
-        txin.scriptWitness.stack = {DUMMY_ECDSA_SIG, ToByteVector(pubkey)};
+        txin.scriptWitness = CScriptWitness{{DUMMY_ECDSA_SIG, ToByteVector(pubkey)}};
         break;
     case InputType::P2TR: {
         // Script-path spend, as it runs all of the key-path extraction logic plus the control
@@ -65,7 +67,7 @@ static void GetPubKeyBench(benchmark::Bench& bench, InputType input_type)
         std::vector<unsigned char> control_block{TAPROOT_LEAF_TAPSCRIPT};
         const XOnlyPubKey internal_key{GenerateRandomKey().GetPubKey()};
         control_block.insert(control_block.end(), internal_key.begin(), internal_key.end());
-        txin.scriptWitness.stack = {DUMMY_SCHNORR_SIG, ToByteVector(DUMMY_LEAF_SCRIPT), control_block};
+        txin.scriptWitness = CScriptWitness{{DUMMY_SCHNORR_SIG, ToByteVector(DUMMY_LEAF_SCRIPT), control_block}};
         expected_pubkey = XOnlyPubKey{pubkey};
         break;
     }

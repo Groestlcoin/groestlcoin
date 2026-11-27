@@ -43,6 +43,7 @@
 #include <wallet/imports.h>
 #include <wallet/receive.h>
 #include <wallet/spend.h>
+#include <wallet/walletutil.h>
 #include <wallet/test/util.h>
 #include <wallet/test/wallet_test_fixture.h>
 
@@ -584,7 +585,7 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, ListCoinsTest)
     BOOST_CHECK_EQUAL(available_coins.coins[OutputType::UNKNOWN].size(), expected_coins_sizes[OutputType::UNKNOWN]);
 
     // We will create a self transfer for each of the OutputTypes and
-    // verify it is put in the correct bucket after running GetAvailablecoins
+    // verify it is put in the correct bucket after running AvailableCoins
     //
     // For each OutputType, We expect 2 UTXOs in our wallet following the self transfer:
     //   1. One UTXO as the recipient

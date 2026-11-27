@@ -17,6 +17,7 @@ printf -v GROESTLCOIN_CONFIG "%q " \
   --preset=dev-mode \
   -DWITH_USDT=OFF \
   -DREDUCE_EXPORTS=ON \
-  -DCMAKE_EXE_LINKER_FLAGS="-Wl,-stack_size -Wl,0x80000"
+  -DCMAKE_EXE_LINKER_FLAGS="-Wl,-stack_size -Wl,0x80000" \
+  -DCMAKE_LINK_WARNING_AS_ERROR=ON
 export GROESTLCOIN_CONFIG
 export GROESTLCOIN_CMD="groestlcoin -m" # Used in functional tests

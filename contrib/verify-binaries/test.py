@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
+# Copyright (c) The Bitcoin Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or https://opensource.org/license/mit.
 
 import json
+import os
 import sys
 import subprocess
 from pathlib import Path
+from unittest import mock
+
+import verify
 
 
 def main():
     """Tests ordered roughly from faster to slower."""
+    test_inactive_signature_quorum()
     expect_code(run_verify("", "pub", '0.32'), 4, "Nonexistent version should fail")
     expect_code(run_verify("", "pub", '0.32.awefa.12f9h'), 11, "Malformed version should fail")
     expect_code(run_verify('--min-good-sigs 20', "pub", "22.0"), 9, "--min-good-sigs 20 should fail")
@@ -24,6 +32,7 @@ def main():
     expect_code(_220_x86_64_linux_gnu, 0, "22.0-x86_64-linux-gnu.tar.gz should succeed")
     v = result['verified_binaries']
     assert result['good_trusted_sigs']
+    assert isinstance(result['expired_sigs'], list)
     assert len(v) == 1
     assert v['groestlcoin-22.0-x86_64-linux-gnu.tar.gz'] == 'b30c5353dd3d9cfd7e8b31f29eac125925751165f690bacff57effd76560dddd'
 
@@ -42,6 +51,72 @@ def main():
     assert v['groestlcoin-22.0-aarch64-linux-gnu.tar.gz'] == '8ab192b779a694701c0e8e990162a59adac7c9694ec6fc982a49a69dc3726706'
     assert v['groestlcoin-22.0-osx64.tar.gz'] == 'bdcdfac563eb54bc3de185c9b92200a36ccbd10d018aebd665e0bbe65a4480db'
     assert v['groestlcoin-22.0-x86_64-linux-gnu.tar.gz'] == 'b30c5353dd3d9cfd7e8b31f29eac125925751165f690bacff57effd76560dddd'
+
+
+@mock.patch.object(verify.log, 'disabled', new=True)
+def test_inactive_signature_quorum():
+    active = 'GOODSIG AAAABBBBCCCCDDDD Active Builder'
+    expired = 'EXPKEYSIG 1111222233334444 Expired Builder'
+    revoked = 'REVKEYSIG 5555666677778888 Revoked Builder'
+    revoked_expired = 'EXPKEYSIG 9999AAAABBBBCCCC Revoked Expired Builder\n[GNUPG:] KEYREVOKED'
+
+    def gpg_output(*sigs: str) -> str:
+        return '\n'.join(f'[GNUPG:] NEWSIG\n[GNUPG:] {sig}' for sig in sigs)
+
+    # Revocation takes precedence regardless of the order GnuPG reports the statuses in
+    for sig in (revoked_expired, f'KEYREVOKED\n[GNUPG:] {expired}'):
+        assert verify.parse_gpg_result(gpg_output(sig).splitlines())[0][0].status == 'revoked'
+
+    def verify_fake_gpg(parser, options: list[str], *sigs: str, min_good_sigs: int = 1):
+        # Every key is explicitly trusted, so only its inactive status can exclude it
+        args = parser.parse_args([
+            *options,
+            '--min-good-sigs', str(min_good_sigs),
+            '--trusted-keys', ','.join(sig.split()[1] for sig in (active, expired, revoked, revoked_expired)),
+            'bin', verify.SUMS_FILENAME,
+        ])
+        with mock.patch.object(verify, 'verify_with_gpg', return_value=(0, gpg_output(*sigs))):
+            return verify.verify_shasums_signature(verify.SIGNATUREFILENAME, verify.SUMS_FILENAME, args)
+
+    for env, options, allow_expired in (
+        ({}, [], False),
+        ({}, ['--allow-expired'], True),
+        ({'BINVERIFY_ALLOW_EXPIRED': '0'}, [], False),
+        ({'BINVERIFY_ALLOW_EXPIRED': '0'}, ['--allow-expired'], True),
+        ({'BINVERIFY_ALLOW_EXPIRED': '1'}, [], True),
+        ({'BINVERIFY_ALLOW_EXPIRED': '1'}, ['--allow-expired'], True),
+    ):
+        with mock.patch.dict(os.environ, env, clear=True):
+            parser = verify.build_parser()
+
+        result, good_trusted, good_untrusted, _, _, expired_sigs = verify_fake_gpg(parser, options, expired)
+        assert result == (verify.ReturnCode.SUCCESS if allow_expired else verify.ReturnCode.NOT_ENOUGH_GOOD_SIGS)
+        assert good_trusted == []
+        assert good_untrusted == []
+        assert [sig.key for sig in expired_sigs] == ['1111222233334444']
+
+        result, *_, expired_sigs = verify_fake_gpg(parser, options, revoked)
+        assert result == verify.ReturnCode.NOT_ENOUGH_GOOD_SIGS
+        assert expired_sigs == []
+
+        result, *_, expired_sigs = verify_fake_gpg(parser, options, revoked_expired)
+        assert result == verify.ReturnCode.NOT_ENOUGH_GOOD_SIGS
+        assert expired_sigs == []
+
+        result, good_trusted, good_untrusted, _, _, expired_sigs = verify_fake_gpg(parser, options, active, expired, revoked)
+        assert result == verify.ReturnCode.SUCCESS
+        assert [sig.key for sig in good_trusted] == ['AAAABBBBCCCCDDDD']
+        assert good_untrusted == []
+        assert [str(sig) for sig in expired_sigs] == [
+            "SigData('1111222233334444', 'Expired Builder', trusted=False, status='expired')"]
+
+        result, *_ = verify_fake_gpg(parser, options, active, expired, revoked, min_good_sigs=2)
+        assert result == (verify.ReturnCode.SUCCESS if allow_expired else verify.ReturnCode.NOT_ENOUGH_GOOD_SIGS)
+
+        result, *_ = verify_fake_gpg(parser, options, active, expired, revoked, min_good_sigs=3)
+        assert result == verify.ReturnCode.NOT_ENOUGH_GOOD_SIGS
+
+    print("✓ 'Inactive signature quorum' passed")
 
 
 def run_verify(global_args: str, command: str, command_args: str) -> subprocess.CompletedProcess:

@@ -19,7 +19,7 @@
 #include <util/fs.h>
 #include <util/time.h>
 #include <util/translation.h>
-#include <wallet/migrate.h>
+#include <wallet/legacybdb.h>
 #include <wallet/sqlite.h>
 #include <wallet/wallet.h>
 
@@ -1276,7 +1276,8 @@ DBErrors WalletBatch::LoadWallet(CWallet* pwallet)
     return result;
 }
 
-static bool RunWithinTxn(WalletBatch& batch, std::string_view process_desc, const std::function<bool(WalletBatch&)>& func)
+template <typename T>
+static bool RunWithinTxn(T& batch, std::string_view process_desc, const std::function<bool(T&)>& func)
 {
     if (!batch.TxnBegin()) {
         LogDebug(BCLog::WALLETDB, "Error: cannot create db txn for %s\n", process_desc);
@@ -1303,6 +1304,12 @@ bool RunWithinTxn(WalletDatabase& database, std::string_view process_desc, const
 {
     WalletBatch batch(database);
     return RunWithinTxn(batch, process_desc, func);
+}
+
+bool RunWithinTxn(WalletDatabase& database, std::string_view process_desc, const std::function<bool(DatabaseBatch&)>& func)
+{
+    const auto batch = database.MakeBatch();
+    return RunWithinTxn(*batch, process_desc, func);
 }
 
 bool WalletBatch::WriteAddressPreviouslySpent(const CTxDestination& dest, bool previously_spent)

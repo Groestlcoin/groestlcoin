@@ -37,6 +37,7 @@
 #include <node/blockstorage.h>
 #include <node/coin.h>
 #include <node/context.h>
+#include <node/indexes.h>
 #include <node/interface_ui.h>
 #include <node/kernel_notifications.h>
 #include <node/miner.h>
@@ -582,11 +583,11 @@ public:
     }
     bool hasBlockFilterIndex(BlockFilterType filter_type) override
     {
-        return GetBlockFilterIndex(filter_type) != nullptr;
+        return GetBlockFilterIndex(m_node, filter_type) != nullptr;
     }
     std::optional<bool> blockFilterMatchesAny(BlockFilterType filter_type, const uint256& block_hash, const GCSFilter::ElementSet& filter_set) override
     {
-        const BlockFilterIndex* block_filter_index{GetBlockFilterIndex(filter_type)};
+        const BlockFilterIndex* block_filter_index{GetBlockFilterIndex(m_node, filter_type)};
         if (!block_filter_index) return std::nullopt;
 
         BlockFilter filter;
@@ -687,7 +688,7 @@ public:
     {
         const TransactionError err = BroadcastTransaction(m_node, tx, err_string, max_tx_fee, max_tx_fee_rate, broadcast_method, /*wait_callback=*/false);
         // Chain clients only care about failures to accept the tx to the mempool. Disregard non-mempool related failures.
-        // Note: this will need to be updated if BroadcastTransactions() is updated to return other non-mempool failures
+        // Note: this will need to be updated if BroadcastTransaction() is updated to return other non-mempool failures
         // that Chain clients do not need to know about.
         return TransactionError::OK == err;
     }
@@ -970,7 +971,7 @@ public:
 
     std::unique_ptr<BlockTemplate> createNewBlock(const BlockCreateOptions& options, bool cooldown) override
     {
-        // Ensure m_tip_block is set so consumers of BlockTemplate can rely on that.
+        // Ensure m_state.tip_block is set so consumers of BlockTemplate can rely on that.
         std::optional<BlockRef> maybe_tip{waitTipChanged(uint256::ZERO, MillisecondsDouble::max())};
 
         if (!maybe_tip) return {};
@@ -1077,7 +1078,7 @@ std::unique_ptr<Mining> MakeMining(const node::NodeContext& context, bool wait_l
         util::SignalInterrupt& interrupt(*Assert(context.shutdown_signal));
         WAIT_LOCK(kernel_notifications.m_tip_block_mutex, lock);
         kernel_notifications.m_tip_block_cv.wait(lock, [&]() EXCLUSIVE_LOCKS_REQUIRED(kernel_notifications.m_tip_block_mutex) {
-            return kernel_notifications.m_state.chainstate_loaded || interrupt;
+            return (kernel_notifications.m_state.chainstate_loaded && kernel_notifications.TipBlock()) || interrupt;
         });
         if (interrupt) return nullptr;
     }
