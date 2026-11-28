@@ -215,8 +215,3 @@ jobs:
             dist/Groestlcoin-Qt.app
           if-no-files-found: error
           retention-days: 7
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: groestlcoin-${{ github.sha }}-${{ matrix.name }}
